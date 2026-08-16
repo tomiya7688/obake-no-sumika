@@ -1,0 +1,40 @@
+{
+  "objects": [
+    {
+      "id": "builtin_spring",
+      "name": "湧き水",
+      "image": "objects/spring.png",
+      "source": "objects/spring.source.json",
+      "x": 512,
+      "y": 432,
+      "width": 204
+    },
+    {
+      "id": "builtin_small_rock",
+      "name": "小さな岩",
+      "image": "objects/small_rock.png",
+      "source": "objects/small_rock.source.json",
+      "x": 195,
+      "y": 329,
+      "width": 42
+    },
+    {
+      "id": "builtin_large_rock",
+      "name": "大きな岩",
+      "image": "objects/large_rock.png",
+      "source": "objects/large_rock.source.json",
+      "x": 784,
+      "y": 489,
+      "width": 72
+    },
+    {
+      "id": "builtin_gray_item",
+      "name": "灰色の拾い物",
+      "image": "objects/gray_found_item.png",
+      "source": "objects/gray_found_item.source.json",
+      "x": 316,
+      "y": 483,
+      "width": 24
+    }
+  ]
+}
