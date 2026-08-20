@@ -5,6 +5,7 @@
       "name": "湧き水",
       "image": "objects/spring.png",
       "source": "objects/spring.source.json",
+      "tag": "water",
       "x": 512,
       "y": 432,
       "width": 204
@@ -14,6 +15,7 @@
       "name": "小さな岩",
       "image": "objects/small_rock.png",
       "source": "objects/small_rock.source.json",
+      "tag": "small_rock",
       "x": 195,
       "y": 329,
       "width": 42
@@ -23,6 +25,7 @@
       "name": "大きな岩",
       "image": "objects/large_rock.png",
       "source": "objects/large_rock.source.json",
+      "tag": "large_rock",
       "x": 784,
       "y": 489,
       "width": 72
@@ -32,9 +35,20 @@
       "name": "灰色の拾い物",
       "image": "objects/gray_found_item.png",
       "source": "objects/gray_found_item.source.json",
-      "x": 316,
-      "y": 483,
+      "tag": "found_item",
+      "x": 796,
+      "y": 327,
       "width": 24
+    },
+    {
+      "id": "builtin_game_device",
+      "name": "ゲーム機",
+      "image": "assets/game_device.png",
+      "tag": "game_device",
+      "x": 480,
+      "y": 390,
+      "width": 32,
+      "visible": false
     }
   ]
 }

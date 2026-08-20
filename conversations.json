@@ -1,104 +1,385 @@
 [
   {
-    "kadoka": "しずかだね",
-    "maru": "しずかなのだ〜"
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "しずかだね"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "しずかなのだ〜"
+      }
+    ]
   },
   {
-    "kadoka": "なに拾った？",
-    "maru": "まるい石なのだ！"
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "なに拾った？"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "まるい石なのだ！"
+      }
+    ]
   },
   {
-    "kadoka": "ここにはね…",
-    "maru": "おうちなのだ！"
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "ここにはね…"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "おうちなのだ！"
+      }
+    ]
   },
   {
-    "kadoka": "おなかすいた",
-    "maru": "おまんじゅう！"
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "おなかすいた"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "おまんじゅう！"
+      }
+    ]
   },
   {
-    "kadoka": "にんげん、来るかな",
-    "maru": "こないのだ！"
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "にんげん、来るかな"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "こないのだ！"
+      }
+    ]
   },
   {
-    "kadoka": "みかん、たべる？",
-    "maru": "食べるのだ！"
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "みかん、たべる？"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "食べるのだ！"
+      }
+    ]
   },
   {
-    "kadoka": "柿もあるよ",
-    "maru": "かたいのだ？"
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "柿もあるよ"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "かたいのだ？"
+      }
+    ]
   },
   {
-    "kadoka": "水、つめたいね",
-    "maru": "ひやひやなのだ！"
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "水、つめたいね"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "ひやひやなのだ！"
+      }
+    ]
   },
   {
-    "kadoka": "水の音、するね",
-    "maru": "ぽちゃん、なのだ"
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "水の音、するね"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "ぽちゃん、なのだ"
+      }
+    ]
   },
   {
-    "kadoka": "夜、どうだった？",
-    "maru": "ねこがいたのだ！"
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "夜、どうだった？"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "ねこがいたのだ！"
+      }
+    ]
   },
   {
-    "kadoka": "それ、どこで拾った？",
-    "maru": "あっちなのだ！"
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "それ、どこで拾った？"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "あっちなのだ！"
+      }
+    ]
   },
   {
-    "kadoka": "光は、苦手",
-    "maru": "まぶしいのだ〜"
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "光は、苦手"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "まぶしいのだ〜"
+      }
+    ]
   },
   {
-    "kadoka": "今日は、なにする？",
-    "maru": "ばあ！ってするのだ"
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "今日は、なにする？"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "ばあ！ってするのだ"
+      }
+    ]
   },
   {
-    "kadoka": "大福、半分こする？",
-    "maru": "ぜんぶ食べるのだ！"
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "大福、半分こする？"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "ぜんぶ食べるのだ！"
+      }
+    ]
   },
   {
-    "kadoka": "外、雨だったよ",
-    "maru": "ぬれるのだ？"
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "外、雨だったよ"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "ぬれるのだ？"
+      }
+    ]
   },
   {
-    "kadoka": "まる、転んだ？",
-    "maru": "ころん、なのだ"
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "まる、転んだ？"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "ころん、なのだ"
+      }
+    ]
   },
   {
-    "kadoka": "にんげん、驚くかな",
-    "maru": "ばあ！なのだ"
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "にんげん、驚くかな"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "ばあ！なのだ"
+      }
+    ]
   },
   {
-    "kadoka": "この石、きれい",
-    "maru": "まるの石なのだ！"
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "この石、きれい"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "まるの石なのだ！"
+      }
+    ]
   },
   {
-    "kadoka": "眠い？",
-    "maru": "まだ夜なのだ！"
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "眠い？"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "まだ夜なのだ！"
+      }
+    ]
   },
   {
-    "kadoka": "おまんじゅう、あるよ",
-    "maru": "どこなのだ！"
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "おまんじゅう、あるよ"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "どこなのだ！"
+      }
+    ]
   },
   {
-    "kadoka": "なに、これ",
-    "maru": "これ拾ったのだ"
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "なに、これ"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "これ拾ったのだ"
+      }
+    ]
   },
   {
-    "kadoka": "まる、ぶつかるよ",
-    "maru": "ぶつからないのだ、うわーーー"
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "まる、ぶつかるよ"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "ぶつからないのだ、うわーーー"
+      }
+    ]
   },
   {
-    "kadoka": "みずあび",
-    "maru": "水浴びするのだ！",
-    "event": "water_bath"
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "みずあび"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "水浴びするのだ！"
+      },
+      {
+        "type": "event",
+        "event": "water_bath"
+      }
+    ]
   },
   {
-    "kadoka": "ひま",
-    "maru": "暇なのだ！！",
-    "event": "game_device"
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "これ、なんだろ"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "わかんないのだ"
+      },
+      {
+        "type": "event",
+        "event": "game_device"
+      }
+    ]
   },
   {
-    "kadoka": "おはよう",
-    "maru": "おきたのだ！"
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "おはよう"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "おきたのだ！"
+      }
+    ]
   }
 ]

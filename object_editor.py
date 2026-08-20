@@ -26,12 +26,18 @@ BUILTIN_LIBRARY = {
     "small_rock": ("小さな岩", 42),
     "large_rock": ("大きな岩", 72),
     "gray_found_item": ("灰色の拾い物", 24),
+    "game_device": ("ゲーム機", 32),
 }
 
 
 def safe_stem(name: str) -> str:
     cleaned = re.sub(r"[^0-9A-Za-zぁ-んァ-ヶ一-龠々ー_-]+", "_", name.strip())
     return cleaned.strip("_.") or "object"
+
+
+def normalize_tag(tag: str) -> str:
+    """Keep tags readable in JSON while avoiding ambiguous whitespace."""
+    return re.sub(r"\s+", "_", tag.strip())
 
 
 def pixels_to_image(pixels: list[list[str | None]]) -> Image.Image:
@@ -95,6 +101,8 @@ class ObjectEditor:
         self.x_var = tk.IntVar(value=480)
         self.y_var = tk.IntVar(value=330)
         self.width_var = tk.IntVar(value=64)
+        self.tag_var = tk.StringVar(value="")
+        self.visible_var = tk.BooleanVar(value=True)
         self.status_var = tk.StringVar(value="左クリックで描く／右クリックで透明にします")
 
         self.build_ui()
@@ -276,11 +284,22 @@ class ObjectEditor:
         scale.grid(row=1, column=1, columnspan=2, sticky="ew", pady=(8, 0))
         self.width_label = ttk.Label(settings, text="64 px", width=8)
         self.width_label.grid(row=1, column=3, sticky="e", pady=(8, 0))
+        ttk.Label(settings, text="会話用タグ").grid(row=2, column=0, sticky="w", pady=(8, 0))
+        ttk.Entry(settings, textvariable=self.tag_var).grid(
+            row=2, column=1, columnspan=3, sticky="ew", pady=(8, 0)
+        )
+        ttk.Checkbutton(
+            settings,
+            text="ゲーム開始時から表示する",
+            variable=self.visible_var,
+            command=self.redraw_preview,
+        ).grid(row=3, column=0, columnspan=4, sticky="w", pady=(7, 0))
         ttk.Label(
             settings,
-            text="縦横比は固定。保存画像の1024pxとは別の表示サイズです。",
+            text="タグは配置ごとに一意。会話エディタから移動・取り出す・しまう対象にできます。\n"
+                 "縦横比は固定。保存画像の1024pxとは別の表示サイズです。",
             foreground="#666666",
-        ).grid(row=2, column=0, columnspan=4, sticky="w", pady=(5, 0))
+        ).grid(row=4, column=0, columnspan=4, sticky="w", pady=(5, 0))
 
         buttons = ttk.Frame(placement)
         buttons.grid(row=4, column=0, sticky="ew")
@@ -485,6 +504,9 @@ class ObjectEditor:
                 width = max(2, round(int(item["width"]) / 2))
                 height = max(1, round(source.height * width / source.width))
                 sprite = source.resize((width, height), Image.Resampling.LANCZOS)
+                if not bool(item.get("visible", True)):
+                    alpha = sprite.getchannel("A").point(lambda value: round(value * 0.28))
+                    sprite.putalpha(alpha)
                 x = round(int(item["x"]) / 2 - width / 2)
                 y = round(int(item["y"]) / 2 - height / 2)
                 composite.alpha_composite(sprite, (x, y))
@@ -588,7 +610,23 @@ class ObjectEditor:
             self.placements[self.selected_placement]["width"] = self.width_var.get()
         self.redraw_preview()
 
+    def placement_tag(self, ignore_index: int | None = None) -> str | None:
+        tag = normalize_tag(self.tag_var.get())
+        if not tag:
+            return ""
+        for index, item in enumerate(self.placements):
+            if index != ignore_index and normalize_tag(str(item.get("tag", ""))) == tag:
+                messagebox.showerror(
+                    "タグが重複しています",
+                    f"タグ「{tag}」は別の配置で使われています。別のタグにしてください。",
+                )
+                return None
+        return tag
+
     def add_to_habitat(self) -> None:
+        tag = self.placement_tag()
+        if tag is None:
+            return
         paths = self.save_object_files()
         if not paths:
             return
@@ -601,7 +639,10 @@ class ObjectEditor:
             "x": self.x_var.get(),
             "y": self.y_var.get(),
             "width": self.width_var.get(),
+            "visible": self.visible_var.get(),
         }
+        if tag:
+            item["tag"] = tag
         self.placements.append(item)
         save_placements(self.placements)
         self.refresh_library_list()
@@ -615,10 +656,18 @@ class ObjectEditor:
         if self.selected_placement is None:
             messagebox.showinfo("選択", "一覧から更新するものを選んでください。")
             return
+        tag = self.placement_tag(self.selected_placement)
+        if tag is None:
+            return
         item = self.placements[self.selected_placement]
         item["x"] = self.x_var.get()
         item["y"] = self.y_var.get()
         item["width"] = self.width_var.get()
+        item["visible"] = self.visible_var.get()
+        if tag:
+            item["tag"] = tag
+        else:
+            item.pop("tag", None)
         save_placements(self.placements)
         self.refresh_placement_list()
         self.placement_list.selection_set(self.selected_placement)
@@ -643,12 +692,23 @@ class ObjectEditor:
         for item in self.placements:
             self.placement_list.insert(
                 "end",
-                f"{item.get('name', 'object')}  ({item.get('x', 0)}, {item.get('y', 0)})  {item.get('width', 0)}px",
+                f"{item.get('name', 'object')}  "
+                f"{('#' + str(item.get('tag'))) if item.get('tag') else 'タグなし'}  "
+                f"({item.get('x', 0)}, {item.get('y', 0)})  {item.get('width', 0)}px",
             )
 
     def refresh_library_list(self) -> None:
         OBJECT_DIR.mkdir(parents=True, exist_ok=True)
-        self.library_paths = sorted(OBJECT_DIR.glob("*.png"), key=lambda path: path.stem)
+        paths = {path.resolve() for path in OBJECT_DIR.glob("*.png")}
+        for item in self.placements:
+            try:
+                path = (PROJECT_DIR / str(item["image"])).resolve()
+                path.relative_to(PROJECT_DIR.resolve())
+                if path.suffix.lower() == ".png" and path.exists():
+                    paths.add(path)
+            except (KeyError, OSError, ValueError):
+                continue
+        self.library_paths = sorted(paths, key=lambda path: (path.stem, path.as_posix()))
         self.library_list.delete(0, "end")
         for image_path in self.library_paths:
             relative = image_path.relative_to(PROJECT_DIR).as_posix()
@@ -690,7 +750,13 @@ class ObjectEditor:
             "x": self.x_var.get(),
             "y": self.y_var.get(),
             "width": int(example.get("width", builtin_width)) if example else builtin_width,
+            "visible": bool(example.get("visible", True)) if example else True,
         }
+        if example and example.get("tag"):
+            proposed_tag = normalize_tag(str(example["tag"]))
+            used_tags = {normalize_tag(str(value.get("tag", ""))) for value in self.placements}
+            if proposed_tag and proposed_tag not in used_tags:
+                item["tag"] = proposed_tag
         if source_path.exists():
             item["source"] = source_path.relative_to(PROJECT_DIR).as_posix()
         self.placements.append(item)
@@ -730,6 +796,8 @@ class ObjectEditor:
         self.x_var.set(int(item.get("x", 480)))
         self.y_var.set(int(item.get("y", 330)))
         self.width_var.set(int(item.get("width", 64)))
+        self.tag_var.set(str(item.get("tag", "")))
+        self.visible_var.set(bool(item.get("visible", True)))
         self.width_label.configure(text=f"{self.width_var.get()} px")
         self.name_var.set(str(item.get("name", "object")))
         self.load_source(item)

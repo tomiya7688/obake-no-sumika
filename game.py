@@ -24,7 +24,7 @@ SPRING_REST_AREA = SPRING_RECT.inflate(150, 120)
 CONVERSATION_DISTANCE = 145.0
 
 
-def load_conversation_deck() -> list[dict[str, str]]:
+def load_legacy_conversation_deck() -> list[dict[str, str]]:
     """Load editable dialogue data, ignoring malformed entries safely."""
     try:
         raw = json.loads(CONVERSATION_PATH.read_text(encoding="utf-8"))
@@ -51,7 +51,100 @@ def load_conversation_deck() -> list[dict[str, str]]:
     return [{"kadoka": "しずかだね", "maru": "しずかなのだ〜"}]
 
 
-def load_placed_objects() -> list[tuple[pygame.Surface, pygame.Rect]]:
+def normalize_conversation_step(raw: object) -> dict[str, str] | None:
+    if not isinstance(raw, dict):
+        return None
+    step_type = str(raw.get("type", "say"))
+    if step_type == "say":
+        speaker = str(raw.get("speaker", "kadoka"))
+        text = " ".join(str(raw.get("text", "")).split())
+        if speaker in ("kadoka", "maru") and text:
+            return {"type": "say", "speaker": speaker, "text": text}
+    elif step_type in ("move", "take", "put"):
+        actor = str(raw.get("actor", "kadoka"))
+        tag = str(raw.get("tag", "")).strip()
+        if actor in ("kadoka", "maru", "both") and tag:
+            return {"type": step_type, "actor": actor, "tag": tag}
+    elif step_type == "event" and raw.get("event") in ("water_bath", "game_device"):
+        return {"type": "event", "event": str(raw["event"])}
+    return None
+
+
+def load_conversation_deck() -> list[dict[str, object]]:
+    """Load step conversations and transparently upgrade the old pair format."""
+    try:
+        raw = json.loads(CONVERSATION_PATH.read_text(encoding="utf-8"))
+        deck: list[dict[str, object]] = []
+        for item in raw if isinstance(raw, list) else []:
+            if not isinstance(item, dict):
+                continue
+            if isinstance(item.get("steps"), list):
+                steps = [
+                    step
+                    for raw_step in item["steps"]
+                    if (step := normalize_conversation_step(raw_step)) is not None
+                ]
+            else:
+                steps = []
+                for speaker in ("kadoka", "maru"):
+                    text = " ".join(str(item.get(speaker, "")).split())
+                    if text:
+                        steps.append({"type": "say", "speaker": speaker, "text": text})
+                if item.get("event") in ("water_bath", "game_device"):
+                    steps.append({"type": "event", "event": str(item["event"])})
+            if steps:
+                try:
+                    weight = max(1.0, min(999.0, float(item.get("weight", 1))))
+                except (TypeError, ValueError):
+                    weight = 1.0
+                deck.append({"weight": weight, "steps": steps})
+        if deck:
+            return deck
+    except (OSError, ValueError, TypeError):
+        pass
+    return [{"weight": 1.0, "steps": [
+        {"type": "say", "speaker": "kadoka", "text": "しずかだね"},
+        {"type": "say", "speaker": "maru", "text": "しずかなのだ"},
+    ]}]
+
+
+class HabitatObject:
+    """A tagged habitat placement whose visibility can change during a scene."""
+
+    def __init__(self, item: dict, image: pygame.Surface, rect: pygame.Rect) -> None:
+        self.id = str(item.get("id", ""))
+        self.name = str(item.get("name", "object"))
+        self.tag = str(item.get("tag", "")).strip()
+        self.image = image
+        self.rect = rect
+        self.home_center = pygame.Vector2(rect.center)
+        self.visible = bool(item.get("visible", True))
+        self.glowing = False
+
+    @property
+    def center(self) -> pygame.Vector2:
+        return pygame.Vector2(self.rect.center)
+
+    def take_out(self, position: pygame.Vector2, facing: int) -> None:
+        self.visible = True
+        self.glowing = False
+        self.rect.center = (round(position.x + facing * 42), round(position.y + 18))
+
+    def put_away(self) -> None:
+        self.visible = False
+        self.glowing = False
+
+    def draw(self, surface: pygame.Surface) -> None:
+        if self.visible:
+            surface.blit(self.image, self.rect)
+            if self.glowing:
+                color = (202, 194, 126)
+                pygame.draw.rect(surface, color, (self.rect.left - 9, self.rect.centery - 1, 6, 2))
+                pygame.draw.rect(surface, color, (self.rect.right + 3, self.rect.centery - 1, 6, 2))
+                pygame.draw.rect(surface, color, (self.rect.centerx - 1, self.rect.top - 9, 2, 6))
+
+
+def load_placed_objects() -> list[HabitatObject]:
     """Load user-made habitat objects, ignoring broken entries safely."""
     try:
         raw = json.loads(PLACED_OBJECTS_PATH.read_text(encoding="utf-8"))
@@ -59,7 +152,7 @@ def load_placed_objects() -> list[tuple[pygame.Surface, pygame.Rect]]:
         return []
 
     project_root = PLACED_OBJECTS_PATH.parent.resolve()
-    result: list[tuple[pygame.Surface, pygame.Rect]] = []
+    result: list[HabitatObject] = []
     for item in raw.get("objects", []) if isinstance(raw, dict) else []:
         if not isinstance(item, dict):
             continue
@@ -80,7 +173,7 @@ def load_placed_objects() -> list[tuple[pygame.Surface, pygame.Rect]]:
                 source,
                 (display_width, display_height),
             )
-            result.append((image, image.get_rect(center=(x, y))))
+            result.append(HabitatObject(item, image, image.get_rect(center=(x, y))))
         except (KeyError, TypeError, ValueError, OSError, pygame.error):
             continue
     return result
@@ -258,7 +351,8 @@ class Ghost:
         personality: float,
         native_facing: int = 1,
         name: str = "ghost",
-        conversation_deck: list[dict[str, str]] | None = None,
+        conversation_deck: list[dict[str, object]] | None = None,
+        habitat_objects: list[HabitatObject] | None = None,
     ) -> None:
         source = pygame.image.load(image_path).convert_alpha()
         visible_bounds = source.get_bounding_rect(min_alpha=1)
@@ -266,23 +360,13 @@ class Ghost:
             source = source.subsurface(visible_bounds).copy()
         target_width = max(1, round(source.get_width() * target_height / source.get_height()))
         self.image = pygame.transform.smoothscale(source, (target_width, target_height))
-        device_source = pygame.image.load(ASSET_DIR / "game_device.png").convert_alpha()
-        device_width = 28
-        device_height = max(
-            1,
-            round(device_source.get_height() * device_width / device_source.get_width()),
-        )
-        # Keep the deliberately blocky source art crisp at its tiny in-game size.
-        self.game_device_image = pygame.transform.scale(
-            device_source,
-            (device_width, device_height),
-        )
         self.position = pygame.Vector2(position)
         self.rng = rng
         self.personality = personality
         self.native_facing = 1 if native_facing >= 0 else -1
         self.name = name
         self.conversation_deck = conversation_deck or load_conversation_deck()
+        self.habitat_objects = habitat_objects if habitat_objects is not None else []
 
         if rng.random() < 0.78:
             angle = rng.choice((0.0, math.pi)) + rng.uniform(-0.38, 0.38)
@@ -307,6 +391,9 @@ class Ghost:
         self.event_owner = False
         self.script_stage = 0
         self.script_timer = 0.0
+        self.sequence_steps: list[dict[str, str]] = []
+        self.sequence_index = 0
+        self.sequence_movers: set[str] = set()
 
         # The source art has a visible light/shadow side. Mirroring it makes a
         # real turn readable even though both drawings mostly face the viewer.
@@ -357,11 +444,13 @@ class Ghost:
             and partner.spin_elapsed is None
             and self.current_action not in (
                 "talk", "talk_turn", "talk_align", "talk_wait_align",
-                "talk_pause", "seek_talk",
+                "talk_pause", "seek_talk", "talk_sequence", "sequence_move",
+                "sequence_wait", "sequence_pause",
             )
             and partner.current_action not in (
                 "talk", "talk_turn", "talk_align", "talk_wait_align",
                 "talk_pause", "seek_talk", "loop", "turn", "approach",
+                "talk_sequence", "sequence_move", "sequence_wait", "sequence_pause",
             )
         )
 
@@ -399,31 +488,117 @@ class Ghost:
         self.event_owner = True
         partner.event_owner = False
 
-    def start_talking(self, partner: "Ghost") -> None:
-        entry = self.rng.choice(self.conversation_deck)
-        lines = {"kadoka": entry["kadoka"], "maru": entry["maru"]}
-        event_name = entry.get("event")
-        duration = self.rng.uniform(3.0, 5.5)
-
-        for ghost in (self, partner):
-            ghost.current_action = "talk"
-            ghost.talk_target = None
-            ghost.action_timer = duration
-            ghost.talk_text = lines.get(ghost.name, "…")
+    def start_talking(self, partner: "Ghost", bounds: pygame.Rect) -> None:
+        entry = self.rng.choices(
+            self.conversation_deck,
+            weights=[float(item.get("weight", 1.0)) for item in self.conversation_deck],
+            k=1,
+        )[0]
+        self.sequence_steps = list(entry.get("steps", []))
+        self.sequence_index = 0
+        self.sequence_movers.clear()
+        for ghost, target in ((self, partner), (partner, self)):
+            ghost.current_action = "sequence_wait"
+            ghost.talk_target = target
+            ghost.talk_text = ""
             ghost.talk_cooldown = self.rng.uniform(12.0, 24.0)
             ghost.talk_bubble_y_offset = -34 if ghost.name == "maru" else 0
-            ghost.pending_event = event_name
+            ghost.pending_event = None
             ghost.event_owner = ghost is self
             ghost.velocity.update(0.0, 0.0)
             ghost.desired_velocity.update(0.0, 0.0)
             ghost.pending_velocity.update(0.0, 0.0)
-            ghost.face_toward(partner if ghost is self else self)
+            ghost.face_toward(target)
         if self.position.x <= partner.position.x:
             self.talk_bubble_offset = -28
             partner.talk_bubble_offset = 28
         else:
             self.talk_bubble_offset = 28
             partner.talk_bubble_offset = -28
+        self.run_next_conversation_step(partner, bounds)
+
+    def tagged_object(self, tag: str) -> HabitatObject | None:
+        return next((item for item in self.habitat_objects if item.tag == tag), None)
+
+    def sequence_actors(self, actor: str, partner: "Ghost") -> list["Ghost"]:
+        ghosts = [self, partner]
+        if actor == "both":
+            return ghosts
+        return [next((ghost for ghost in ghosts if ghost.name == actor), self)]
+
+    def finish_conversation_sequence(self, partner: "Ghost", bounds: pygame.Rect) -> None:
+        for ghost in (self, partner):
+            ghost.talk_text = ""
+            ghost.talk_target = None
+            ghost.event_owner = False
+            ghost.sequence_movers.clear()
+            ghost.begin_random_action(bounds, partner if ghost is self else self)
+        self.sequence_steps = []
+        self.sequence_index = 0
+
+    def run_next_conversation_step(
+        self,
+        partner: "Ghost",
+        bounds: pygame.Rect | None = None,
+    ) -> None:
+        """Execute steps until one needs time or movement to finish."""
+        while self.sequence_index < len(self.sequence_steps):
+            step = self.sequence_steps[self.sequence_index]
+            self.sequence_index += 1
+            step_type = step.get("type")
+            if step_type == "say":
+                speaker = step.get("speaker", "kadoka")
+                text = step.get("text", "…")
+                duration = clamp(1.8 + len(text) * 0.10, 2.2, 5.5)
+                for ghost in (self, partner):
+                    ghost.current_action = "talk_sequence"
+                    ghost.action_timer = duration
+                    ghost.talk_text = text if ghost.name == speaker else ""
+                    ghost.velocity.update(0.0, 0.0)
+                return
+
+            if step_type == "event" and bounds is not None:
+                self.sequence_steps = []
+                self.begin_scripted_event(step.get("event", ""), partner, bounds)
+                return
+
+            if step_type in ("move", "take", "put"):
+                target_object = self.tagged_object(step.get("tag", ""))
+                if target_object is None:
+                    continue
+                actors = self.sequence_actors(step.get("actor", "kadoka"), partner)
+                if step_type == "move" and bounds is not None:
+                    self.sequence_movers = {ghost.name for ghost in actors}
+                    spacing = 54 if len(actors) > 1 else 42
+                    destination = target_object.center if target_object.visible else target_object.home_center
+                    for index, ghost in enumerate(actors):
+                        offset = (index * 2 - (len(actors) - 1)) * spacing
+                        ghost.go_to(
+                            (round(destination.x + offset), round(destination.y - 38)),
+                            bounds,
+                            travel_action="sequence_move",
+                            arrival_action="sequence_wait",
+                        )
+                        ghost.talk_target = partner if ghost is self else self
+                    for ghost in (self, partner):
+                        if ghost not in actors:
+                            ghost.current_action = "sequence_wait"
+                            ghost.velocity.update(0.0, 0.0)
+                    return
+                if step_type == "take":
+                    actor = actors[0]
+                    target_object.take_out(actor.position, actor.facing)
+                else:
+                    target_object.put_away()
+                for ghost in (self, partner):
+                    ghost.current_action = "sequence_pause"
+                    ghost.action_timer = 0.8
+                    ghost.talk_text = ""
+                    ghost.velocity.update(0.0, 0.0)
+                return
+
+        if bounds is not None:
+            self.finish_conversation_sequence(partner, bounds)
 
     def face_toward(self, partner: "Ghost") -> None:
         target_facing = 1 if partner.position.x >= self.position.x else -1
@@ -631,13 +806,16 @@ class Ghost:
         if event_name == "game_device":
             kadoka = self if self.name == "kadoka" else partner
             maru = self if self.name == "maru" else partner
-            kadoka.current_action = "script"
-            kadoka.script_stage = 0
-            kadoka.script_timer = 1.7
-            kadoka.talk_text = "ガサゴソ"
-            maru.current_action = "script_wait"
-            maru.action_timer = 30.0
+            device = kadoka.tagged_object("game_device")
+            if device is not None:
+                device.put_away()
+            maru.current_action = "script"
+            maru.script_stage = 0
+            maru.script_timer = 0.8
             maru.talk_text = ""
+            kadoka.current_action = "script_wait"
+            kadoka.action_timer = 30.0
+            kadoka.talk_text = ""
             kadoka.velocity.update(0.0, 0.0)
             maru.velocity.update(0.0, 0.0)
 
@@ -655,19 +833,43 @@ class Ghost:
             return
         if self.script_stage == 0:
             self.script_stage = 1
-            self.script_timer = 2.8
-            self.talk_text = "これ、なんだろ(ゲーム機)"
+            self.script_timer = 1.2
+            device = self.tagged_object("game_device")
+            if device is not None:
+                device.take_out(self.position, self.facing)
+                device.glowing = True
+            self.talk_text = "ピカーン"
         elif self.script_stage == 1:
             self.script_stage = 2
-            self.script_timer = 2.0
-            self.talk_text = "ピカーン"
-            partner.talk_text = "眩しいのだー"
+            self.script_timer = 2.4
+            self.talk_text = "まぶしいのだーーー"
+            partner.talk_text = "まぶしい"
         else:
+            device = self.tagged_object("game_device")
+            if device is not None:
+                device.glowing = False
             self.talk_text = ""
             partner.talk_text = ""
-            partner.flee_from(self, bounds)
-            self.current_action = "stop"
-            self.action_timer = self.rng.uniform(1.0, 2.0)
+            left_ghost, right_ghost = sorted(
+                (self, partner), key=lambda ghost: ghost.position.x
+            )
+            left_ghost.go_to(
+                (bounds.left + left_ghost.half_width, left_ghost.position.y),
+                bounds,
+                travel_action="flee",
+                arrival_action="stop",
+            )
+            right_ghost.go_to(
+                (bounds.right - right_ghost.half_width, right_ghost.position.y),
+                bounds,
+                travel_action="flee",
+                arrival_action="stop",
+            )
+            for ghost in (left_ghost, right_ghost):
+                direction = ghost.click_target - ghost.position
+                if direction.length_squared() > 1.0:
+                    ghost.steering_speed = 7.0
+                    ghost.set_motion_target(direction.normalize() * 175.0)
 
     def start_spin(self, bounds: pygame.Rect) -> bool:
         """Begin a slow travelling loop when there is space around the ghost."""
@@ -810,7 +1012,7 @@ class Ghost:
                 and self.talk_target is not None
                 and self.talk_target.current_action == "talk_pause"
             ):
-                self.start_talking(self.talk_target)
+                self.start_talking(self.talk_target, bounds)
             elif (
                 not self.event_owner
                 and self.action_timer <= -1.0
@@ -821,6 +1023,32 @@ class Ghost:
             ):
                 self.talk_target = None
                 self.begin_random_action(bounds, partner)
+        elif self.current_action == "talk_sequence":
+            self.velocity = self.velocity.lerp(pygame.Vector2(), min(1.0, dt * 8.0))
+            self.action_timer -= dt
+            if self.event_owner and self.action_timer <= 0.0 and partner is not None:
+                for ghost in (self, partner):
+                    ghost.talk_text = ""
+                    ghost.current_action = "sequence_wait"
+                self.run_next_conversation_step(partner, bounds)
+        elif self.current_action == "sequence_pause":
+            self.velocity = self.velocity.lerp(pygame.Vector2(), min(1.0, dt * 8.0))
+            self.action_timer -= dt
+            if self.event_owner and self.action_timer <= 0.0 and partner is not None:
+                for ghost in (self, partner):
+                    ghost.current_action = "sequence_wait"
+                self.run_next_conversation_step(partner, bounds)
+        elif self.current_action == "sequence_wait":
+            self.velocity = self.velocity.lerp(pygame.Vector2(), min(1.0, dt * 8.0))
+            if self.event_owner and partner is not None and self.sequence_movers:
+                ghosts = {self.name: self, partner.name: partner}
+                if all(
+                    ghosts[name].current_action != "sequence_move"
+                    for name in self.sequence_movers
+                    if name in ghosts
+                ):
+                    self.sequence_movers.clear()
+                    self.run_next_conversation_step(partner, bounds)
         elif self.current_action == "seek_talk" and self.talk_target is not None:
             self.action_timer -= dt
             left = bounds.left + self.half_width
@@ -858,7 +1086,7 @@ class Ghost:
                     self.desired_velocity,
                     min(1.0, dt * self.steering_speed),
                 )
-        elif self.current_action in ("approach", "event_move", "flee") and self.click_target is not None:
+        elif self.current_action in ("approach", "event_move", "flee", "sequence_move") and self.click_target is not None:
             direction = self.click_target - self.position
             if direction.length() <= 10.0:
                 self.position = self.click_target.copy()
@@ -866,6 +1094,9 @@ class Ghost:
                 if self.arrival_action == "water_bath":
                     self.current_action = "water_bath"
                     self.action_timer = self.rng.uniform(4.0, 8.0)
+                elif self.arrival_action == "sequence_wait":
+                    self.current_action = "sequence_wait"
+                    self.action_timer = 30.0
                 else:
                     self.current_action = "stop"
                     self.action_timer = self.rng.uniform(0.35, 0.9)
@@ -876,6 +1107,7 @@ class Ghost:
                     "approach": 46.0 * self.personality,
                     "event_move": 52.0 * self.personality,
                     "flee": 175.0,
+                    "sequence_move": 52.0 * self.personality,
                 }[self.current_action]
                 target_velocity = direction.normalize() * travel_speed
                 target_facing = 1 if target_velocity.x >= 0.0 else -1
@@ -1007,17 +1239,7 @@ class Ghost:
         rect = rendered.get_rect(center=(round(draw_position.x), round(draw_position.y)))
         surface.blit(rendered, rect)
 
-        if self.current_action == "script" and self.script_stage >= 1:
-            device = self.game_device_image.get_rect(
-                midbottom=(rect.right + 7, rect.bottom + 1)
-            )
-            surface.blit(self.game_device_image, device)
-            if self.script_stage >= 2:
-                pygame.draw.rect(surface, (202, 194, 126), (device.x - 8, device.y + 5, 5, 2))
-                pygame.draw.rect(surface, (202, 194, 126), (device.right + 3, device.y + 5, 5, 2))
-                pygame.draw.rect(surface, (202, 194, 126), (device.centerx - 1, device.y - 8, 2, 5))
-
-        if self.current_action in ("talk", "script", "script_wait") and self.talk_text:
+        if self.current_action in ("talk", "talk_sequence", "script", "script_wait") and self.talk_text:
             text_surface = talk_font.render(self.talk_text, True, (25, 27, 34))
             bubble = text_surface.get_rect()
             bubble.inflate_ip(16, 10)
@@ -1088,6 +1310,7 @@ def main() -> int:
             0.92,
             name="kadoka",
             conversation_deck=conversation_deck,
+            habitat_objects=placed_objects,
         ),
         Ghost(
             ASSET_DIR / "maru.png",
@@ -1098,6 +1321,7 @@ def main() -> int:
             native_facing=-1,
             name="maru",
             conversation_deck=conversation_deck,
+            habitat_objects=placed_objects,
         ),
     ]
     motes = [Mote(scenery_rng) for _ in range(34)]
@@ -1140,8 +1364,8 @@ def main() -> int:
         ghosts[1].update(dt, movement_bounds, ghosts[0])
 
         screen.blit(background, (0, 0))
-        for object_image, object_rect in placed_objects:
-            screen.blit(object_image, object_rect)
+        for habitat_object in placed_objects:
+            habitat_object.draw(screen)
         for mote in motes:
             mote.draw(screen)
         if click_marker is not None and click_marker_timer > 0.0:
