@@ -11,7 +11,7 @@ from pathlib import Path
 import pygame
 
 
-VERSION = "0.1.0-beta.1"
+VERSION = "0.2.0"
 WIDTH = 960
 HEIGHT = 540
 FPS = 60
@@ -22,6 +22,10 @@ PLACED_OBJECTS_PATH = Path(__file__).resolve().parent / "placed_objects.json"
 SPRING_RECT = pygame.Rect(410, 408, 204, 48)
 SPRING_REST_AREA = SPRING_RECT.inflate(150, 120)
 CONVERSATION_DISTANCE = 145.0
+GHOST_DISPLAY_NAMES = {
+    "kadoka": "かどか",
+    "maru": "まる",
+}
 
 
 def load_legacy_conversation_deck() -> list[dict[str, str]]:
@@ -365,6 +369,7 @@ class Ghost:
         self.personality = personality
         self.native_facing = 1 if native_facing >= 0 else -1
         self.name = name
+        self.display_name = GHOST_DISPLAY_NAMES.get(name, name)
         self.conversation_deck = conversation_deck or load_conversation_deck()
         self.habitat_objects = habitat_objects if habitat_objects is not None else []
 
@@ -424,6 +429,16 @@ class Ghost:
     @property
     def half_height(self) -> float:
         return self.image.get_height() * 0.5
+
+    def hover_name(
+        self,
+        mouse_position: tuple[int, int] | None,
+        rendered_rect: pygame.Rect,
+    ) -> str:
+        """Return the visible name only while the cursor is over the ghost."""
+        if mouse_position is not None and rendered_rect.collidepoint(mouse_position):
+            return self.display_name
+        return ""
 
     def random_speed(self) -> float:
         speed_roll = self.rng.random()
@@ -1203,6 +1218,7 @@ class Ghost:
         surface: pygame.Surface,
         elapsed: float,
         talk_font: pygame.font.Font,
+        mouse_position: tuple[int, int] | None = None,
     ) -> None:
         bob = math.sin(elapsed * self.bob_speed * TAU + self.bob_phase) * self.bob_height
         draw_position = self.position + self.spin_offset + pygame.Vector2(0.0, bob)
@@ -1257,6 +1273,17 @@ class Ghost:
                 [(tail_x - 5, bubble.bottom), (tail_x + 5, bubble.bottom), (rect.centerx, bubble.bottom + 7)],
             )
             surface.blit(text_surface, text_surface.get_rect(center=bubble.center))
+
+        hover_name = self.hover_name(mouse_position, rect)
+        if hover_name:
+            name_surface = talk_font.render(hover_name, True, (235, 236, 229))
+            name_box = name_surface.get_rect()
+            name_box.inflate_ip(12, 6)
+            name_box.midtop = (rect.centerx, rect.bottom + 6)
+            name_box.clamp_ip(surface.get_rect().inflate(-12, -12))
+            pygame.draw.rect(surface, (17, 20, 29), name_box)
+            pygame.draw.rect(surface, (105, 111, 120), name_box, 1)
+            surface.blit(name_surface, name_surface.get_rect(center=name_box.center))
 
 
 def parse_args() -> argparse.Namespace:
@@ -1376,8 +1403,9 @@ def main() -> int:
             pygame.draw.rect(screen, marker_color, (marker_x + 4, marker_y - 2, 6, 4))
             pygame.draw.rect(screen, marker_color, (marker_x - 2, marker_y - 10, 4, 6))
             pygame.draw.rect(screen, marker_color, (marker_x - 2, marker_y + 4, 4, 6))
+        mouse_position = pygame.mouse.get_pos()
         for ghost in sorted(ghosts, key=lambda item: item.position.y):
-            ghost.draw(screen, elapsed, talk_font)
+            ghost.draw(screen, elapsed, talk_font, mouse_position)
 
         pygame.display.flip()
         frame_count += 1

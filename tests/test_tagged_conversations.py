@@ -164,6 +164,15 @@ class TaggedConversationTests(unittest.TestCase):
     def test_tag_normalization(self):
         self.assertEqual(normalize_tag("  大きい 岩  "), "大きい_岩")
 
+    def test_hover_name_only_appears_over_each_ghost(self):
+        kadoka, maru = self.make_ghosts([], [])
+        rendered_rect = pygame.Rect(260, 260, 80, 80)
+
+        self.assertEqual(kadoka.hover_name((300, 300), rendered_rect), "かどか")
+        self.assertEqual(maru.hover_name((300, 300), rendered_rect), "まる")
+        self.assertEqual(kadoka.hover_name((100, 100), rendered_rect), "")
+        self.assertEqual(maru.hover_name(None, rendered_rect), "")
+
 
 if __name__ == "__main__":
     unittest.main()
