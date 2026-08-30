@@ -81,6 +81,7 @@ class TaggedConversationTests(unittest.TestCase):
         maru.script_timer = 0.0
         maru.update_script(0.01, bounds, kadoka)
         self.assertFalse(device.glowing)
+        self.assertFalse(device.visible)
         self.assertEqual(kadoka.current_action, "flee")
         self.assertEqual(maru.current_action, "flee")
         self.assertLess(kadoka.click_target.x, maru.click_target.x)

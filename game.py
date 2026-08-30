@@ -862,7 +862,7 @@ class Ghost:
         else:
             device = self.tagged_object("game_device")
             if device is not None:
-                device.glowing = False
+                device.put_away()
             self.talk_text = ""
             partner.talk_text = ""
             left_ghost, right_ghost = sorted(
