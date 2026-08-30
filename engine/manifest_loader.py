@@ -1,0 +1,76 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+from .editor_definition import EditorDefinition
+from .project_manifest import ProjectManifest
+
+
+def resolve_project_path(root: Path, raw_path: object) -> Path:
+    """Resolve one manifest path while preventing access outside the project."""
+    if not isinstance(raw_path, str) or not raw_path.strip():
+        raise ValueError("Project paths must be non-empty strings")
+    root = root.resolve()
+    candidate = (root / raw_path).resolve()
+    if candidate != root and root not in candidate.parents:
+        raise ValueError(f"Path escapes the project root: {raw_path}")
+    if not candidate.exists():
+        raise ValueError(f"Project path does not exist: {raw_path}")
+    return candidate
+
+
+def load_editor_definitions(root: Path, raw_editors: object) -> tuple[EditorDefinition, ...]:
+    """Validate and load the editor list."""
+    if not isinstance(raw_editors, list):
+        raise ValueError("editors must be a list")
+    editors = []
+    seen_ids = set()
+    for raw_editor in raw_editors:
+        if not isinstance(raw_editor, dict):
+            raise ValueError("Each editor must be an object")
+        editor_id = str(raw_editor.get("id", "")).strip()
+        label = str(raw_editor.get("label", "")).strip()
+        if not editor_id or not label:
+            raise ValueError("Editor id and label are required")
+        if editor_id in seen_ids:
+            raise ValueError(f"Duplicate editor id: {editor_id}")
+        script = resolve_project_path(root, raw_editor.get("script"))
+        if not script.is_file():
+            raise ValueError(f"Editor script is not a file: {script.name}")
+        editors.append(EditorDefinition(editor_id, label, script))
+        seen_ids.add(editor_id)
+    return tuple(editors)
+
+
+def load_content_paths(root: Path, raw_content: object) -> dict[str, Path]:
+    """Validate and load named content locations."""
+    if not isinstance(raw_content, dict):
+        raise ValueError("content must be an object")
+    content = {}
+    for raw_name, raw_path in raw_content.items():
+        name = str(raw_name).strip()
+        if not name:
+            raise ValueError("Content names must not be empty")
+        content[name] = resolve_project_path(root, raw_path)
+    return content
+
+
+def load_project_manifest(manifest_path: Path) -> ProjectManifest:
+    """Load and validate one engine project manifest."""
+    manifest_path = manifest_path.resolve()
+    raw = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        raise ValueError("Project manifest must be an object")
+    if raw.get("schema_version") != 1:
+        raise ValueError("Unsupported project schema version")
+    name = str(raw.get("name", "")).strip()
+    if not name:
+        raise ValueError("Project name is required")
+    root = manifest_path.parent
+    entrypoint = resolve_project_path(root, raw.get("entrypoint"))
+    if not entrypoint.is_file():
+        raise ValueError("Project entrypoint must be a file")
+    editors = load_editor_definitions(root, raw.get("editors", []))
+    content = load_content_paths(root, raw.get("content", {}))
+    return ProjectManifest(1, name, root, entrypoint, editors, content)

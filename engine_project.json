@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "name": "おばけの住処",
+  "entrypoint": "game.py",
+  "editors": [
+    {
+      "id": "conversation_event",
+      "label": "会話・イベントエディター",
+      "script": "conversation_editor.py"
+    },
+    {
+      "id": "object_room",
+      "label": "オブジェクト・部屋エディター",
+      "script": "object_editor.py"
+    }
+  ],
+  "content": {
+    "characters": "assets",
+    "room": "placed_objects.json",
+    "objects": "objects",
+    "conversations": "conversations.json",
+    "events": "conversations.json"
+  }
+}
