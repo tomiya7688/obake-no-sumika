@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "characters": [
+    {
+      "id": "kadoka",
+      "display_name": "かどか",
+      "image": "assets/kadoka.png",
+      "start_position": [
+        320,
+        340
+      ],
+      "display_height": 64,
+      "personality": 0.92,
+      "native_facing": 1,
+      "bubble_y_offset": 0
+    },
+    {
+      "id": "maru",
+      "display_name": "まる",
+      "image": "assets/maru.png",
+      "start_position": [
+        640,
+        340
+      ],
+      "display_height": 64,
+      "personality": 1.08,
+      "native_facing": -1,
+      "bubble_y_offset": -34
+    }
+  ]
+}

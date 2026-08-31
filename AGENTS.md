@@ -25,6 +25,8 @@
 ## Source map
 
 - `game.py`: ゲーム、AI、会話シーケンス、イベント、描画。主なクラスは `Ghost`、`HabitatObject`、`Mote`。
+- `characters.json`: ゲームが直接読むキャラクター定義。表示名、画像、開始位置、表示身長、性格速度倍率、元画像の向き、吹き出し高さを保存。
+- `character_editor.py`: `characters.json` を共有処理経由で編集するTkエディター。
 - `conversations.json`: 実行時に直接読む会話デッキ。会話変更はここを正とする。
 - `conversation_editor.py`: 会話JSONを直接編集するTkエディタ。
 - `placed_objects.json`: 配置、表示幅、タグ、初期表示状態。ゲーム座標で保存。
@@ -38,6 +40,16 @@
 - `VERSION`: 現在バージョンの正。公開時は `game.py`、`README.md`、`CHANGELOG.md`、`RELEASE_NOTES.md` も揃える。
 
 ## Data contracts
+
+キャラクター1件:
+
+```json
+{"id":"kadoka","display_name":"かどか","image":"assets/kadoka.png","start_position":[320,340],"display_height":64,"personality":0.92,"native_facing":1,"bubble_y_offset":0}
+```
+
+- `id` は会話・イベントとの接続に使うため、現在のゲームでは `kadoka` と `maru` を維持する。
+- 画像はプロジェクト内の相対パスだけを許可する。
+- 2匹を同じ身長・横並びにするときは `display_height` と開始位置Yを同じにする。
 
 会話1件:
 

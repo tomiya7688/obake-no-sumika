@@ -10,24 +10,22 @@ from pathlib import Path
 
 import pygame
 
+from engine.character_repository import CharacterRepository
+
 
 VERSION = "0.2.0"
 WIDTH = 960
 HEIGHT = 540
 FPS = 60
 TAU = math.tau
-ASSET_DIR = Path(__file__).resolve().parent / "assets"
-CONVERSATION_PATH = Path(__file__).resolve().parent / "conversations.json"
-PLACED_OBJECTS_PATH = Path(__file__).resolve().parent / "placed_objects.json"
+PROJECT_DIR = Path(__file__).resolve().parent
+ASSET_DIR = PROJECT_DIR / "assets"
+CHARACTER_PATH = PROJECT_DIR / "characters.json"
+CONVERSATION_PATH = PROJECT_DIR / "conversations.json"
+PLACED_OBJECTS_PATH = PROJECT_DIR / "placed_objects.json"
 SPRING_RECT = pygame.Rect(410, 408, 204, 48)
 SPRING_REST_AREA = SPRING_RECT.inflate(150, 120)
 CONVERSATION_DISTANCE = 145.0
-GHOST_DISPLAY_NAMES = {
-    "kadoka": "かどか",
-    "maru": "まる",
-}
-
-
 def load_legacy_conversation_deck() -> list[dict[str, str]]:
     """Load editable dialogue data, ignoring malformed entries safely."""
     try:
@@ -355,6 +353,8 @@ class Ghost:
         personality: float,
         native_facing: int = 1,
         name: str = "ghost",
+        display_name: str | None = None,
+        bubble_y_offset: int = 0,
         conversation_deck: list[dict[str, object]] | None = None,
         habitat_objects: list[HabitatObject] | None = None,
     ) -> None:
@@ -369,7 +369,8 @@ class Ghost:
         self.personality = personality
         self.native_facing = 1 if native_facing >= 0 else -1
         self.name = name
-        self.display_name = GHOST_DISPLAY_NAMES.get(name, name)
+        self.display_name = display_name or name
+        self.conversation_bubble_y_offset = bubble_y_offset
         self.conversation_deck = conversation_deck or load_conversation_deck()
         self.habitat_objects = habitat_objects if habitat_objects is not None else []
 
@@ -517,7 +518,7 @@ class Ghost:
             ghost.talk_target = target
             ghost.talk_text = ""
             ghost.talk_cooldown = self.rng.uniform(12.0, 24.0)
-            ghost.talk_bubble_y_offset = -34 if ghost.name == "maru" else 0
+            ghost.talk_bubble_y_offset = ghost.conversation_bubble_y_offset
             ghost.pending_event = None
             ghost.event_owner = ghost is self
             ghost.velocity.update(0.0, 0.0)
@@ -1311,10 +1312,16 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     rng = random.Random(args.seed)
+    definitions = CharacterRepository(PROJECT_DIR, CHARACTER_PATH).load()
+    definitions_by_id = {definition.id: definition for definition in definitions}
+    if set(definitions_by_id) != {"kadoka", "maru"}:
+        raise ValueError("おばけの住処にはkadokaとmaruのキャラクター定義が必要です")
     # Each ghost owns a separate random stream. One ghost's choices never
     # consume or synchronize the other ghost's future behavior.
-    kadoka_rng = random.Random(rng.getrandbits(64))
-    maru_rng = random.Random(rng.getrandbits(64))
+    character_rngs = {
+        character_id: random.Random(rng.getrandbits(64))
+        for character_id in ("kadoka", "maru")
+    }
     scenery_rng = random.Random(rng.getrandbits(64))
 
     pygame.init()
@@ -1328,29 +1335,24 @@ def main() -> int:
     talk_font = pygame.font.SysFont("Yu Gothic UI,Meiryo", 15)
     conversation_deck = load_conversation_deck()
     movement_bounds = pygame.Rect(74, 80, WIDTH - 148, 446)
-    ghosts = [
-        Ghost(
-            ASSET_DIR / "kadoka.png",
-            (320, 340),
-            64,
-            kadoka_rng,
-            0.92,
-            name="kadoka",
-            conversation_deck=conversation_deck,
-            habitat_objects=placed_objects,
-        ),
-        Ghost(
-            ASSET_DIR / "maru.png",
-            (640, 340),
-            64,
-            maru_rng,
-            1.08,
-            native_facing=-1,
-            name="maru",
-            conversation_deck=conversation_deck,
-            habitat_objects=placed_objects,
-        ),
-    ]
+    ghosts = []
+    for character_id in ("kadoka", "maru"):
+        definition = definitions_by_id[character_id]
+        ghosts.append(
+            Ghost(
+                definition.image,
+                (definition.start_x, definition.start_y),
+                definition.display_height,
+                character_rngs[character_id],
+                definition.personality,
+                native_facing=definition.native_facing,
+                name=definition.id,
+                display_name=definition.display_name,
+                bubble_y_offset=definition.bubble_y_offset,
+                conversation_deck=conversation_deck,
+                habitat_objects=placed_objects,
+            )
+        )
     motes = [Mote(scenery_rng) for _ in range(34)]
 
     running = True

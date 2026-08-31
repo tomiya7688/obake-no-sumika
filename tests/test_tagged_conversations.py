@@ -30,11 +30,13 @@ class TaggedConversationTests(unittest.TestCase):
         kadoka = game.Ghost(
             game.ASSET_DIR / "kadoka.png", (300, 300), 64,
             __import__("random").Random(1), 1.0, name="kadoka",
+            display_name="かどか",
             conversation_deck=deck, habitat_objects=habitat_objects,
         )
         maru = game.Ghost(
             game.ASSET_DIR / "maru.png", (500, 300), 64,
             __import__("random").Random(2), 1.0, native_facing=-1, name="maru",
+            display_name="まる", bubble_y_offset=-34,
             conversation_deck=deck, habitat_objects=habitat_objects,
         )
         kadoka.event_owner = True

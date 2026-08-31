@@ -21,8 +21,9 @@ class EngineManifestTests(unittest.TestCase):
         self.assertEqual(manifest.entrypoint, PROJECT_DIR / "game.py")
         self.assertEqual(
             [editor.id for editor in manifest.editors],
-            ["conversation_event", "object_room"],
+            ["character", "conversation_event", "object_room"],
         )
+        self.assertEqual(manifest.content["characters"], PROJECT_DIR / "characters.json")
         self.assertEqual(manifest.content["room"], PROJECT_DIR / "placed_objects.json")
 
     def test_manifest_rejects_paths_outside_project(self):
@@ -70,9 +71,9 @@ class EngineManifestTests(unittest.TestCase):
         manifest = load_project_manifest(PROJECT_DIR / "engine_project.json")
         launcher = ProcessLauncher(manifest)
         with patch("engine.process_launcher.subprocess.Popen") as popen:
-            launcher.launch_editor("conversation_event")
+            launcher.launch_editor("character")
         popen.assert_called_once_with(
-            [sys.executable, str(PROJECT_DIR / "conversation_editor.py")],
+            [sys.executable, str(PROJECT_DIR / "character_editor.py")],
             cwd=PROJECT_DIR,
         )
 

@@ -4,6 +4,11 @@
   "entrypoint": "game.py",
   "editors": [
     {
+      "id": "character",
+      "label": "キャラクターエディター",
+      "script": "character_editor.py"
+    },
+    {
       "id": "conversation_event",
       "label": "会話・イベントエディター",
       "script": "conversation_editor.py"
@@ -15,7 +20,8 @@
     }
   ],
   "content": {
-    "characters": "assets",
+    "characters": "characters.json",
+    "character_assets": "assets",
     "room": "placed_objects.json",
     "objects": "objects",
     "conversations": "conversations.json",
