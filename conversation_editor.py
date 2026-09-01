@@ -2,15 +2,37 @@
 
 from __future__ import annotations
 
-import json
 import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
+
+from engine.character_repository import CharacterRepository
+from engine.conversation_repository import ConversationRepository
+from engine.event_repository import EventRepository
+from engine.placement_repository import PlacementRepository
+from engine.room_repository import RoomRepository
 
 
 PROJECT_DIR = Path(__file__).resolve().parent
 DECK_PATH = PROJECT_DIR / "conversations.json"
 PLACEMENTS_PATH = PROJECT_DIR / "placed_objects.json"
+CHARACTER_PATH = PROJECT_DIR / "characters.json"
+EVENT_PATH = PROJECT_DIR / "events.json"
+ROOM_PATH = PROJECT_DIR / "room.json"
+ROOM = RoomRepository(ROOM_PATH).load()
+CHARACTERS = CharacterRepository(
+    PROJECT_DIR,
+    CHARACTER_PATH,
+    (ROOM.width, ROOM.height),
+).load()
+EVENT_REPOSITORY = EventRepository(EVENT_PATH)
+EVENTS = EVENT_REPOSITORY.load()
+PLACEMENT_REPOSITORY = PlacementRepository(
+    PROJECT_DIR,
+    PLACEMENTS_PATH,
+    (ROOM.width, ROOM.height),
+)
+EVENT_REPOSITORY.validate_required_tags(EVENTS, PLACEMENT_REPOSITORY.tags())
 
 STEP_LABELS = {
     "say": "セリフ",
@@ -20,58 +42,17 @@ STEP_LABELS = {
     "event": "既存イベント（ここで会話終了）",
 }
 STEP_VALUES = {label: value for value, label in STEP_LABELS.items()}
-ACTOR_LABELS = {"kadoka": "かどか", "maru": "まる", "both": "ふたり"}
+ACTOR_LABELS = {definition.id: definition.display_name for definition in CHARACTERS}
+ACTOR_LABELS["both"] = "ふたり"
 ACTOR_VALUES = {label: value for value, label in ACTOR_LABELS.items()}
-EVENT_LABELS = {
-    "water_bath": "水浴び",
-    "game_device": "ゲーム機イベント（game_deviceを取り出す）",
-}
+EVENT_LABELS = {definition.id: definition.label for definition in EVENTS}
 EVENT_VALUES = {label: value for value, label in EVENT_LABELS.items()}
-
-
-def load_tags() -> list[str]:
-    try:
-        raw = json.loads(PLACEMENTS_PATH.read_text(encoding="utf-8"))
-        tags = {
-            str(item.get("tag", "")).strip()
-            for item in raw.get("objects", [])
-            if isinstance(item, dict) and str(item.get("tag", "")).strip()
-        }
-        return sorted(tags)
-    except (OSError, ValueError, AttributeError):
-        return []
-
-
-def normalize_step(raw: object) -> dict[str, str] | None:
-    if not isinstance(raw, dict):
-        return None
-    step_type = str(raw.get("type", "say"))
-    if step_type == "say":
-        speaker = str(raw.get("speaker", "kadoka"))
-        text = str(raw.get("text", "")).strip()
-        if speaker in ("kadoka", "maru") and text:
-            return {"type": "say", "speaker": speaker, "text": text}
-    elif step_type in ("move", "take", "put"):
-        actor = str(raw.get("actor", "kadoka"))
-        tag = str(raw.get("tag", "")).strip()
-        if actor in ACTOR_LABELS and tag:
-            return {"type": step_type, "actor": actor, "tag": tag}
-    elif step_type == "event" and raw.get("event") in EVENT_LABELS:
-        return {"type": "event", "event": str(raw["event"])}
-    return None
-
-
-def legacy_steps(item: dict) -> list[dict[str, str]]:
-    steps: list[dict[str, str]] = []
-    kadoka = str(item.get("kadoka", "")).strip()
-    maru = str(item.get("maru", "")).strip()
-    if kadoka:
-        steps.append({"type": "say", "speaker": "kadoka", "text": kadoka})
-    if maru:
-        steps.append({"type": "say", "speaker": "maru", "text": maru})
-    if item.get("event") in EVENT_LABELS:
-        steps.append({"type": "event", "event": str(item["event"])})
-    return steps
+CONVERSATION_REPOSITORY = ConversationRepository(
+    DECK_PATH,
+    tuple(definition.id for definition in CHARACTERS),
+    tuple(ACTOR_LABELS),
+    tuple(EVENT_LABELS),
+)
 
 
 class ConversationEditor:
@@ -80,8 +61,8 @@ class ConversationEditor:
         self.root.title("おばけの住処・会話エディタ")
         self.root.geometry("1180x680")
         self.root.minsize(960, 560)
-        self.data = self.load()
-        self.tags = load_tags()
+        self.data = CONVERSATION_REPOSITORY.load_editable()
+        self.tags = PLACEMENT_REPOSITORY.tags()
         self.current_conversation: int | None = None
         self.current_step: int | None = None
         self.loading_fields = False
@@ -96,28 +77,6 @@ class ConversationEditor:
         self.build_ui()
         self.refresh_conversations(0 if self.data else None)
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
-
-    @staticmethod
-    def load() -> list[dict[str, object]]:
-        try:
-            raw = json.loads(DECK_PATH.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            return []
-        result = []
-        for item in raw if isinstance(raw, list) else []:
-            if not isinstance(item, dict):
-                continue
-            if isinstance(item.get("steps"), list):
-                steps = [step for value in item["steps"] if (step := normalize_step(value))]
-            else:
-                steps = legacy_steps(item)
-            if steps:
-                try:
-                    weight = max(1, min(999, int(item.get("weight", 1))))
-                except (TypeError, ValueError):
-                    weight = 1
-                result.append({"weight": weight, "steps": steps})
-        return result
 
     def build_ui(self) -> None:
         outer = ttk.Frame(self.root, padding=12)
@@ -431,28 +390,12 @@ class ConversationEditor:
 
     def save(self) -> bool:
         self.commit_step()
-        if not self.data:
-            messagebox.showerror("保存できません", "会話を1件以上登録してください。")
+        try:
+            CONVERSATION_REPOSITORY.save_editable(self.data)
+        except (OSError, ValueError) as exc:
+            messagebox.showerror("保存できません", str(exc))
             return False
-        for number, item in enumerate(self.data, 1):
-            try:
-                item["weight"] = max(1, min(999, int(item.get("weight", 1))))
-            except (TypeError, ValueError):
-                messagebox.showerror("保存できません", f"会話{number}の重みが正しくありません。")
-                return False
-            if not item["steps"]:
-                messagebox.showerror("保存できません", f"会話{number}に手順がありません。")
-                return False
-            for step in item["steps"]:
-                if step["type"] == "say" and not step.get("text", "").strip():
-                    messagebox.showerror("保存できません", f"会話{number}に空のセリフがあります。")
-                    return False
-                if step["type"] in ("move", "take", "put") and not step.get("tag", "").strip():
-                    messagebox.showerror("保存できません", f"会話{number}のタグが空です。")
-                    return False
-        temporary = DECK_PATH.with_suffix(".json.tmp")
-        temporary.write_text(json.dumps(self.data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        temporary.replace(DECK_PATH)
+        self.data = CONVERSATION_REPOSITORY.load_editable()
         self.refresh_conversations(self.current_conversation)
         self.status_var.set("保存しました。次回ゲーム起動時から反映されます")
         return True

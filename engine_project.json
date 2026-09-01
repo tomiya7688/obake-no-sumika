@@ -26,6 +26,6 @@
     "placements": "placed_objects.json",
     "objects": "objects",
     "conversations": "conversations.json",
-    "events": "conversations.json"
+    "events": "events.json"
   }
 }

@@ -11,8 +11,10 @@ os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 import pygame
 
 import game
-from object_editor import normalize_tag
-from conversation_editor import ConversationEditor, load_tags
+from conversation_editor import CONVERSATION_REPOSITORY, PLACEMENT_REPOSITORY
+from engine.conversation_definition import ConversationDefinition
+from engine.placement_definition import PlacementDefinition
+from engine.placement_repository import normalize_tag
 
 
 class TaggedConversationTests(unittest.TestCase):
@@ -26,7 +28,7 @@ class TaggedConversationTests(unittest.TestCase):
         pygame.quit()
 
     def make_ghosts(self, habitat_objects, steps):
-        deck = [{"steps": steps}]
+        deck = (ConversationDefinition(1.0, tuple(steps)),)
         kadoka = game.Ghost(
             game.ASSET_DIR / "kadoka.png", (300, 300), 64,
             __import__("random").Random(1), 1.0, name="kadoka",
@@ -48,16 +50,16 @@ class TaggedConversationTests(unittest.TestCase):
     def test_existing_conversations_are_upgraded_to_steps(self):
         deck = game.load_conversation_deck()
         self.assertTrue(deck)
-        self.assertTrue(all(item.get("steps") for item in deck))
-        self.assertTrue(all("type" in step for item in deck for step in item["steps"]))
-        editor_data = ConversationEditor.load()
+        self.assertTrue(all(item.steps for item in deck))
+        self.assertTrue(all("type" in step for item in deck for step in item.steps))
+        editor_data = CONVERSATION_REPOSITORY.load_editable()
         self.assertEqual(len(editor_data), len(deck))
         self.assertTrue(all(item["steps"] for item in editor_data))
         self.assertTrue(all(item["weight"] == 1 for item in editor_data))
 
     def test_existing_object_tags_are_available_to_editor(self):
         self.assertEqual(
-            set(load_tags()),
+            set(PLACEMENT_REPOSITORY.tags()),
             {"water", "small_rock", "large_rock", "found_item", "game_device"},
         )
 
@@ -94,22 +96,25 @@ class TaggedConversationTests(unittest.TestCase):
             item for item in deck
             if any(
                 step.get("type") == "event" and step.get("event") == "game_device"
-                for step in item["steps"]
+                for step in item.steps
             )
         ]
         self.assertTrue(matching)
         self.assertEqual(
-            matching[0]["steps"][:2],
-            [
+            matching[0].steps[:2],
+            (
                 {"type": "say", "speaker": "kadoka", "text": "これ、なんだろ"},
                 {"type": "say", "speaker": "maru", "text": "わかんないのだ"},
-            ],
+            ),
         )
 
     def test_take_and_put_change_object_visibility(self):
         image = pygame.Surface((20, 20), pygame.SRCALPHA)
         item = game.HabitatObject(
-            {"id": "test", "name": "test", "tag": "treasure"},
+            PlacementDefinition(
+                "test", "test", game.ASSET_DIR / "kadoka.png", None,
+                "treasure", 400, 350, 20, True,
+            ),
             image,
             image.get_rect(center=(400, 350)),
         )
@@ -128,7 +133,10 @@ class TaggedConversationTests(unittest.TestCase):
     def test_move_step_targets_tagged_object(self):
         image = pygame.Surface((20, 20), pygame.SRCALPHA)
         item = game.HabitatObject(
-            {"id": "test", "name": "test", "tag": "water"},
+            PlacementDefinition(
+                "test", "test", game.ASSET_DIR / "kadoka.png", None,
+                "water", 600, 420, 20, True,
+            ),
             image,
             image.get_rect(center=(600, 420)),
         )
@@ -141,10 +149,14 @@ class TaggedConversationTests(unittest.TestCase):
         self.assertEqual(kadoka.sequence_movers, {"maru"})
 
     def test_conversation_selection_uses_weights(self):
-        first = {"weight": 1, "steps": [{"type": "say", "speaker": "kadoka", "text": "first"}]}
-        second = {"weight": 9, "steps": [{"type": "say", "speaker": "maru", "text": "second"}]}
-        kadoka, maru = self.make_ghosts([], first["steps"])
-        kadoka.conversation_deck = [first, second]
+        first = ConversationDefinition(
+            1.0, ({"type": "say", "speaker": "kadoka", "text": "first"},)
+        )
+        second = ConversationDefinition(
+            9.0, ({"type": "say", "speaker": "maru", "text": "second"},)
+        )
+        kadoka, maru = self.make_ghosts([], first.steps)
+        kadoka.conversation_deck = (first, second)
 
         class ChoiceRecorder:
             def __init__(self):

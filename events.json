@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "events": [
+    {
+      "id": "water_bath",
+      "label": "水浴び",
+      "terminal": true
+    },
+    {
+      "id": "game_device",
+      "label": "ゲーム機イベント（game_deviceを取り出す）",
+      "terminal": true,
+      "required_tag": "game_device"
+    }
+  ]
+}

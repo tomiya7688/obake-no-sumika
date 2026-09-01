@@ -28,6 +28,7 @@ class EngineManifestTests(unittest.TestCase):
         self.assertEqual(
             manifest.content["placements"], PROJECT_DIR / "placed_objects.json"
         )
+        self.assertEqual(manifest.content["events"], PROJECT_DIR / "events.json")
 
     def test_manifest_rejects_paths_outside_project(self):
         with tempfile.TemporaryDirectory() as temp_dir:

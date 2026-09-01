@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import math
 import random
 from pathlib import Path
@@ -11,6 +10,11 @@ from pathlib import Path
 import pygame
 
 from engine.character_repository import CharacterRepository
+from engine.conversation_definition import ConversationDefinition
+from engine.conversation_repository import ConversationRepository
+from engine.event_repository import EventRepository
+from engine.placement_definition import PlacementDefinition
+from engine.placement_repository import PlacementRepository
 from engine.room_definition import RoomDefinition
 from engine.room_renderer import RoomRenderer
 from engine.room_repository import RoomRepository
@@ -23,8 +27,23 @@ ASSET_DIR = PROJECT_DIR / "assets"
 CHARACTER_PATH = PROJECT_DIR / "characters.json"
 CONVERSATION_PATH = PROJECT_DIR / "conversations.json"
 PLACED_OBJECTS_PATH = PROJECT_DIR / "placed_objects.json"
+EVENT_PATH = PROJECT_DIR / "events.json"
 ROOM_PATH = PROJECT_DIR / "room.json"
 ROOM = RoomRepository(ROOM_PATH).load()
+EVENT_REPOSITORY = EventRepository(EVENT_PATH)
+EVENTS = EVENT_REPOSITORY.load()
+CONVERSATION_REPOSITORY = ConversationRepository(
+    CONVERSATION_PATH,
+    ("kadoka", "maru"),
+    ("kadoka", "maru", "both"),
+    tuple(definition.id for definition in EVENTS),
+)
+PLACEMENT_REPOSITORY = PlacementRepository(
+    PROJECT_DIR,
+    PLACED_OBJECTS_PATH,
+    (ROOM.width, ROOM.height),
+)
+EVENT_REPOSITORY.validate_required_tags(EVENTS, PLACEMENT_REPOSITORY.tags())
 WIDTH = ROOM.width
 HEIGHT = ROOM.height
 FPS = ROOM.fps
@@ -32,101 +51,38 @@ SPRING_REST_AREA = pygame.Rect(ROOM.water_rest_area)
 CONVERSATION_DISTANCE = ROOM.conversation_distance
 
 
-def load_legacy_conversation_deck() -> list[dict[str, str]]:
-    """Load editable dialogue data, ignoring malformed entries safely."""
-    try:
-        raw = json.loads(CONVERSATION_PATH.read_text(encoding="utf-8"))
-        deck = []
-        for item in raw:
-            if (
-                isinstance(item, dict)
-                and isinstance(item.get("kadoka"), str)
-                and isinstance(item.get("maru"), str)
-                and item["kadoka"].strip()
-                and item["maru"].strip()
-            ):
-                entry = {
-                    "kadoka": " ".join(item["kadoka"].split()),
-                    "maru": " ".join(item["maru"].split()),
-                }
-                if item.get("event") in ("water_bath", "game_device"):
-                    entry["event"] = item["event"]
-                deck.append(entry)
-        if deck:
-            return deck
-    except (OSError, ValueError, TypeError):
-        pass
-    return [{"kadoka": "しずかだね", "maru": "しずかなのだ〜"}]
-
-
-def normalize_conversation_step(raw: object) -> dict[str, str] | None:
-    if not isinstance(raw, dict):
-        return None
-    step_type = str(raw.get("type", "say"))
-    if step_type == "say":
-        speaker = str(raw.get("speaker", "kadoka"))
-        text = " ".join(str(raw.get("text", "")).split())
-        if speaker in ("kadoka", "maru") and text:
-            return {"type": "say", "speaker": speaker, "text": text}
-    elif step_type in ("move", "take", "put"):
-        actor = str(raw.get("actor", "kadoka"))
-        tag = str(raw.get("tag", "")).strip()
-        if actor in ("kadoka", "maru", "both") and tag:
-            return {"type": step_type, "actor": actor, "tag": tag}
-    elif step_type == "event" and raw.get("event") in ("water_bath", "game_device"):
-        return {"type": "event", "event": str(raw["event"])}
-    return None
-
-
-def load_conversation_deck() -> list[dict[str, object]]:
-    """Load step conversations and transparently upgrade the old pair format."""
-    try:
-        raw = json.loads(CONVERSATION_PATH.read_text(encoding="utf-8"))
-        deck: list[dict[str, object]] = []
-        for item in raw if isinstance(raw, list) else []:
-            if not isinstance(item, dict):
-                continue
-            if isinstance(item.get("steps"), list):
-                steps = [
-                    step
-                    for raw_step in item["steps"]
-                    if (step := normalize_conversation_step(raw_step)) is not None
-                ]
-            else:
-                steps = []
-                for speaker in ("kadoka", "maru"):
-                    text = " ".join(str(item.get(speaker, "")).split())
-                    if text:
-                        steps.append({"type": "say", "speaker": speaker, "text": text})
-                if item.get("event") in ("water_bath", "game_device"):
-                    steps.append({"type": "event", "event": str(item["event"])})
-            if steps:
-                try:
-                    weight = max(1.0, min(999.0, float(item.get("weight", 1))))
-                except (TypeError, ValueError):
-                    weight = 1.0
-                deck.append({"weight": weight, "steps": steps})
-        if deck:
-            return deck
-    except (OSError, ValueError, TypeError):
-        pass
-    return [{"weight": 1.0, "steps": [
-        {"type": "say", "speaker": "kadoka", "text": "しずかだね"},
-        {"type": "say", "speaker": "maru", "text": "しずかなのだ"},
-    ]}]
+def load_conversation_deck() -> tuple[ConversationDefinition, ...]:
+    """Load the shared deck, with a small safe fallback for broken data."""
+    deck = CONVERSATION_REPOSITORY.load()
+    if deck:
+        return deck
+    return (
+        ConversationDefinition(
+            1.0,
+            (
+                {"type": "say", "speaker": "kadoka", "text": "しずかだね"},
+                {"type": "say", "speaker": "maru", "text": "しずかなのだ"},
+            ),
+        ),
+    )
 
 
 class HabitatObject:
     """A tagged habitat placement whose visibility can change during a scene."""
 
-    def __init__(self, item: dict, image: pygame.Surface, rect: pygame.Rect) -> None:
-        self.id = str(item.get("id", ""))
-        self.name = str(item.get("name", "object"))
-        self.tag = str(item.get("tag", "")).strip()
+    def __init__(
+        self,
+        definition: PlacementDefinition,
+        image: pygame.Surface,
+        rect: pygame.Rect,
+    ) -> None:
+        self.id = definition.id
+        self.name = definition.name
+        self.tag = definition.tag
         self.image = image
         self.rect = rect
         self.home_center = pygame.Vector2(rect.center)
-        self.visible = bool(item.get("visible", True))
+        self.visible = definition.visible
         self.glowing = False
 
     @property
@@ -153,36 +109,27 @@ class HabitatObject:
 
 
 def load_placed_objects() -> list[HabitatObject]:
-    """Load user-made habitat objects, ignoring broken entries safely."""
-    try:
-        raw = json.loads(PLACED_OBJECTS_PATH.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return []
-
-    project_root = PLACED_OBJECTS_PATH.parent.resolve()
+    """Build pygame objects from placement definitions."""
     result: list[HabitatObject] = []
-    for item in raw.get("objects", []) if isinstance(raw, dict) else []:
-        if not isinstance(item, dict):
-            continue
+    for definition in PLACEMENT_REPOSITORY.load():
         try:
-            image_path = (project_root / str(item["image"])).resolve()
-            image_path.relative_to(project_root)
-            x = int(item["x"])
-            y = int(item["y"])
-            display_width = max(4, min(512, int(item["width"])))
-            source = pygame.image.load(image_path).convert_alpha()
+            source = pygame.image.load(definition.image).convert_alpha()
             display_height = max(
                 1,
-                round(source.get_height() * display_width / source.get_width()),
+                round(source.get_height() * definition.width / source.get_width()),
             )
-            # The editor exports 1024 px originals. Smooth reduction keeps
-            # enlarged or reduced habitat objects clean at any display size.
             image = pygame.transform.smoothscale(
                 source,
-                (display_width, display_height),
+                (definition.width, display_height),
             )
-            result.append(HabitatObject(item, image, image.get_rect(center=(x, y))))
-        except (KeyError, TypeError, ValueError, OSError, pygame.error):
+            result.append(
+                HabitatObject(
+                    definition,
+                    image,
+                    image.get_rect(center=(definition.x, definition.y)),
+                )
+            )
+        except (TypeError, ValueError, OSError, pygame.error):
             continue
     return result
 
@@ -251,7 +198,7 @@ class Ghost:
         name: str = "ghost",
         display_name: str | None = None,
         bubble_y_offset: int = 0,
-        conversation_deck: list[dict[str, object]] | None = None,
+        conversation_deck: tuple[ConversationDefinition, ...] | None = None,
         habitat_objects: list[HabitatObject] | None = None,
     ) -> None:
         source = pygame.image.load(image_path).convert_alpha()
@@ -403,10 +350,10 @@ class Ghost:
     def start_talking(self, partner: "Ghost", bounds: pygame.Rect) -> None:
         entry = self.rng.choices(
             self.conversation_deck,
-            weights=[float(item.get("weight", 1.0)) for item in self.conversation_deck],
+            weights=[item.weight for item in self.conversation_deck],
             k=1,
         )[0]
-        self.sequence_steps = list(entry.get("steps", []))
+        self.sequence_steps = [dict(step) for step in entry.steps]
         self.sequence_index = 0
         self.sequence_movers.clear()
         for ghost, target in ((self, partner), (partner, self)):

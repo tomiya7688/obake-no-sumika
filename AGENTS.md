@@ -29,11 +29,13 @@
 - `character_editor.py`: `characters.json` を共有処理経由で編集するTkエディター。
 - `room.json`: 16:9の部屋寸法、移動・水場領域、背景ポリゴン、環境粒子を保存する部屋定義。
 - `conversations.json`: 実行時に直接読む会話デッキ。会話変更はここを正とする。
+- `events.json`: イベントID、表示名、終了属性、必要な配置タグを保存するイベントカタログ。
 - `conversation_editor.py`: 会話JSONを直接編集するTkエディタ。
 - `placed_objects.json`: 配置、表示幅、タグ、初期表示状態。ゲーム座標で保存。
 - `object_editor.py`: ドット絵作成、1024x1024透過PNG出力、既存物の挿入・移動・削除。
 - `engine_project.json`: 統合エンジンが読むゲーム・エディター・コンテンツの定義。
 - `engine/`: プロジェクト定義、読込処理、起動処理、統合GUIを分離した共通層。
+- `engine/*_repository.py`: キャラクター、部屋、会話、イベント、配置物、ドット絵ソースの共有JSON処理。GUIから直接JSONを読み書きしない。
 - `engine_app.py` / `run_engine.bat`: 統合エンジンの起動入口。
 - `objects/`: 編集用 `*.source.json` と1024x1024 PNG。
 - `assets/`: かどか、まる、ゲーム機などの固定画像。
@@ -73,6 +75,15 @@
 - `move|take|put`: `actor` は `kadoka|maru|both`、`tag` は配置物のタグ。
 - `event`: `event` は `water_bath|game_device`。終了イベントなので原則最後に置く。
 - 不透明な中間形式を作らず、エディタとゲームは同じJSONを直接使う。
+
+イベント1件:
+
+```json
+{"id":"game_device","label":"ゲーム機イベント","terminal":true,"required_tag":"game_device"}
+```
+
+- 会話の `event` は `events.json` に存在するIDだけを許可する。
+- `required_tag` があるイベントは、配置物に同じタグが存在しない場合に起動を拒否する。
 
 配置物:
 

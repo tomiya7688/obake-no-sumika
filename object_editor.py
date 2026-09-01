@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-import re
 import tkinter as tk
 import uuid
 from pathlib import Path
@@ -11,6 +9,8 @@ from tkinter import colorchooser, messagebox, ttk
 
 from PIL import Image, ImageDraw, ImageTk
 
+from engine.pixel_object_repository import PixelObjectRepository
+from engine.placement_repository import PlacementRepository, normalize_tag
 from engine.room_repository import RoomRepository
 
 
@@ -25,6 +25,17 @@ PREVIEW_SIZE = (480, round(480 * ROOM.height / ROOM.width))
 EDITOR_PIXELS = 512
 CANVAS_SIZES = (16, 32, 64, 128)
 EXPORT_SIZE = 1024
+PLACEMENT_REPOSITORY = PlacementRepository(
+    PROJECT_DIR,
+    PLACEMENTS_PATH,
+    (ROOM.width, ROOM.height),
+)
+PIXEL_OBJECT_REPOSITORY = PixelObjectRepository(
+    PROJECT_DIR,
+    OBJECT_DIR,
+    CANVAS_SIZES,
+    EXPORT_SIZE,
+)
 BUILTIN_LIBRARY = {
     "spring": ("湧き水", 204),
     "small_rock": ("小さな岩", 42),
@@ -32,49 +43,6 @@ BUILTIN_LIBRARY = {
     "gray_found_item": ("灰色の拾い物", 24),
     "game_device": ("ゲーム機", 32),
 }
-
-
-def safe_stem(name: str) -> str:
-    cleaned = re.sub(r"[^0-9A-Za-zぁ-んァ-ヶ一-龠々ー_-]+", "_", name.strip())
-    return cleaned.strip("_.") or "object"
-
-
-def normalize_tag(tag: str) -> str:
-    """Keep tags readable in JSON while avoiding ambiguous whitespace."""
-    return re.sub(r"\s+", "_", tag.strip())
-
-
-def pixels_to_image(pixels: list[list[str | None]]) -> Image.Image:
-    size = len(pixels)
-    image = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    rgba: list[tuple[int, int, int, int]] = []
-    for row in pixels:
-        for value in row:
-            if value is None:
-                rgba.append((0, 0, 0, 0))
-            else:
-                value = value.lstrip("#")
-                rgba.append(
-                    (int(value[0:2], 16), int(value[2:4], 16), int(value[4:6], 16), 255)
-                )
-    image.putdata(rgba)
-    return image
-
-
-def load_placements() -> list[dict]:
-    try:
-        raw = json.loads(PLACEMENTS_PATH.read_text(encoding="utf-8"))
-        objects = raw.get("objects", [])
-        return [item for item in objects if isinstance(item, dict)]
-    except (OSError, json.JSONDecodeError, AttributeError):
-        return []
-
-
-def save_placements(items: list[dict]) -> None:
-    PLACEMENTS_PATH.write_text(
-        json.dumps({"objects": items}, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
 
 
 class ObjectEditor:
@@ -91,7 +59,7 @@ class ObjectEditor:
         self.tool = "pencil"
         self.painting = False
         self.last_cell: tuple[int, int] | None = None
-        self.placements = load_placements()
+        self.placements = PLACEMENT_REPOSITORY.load_editable()
         self.selected_placement: int | None = None
         self.drag_offset = (0, 0)
         self.dragging_placement = False
@@ -272,7 +240,7 @@ class ObjectEditor:
         settings.grid(row=3, column=0, sticky="ew", pady=(10, 8))
         settings.columnconfigure(1, weight=1)
         ttk.Label(settings, text="横位置").grid(row=0, column=0, sticky="w")
-        ttk.Spinbox(settings, from_=0, to=960, textvariable=self.x_var, width=7,
+        ttk.Spinbox(settings, from_=0, to=GAME_SIZE[0], textvariable=self.x_var, width=7,
                     command=self.redraw_preview).grid(row=0, column=1, sticky="w")
         ttk.Label(settings, text="縦位置").grid(row=0, column=2, padx=(14, 0), sticky="w")
         ttk.Spinbox(settings, from_=0, to=GAME_SIZE[1], textvariable=self.y_var, width=7,
@@ -460,32 +428,24 @@ class ObjectEditor:
         )
 
     def source_image(self) -> Image.Image:
-        return pixels_to_image(self.pixels)
+        return PIXEL_OBJECT_REPOSITORY.image_from_pixels(
+            self.canvas_size,
+            self.pixels,
+        )
 
     def save_object_files(self, ask_overwrite: bool = True) -> tuple[Path, Path] | None:
         if not any(value is not None for row in self.pixels for value in row):
             messagebox.showwarning("空のキャンバス", "色を塗ってから保存してください。")
             return None
-        OBJECT_DIR.mkdir(parents=True, exist_ok=True)
-        stem = safe_stem(self.name_var.get())
-        png_path = OBJECT_DIR / f"{stem}.png"
-        source_path = OBJECT_DIR / f"{stem}.source.json"
+        png_path, source_path = PIXEL_OBJECT_REPOSITORY.paths_for(self.name_var.get())
         if ask_overwrite and png_path.exists():
-            if not messagebox.askyesno("上書き", f"「{stem}」を上書きしますか？"):
+            if not messagebox.askyesno("上書き", f"「{png_path.stem}」を上書きしますか？"):
                 return None
-        image = self.source_image().resize(
-            (EXPORT_SIZE, EXPORT_SIZE), Image.Resampling.NEAREST
+        return PIXEL_OBJECT_REPOSITORY.save(
+            self.name_var.get(),
+            self.canvas_size,
+            self.pixels,
         )
-        image.save(png_path, "PNG")
-        source_path.write_text(
-            json.dumps(
-                {"canvas_size": self.canvas_size, "pixels": self.pixels},
-                ensure_ascii=False,
-                indent=2,
-            ) + "\n",
-            encoding="utf-8",
-        )
-        return png_path, source_path
 
     def save_png(self) -> None:
         paths = self.save_object_files()
@@ -555,7 +515,7 @@ class ObjectEditor:
             return False
 
     def preview_press(self, event: tk.Event) -> None:
-        game_x = max(0, min(960, event.x * 2))
+        game_x = max(0, min(GAME_SIZE[0], event.x * 2))
         game_y = max(0, min(GAME_SIZE[1], event.y * 2))
         hit = next(
             (
@@ -587,13 +547,13 @@ class ObjectEditor:
         if not self.dragging_placement or self.selected_placement is None:
             return
         self.move_selected_to(
-            max(0, min(960, event.x * 2)) + self.drag_offset[0],
+            max(0, min(GAME_SIZE[0], event.x * 2)) + self.drag_offset[0],
             max(0, min(GAME_SIZE[1], event.y * 2)) + self.drag_offset[1],
         )
 
     def preview_release(self, _event: tk.Event) -> None:
         if self.dragging_placement and self.selected_placement is not None:
-            save_placements(self.placements)
+            PLACEMENT_REPOSITORY.save_editable(self.placements)
             self.refresh_placement_list()
             self.placement_list.selection_set(self.selected_placement)
             self.status_var.set("ドラッグした位置を保存しました。")
@@ -602,7 +562,7 @@ class ObjectEditor:
     def move_selected_to(self, x: int, y: int) -> None:
         if self.selected_placement is None:
             return
-        self.x_var.set(max(0, min(960, x)))
+        self.x_var.set(max(0, min(GAME_SIZE[0], x)))
         self.y_var.set(max(0, min(GAME_SIZE[1], y)))
         self.placements[self.selected_placement]["x"] = self.x_var.get()
         self.placements[self.selected_placement]["y"] = self.y_var.get()
@@ -648,7 +608,7 @@ class ObjectEditor:
         if tag:
             item["tag"] = tag
         self.placements.append(item)
-        save_placements(self.placements)
+        PLACEMENT_REPOSITORY.save_editable(self.placements)
         self.refresh_library_list()
         self.selected_placement = len(self.placements) - 1
         self.refresh_placement_list()
@@ -672,7 +632,7 @@ class ObjectEditor:
             item["tag"] = tag
         else:
             item.pop("tag", None)
-        save_placements(self.placements)
+        PLACEMENT_REPOSITORY.save_editable(self.placements)
         self.refresh_placement_list()
         self.placement_list.selection_set(self.selected_placement)
         self.redraw_preview()
@@ -686,7 +646,7 @@ class ObjectEditor:
             return
         del self.placements[self.selected_placement]
         self.selected_placement = None
-        save_placements(self.placements)
+        PLACEMENT_REPOSITORY.save_editable(self.placements)
         self.refresh_placement_list()
         self.redraw_preview()
         self.status_var.set("住処から外しました。PNGはobjectsフォルダーに残ります。")
@@ -702,17 +662,15 @@ class ObjectEditor:
             )
 
     def refresh_library_list(self) -> None:
-        OBJECT_DIR.mkdir(parents=True, exist_ok=True)
-        paths = {path.resolve() for path in OBJECT_DIR.glob("*.png")}
+        extra_images = []
         for item in self.placements:
             try:
                 path = (PROJECT_DIR / str(item["image"])).resolve()
                 path.relative_to(PROJECT_DIR.resolve())
-                if path.suffix.lower() == ".png" and path.exists():
-                    paths.add(path)
+                extra_images.append(path)
             except (KeyError, OSError, ValueError):
                 continue
-        self.library_paths = sorted(paths, key=lambda path: (path.stem, path.as_posix()))
+        self.library_paths = PIXEL_OBJECT_REPOSITORY.library_images(extra_images)
         self.library_list.delete(0, "end")
         for image_path in self.library_paths:
             relative = image_path.relative_to(PROJECT_DIR).as_posix()
@@ -743,7 +701,7 @@ class ObjectEditor:
             (item for item in self.placements if item.get("image") == relative),
             None,
         )
-        source_path = image_path.with_name(f"{image_path.stem}.source.json")
+        source_path = PIXEL_OBJECT_REPOSITORY.source_for_image(image_path)
         builtin_name, builtin_width = BUILTIN_LIBRARY.get(
             image_path.stem, (image_path.stem, self.width_var.get())
         )
@@ -764,7 +722,7 @@ class ObjectEditor:
         if source_path.exists():
             item["source"] = source_path.relative_to(PROJECT_DIR).as_posix()
         self.placements.append(item)
-        save_placements(self.placements)
+        PLACEMENT_REPOSITORY.save_editable(self.placements)
         self.selected_placement = len(self.placements) - 1
         self.refresh_placement_list()
         self.placement_list.selection_set(self.selected_placement)
@@ -775,7 +733,7 @@ class ObjectEditor:
         image_path = self.selected_library_path()
         if image_path is None:
             return
-        source_path = image_path.with_name(f"{image_path.stem}.source.json")
+        source_path = PIXEL_OBJECT_REPOSITORY.source_for_image(image_path)
         if not source_path.exists():
             messagebox.showinfo("編集データなし", "この画像にはマス目の編集データがありません。")
             return
@@ -810,11 +768,7 @@ class ObjectEditor:
     def load_source(self, item: dict) -> None:
         try:
             source_path = PROJECT_DIR / item["source"]
-            raw = json.loads(source_path.read_text(encoding="utf-8"))
-            size = int(raw["canvas_size"])
-            pixels = raw["pixels"]
-            if size not in CANVAS_SIZES or len(pixels) != size:
-                return
+            size, pixels = PIXEL_OBJECT_REPOSITORY.load(source_path)
             self.canvas_size = size
             self.size_var.set(size)
             if size == 128 and self.zoom_var.get() < 200:
@@ -822,7 +776,7 @@ class ObjectEditor:
             self.pixels = pixels
             self.undo_stack.clear()
             self.redraw_editor()
-        except (KeyError, OSError, ValueError, TypeError, json.JSONDecodeError):
+        except (KeyError, OSError, ValueError, TypeError):
             pass
 
 
