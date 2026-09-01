@@ -22,7 +22,8 @@
   "content": {
     "characters": "characters.json",
     "character_assets": "assets",
-    "room": "placed_objects.json",
+    "room": "room.json",
+    "placements": "placed_objects.json",
     "objects": "objects",
     "conversations": "conversations.json",
     "events": "conversations.json"

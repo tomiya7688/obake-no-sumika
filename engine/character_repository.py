@@ -9,9 +9,17 @@ from .character_definition import CharacterDefinition
 class CharacterRepository:
     """Load and save editable character definitions inside one project."""
 
-    def __init__(self, project_root: Path, data_path: Path) -> None:
+    def __init__(
+        self,
+        project_root: Path,
+        data_path: Path,
+        room_size: tuple[int, int],
+    ) -> None:
         self.project_root = project_root.resolve()
         self.data_path = data_path.resolve()
+        self.room_width, self.room_height = room_size
+        if self.room_width <= 0 or self.room_height <= 0:
+            raise ValueError("Room size must be positive")
         self._require_inside_project(self.data_path)
 
     def load(self) -> tuple[CharacterDefinition, ...]:
@@ -64,8 +72,8 @@ class CharacterRepository:
             id=character_id,
             display_name=display_name,
             image=image,
-            start_x=self._integer(start[0], "start x", 0, 960),
-            start_y=self._integer(start[1], "start y", 0, 540),
+            start_x=self._integer(start[0], "start x", 0, self.room_width),
+            start_y=self._integer(start[1], "start y", 0, self.room_height),
             display_height=self._integer(raw.get("display_height"), "display_height", 16, 256),
             personality=self._number(raw.get("personality"), "personality", 0.25, 3.0),
             native_facing=1 if self._integer(raw.get("native_facing"), "native_facing", -1, 1) >= 0 else -1,
@@ -81,8 +89,11 @@ class CharacterRepository:
         self._require_inside_project(definition.image.resolve())
         if not definition.image.is_file():
             raise ValueError(f"Character image does not exist: {definition.image}")
-        if not 0 <= definition.start_x <= 960 or not 0 <= definition.start_y <= 540:
-            raise ValueError("Character start position is outside the 960x540 room")
+        if (
+            not 0 <= definition.start_x <= self.room_width
+            or not 0 <= definition.start_y <= self.room_height
+        ):
+            raise ValueError("Character start position is outside the room")
         if not 16 <= definition.display_height <= 256:
             raise ValueError("display_height must be between 16 and 256")
         if not 0.25 <= definition.personality <= 3.0:

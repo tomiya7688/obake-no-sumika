@@ -14,7 +14,11 @@ from engine.character_repository import CharacterRepository
 
 class CharacterRepositoryTests(unittest.TestCase):
     def test_current_characters_are_valid_and_aligned(self):
-        repository = CharacterRepository(PROJECT_DIR, PROJECT_DIR / "characters.json")
+        repository = CharacterRepository(
+            PROJECT_DIR,
+            PROJECT_DIR / "characters.json",
+            (960, 540),
+        )
         definitions = repository.load()
         self.assertEqual([item.id for item in definitions], ["kadoka", "maru"])
         self.assertEqual([item.display_height for item in definitions], [64, 64])
@@ -32,7 +36,7 @@ class CharacterRepositoryTests(unittest.TestCase):
                 encoding="utf-8",
             )
             with self.assertRaisesRegex(ValueError, "Duplicate"):
-                CharacterRepository(root, data_path).load()
+                CharacterRepository(root, data_path, (960, 540)).load()
 
     def test_image_path_cannot_escape_project(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -45,7 +49,7 @@ class CharacterRepositoryTests(unittest.TestCase):
                 encoding="utf-8",
             )
             with self.assertRaisesRegex(ValueError, "escapes"):
-                CharacterRepository(root, data_path).load()
+                CharacterRepository(root, data_path, (960, 540)).load()
 
     def test_save_and_load_round_trip(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -57,7 +61,7 @@ class CharacterRepositoryTests(unittest.TestCase):
                 json.dumps({"schema_version": 1, "characters": [self.character_payload("old")]}),
                 encoding="utf-8",
             )
-            repository = CharacterRepository(root, data_path)
+            repository = CharacterRepository(root, data_path, (960, 540))
             expected = CharacterDefinition(
                 "ghost", "おばけ", image, 100, 200, 72, 1.25, -1, -20
             )

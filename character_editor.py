@@ -10,10 +10,13 @@ from PIL import Image, ImageTk
 
 from engine.character_definition import CharacterDefinition
 from engine.character_repository import CharacterRepository
+from engine.room_repository import RoomRepository
 
 
 PROJECT_DIR = Path(__file__).resolve().parent
 CHARACTER_PATH = PROJECT_DIR / "characters.json"
+ROOM_PATH = PROJECT_DIR / "room.json"
+ROOM = RoomRepository(ROOM_PATH).load()
 FACING_LABELS = {"右向き（1）": 1, "左向き（-1）": -1}
 
 
@@ -25,7 +28,11 @@ class CharacterEditor:
         self.root.title("おばけの住処・キャラクターエディター")
         self.root.geometry("920x620")
         self.root.minsize(820, 560)
-        self.repository = CharacterRepository(PROJECT_DIR, CHARACTER_PATH)
+        self.repository = CharacterRepository(
+            PROJECT_DIR,
+            CHARACTER_PATH,
+            (ROOM.width, ROOM.height),
+        )
         self.definitions = list(self.repository.load())
         self.selected_index: int | None = None
         self.preview_photo: ImageTk.PhotoImage | None = None

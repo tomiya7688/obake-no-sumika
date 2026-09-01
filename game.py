@@ -11,21 +11,27 @@ from pathlib import Path
 import pygame
 
 from engine.character_repository import CharacterRepository
+from engine.room_definition import RoomDefinition
+from engine.room_renderer import RoomRenderer
+from engine.room_repository import RoomRepository
 
 
 VERSION = "0.2.0"
-WIDTH = 960
-HEIGHT = 540
-FPS = 60
 TAU = math.tau
 PROJECT_DIR = Path(__file__).resolve().parent
 ASSET_DIR = PROJECT_DIR / "assets"
 CHARACTER_PATH = PROJECT_DIR / "characters.json"
 CONVERSATION_PATH = PROJECT_DIR / "conversations.json"
 PLACED_OBJECTS_PATH = PROJECT_DIR / "placed_objects.json"
-SPRING_RECT = pygame.Rect(410, 408, 204, 48)
-SPRING_REST_AREA = SPRING_RECT.inflate(150, 120)
-CONVERSATION_DISTANCE = 145.0
+ROOM_PATH = PROJECT_DIR / "room.json"
+ROOM = RoomRepository(ROOM_PATH).load()
+WIDTH = ROOM.width
+HEIGHT = ROOM.height
+FPS = ROOM.fps
+SPRING_REST_AREA = pygame.Rect(ROOM.water_rest_area)
+CONVERSATION_DISTANCE = ROOM.conversation_distance
+
+
 def load_legacy_conversation_deck() -> list[dict[str, str]]:
     """Load editable dialogue data, ignoring malformed entries safely."""
     try:
@@ -197,145 +203,35 @@ def create_display(fullscreen: bool) -> pygame.Surface:
         return pygame.display.set_mode((WIDTH, HEIGHT), fallback_flags)
 
 
-def draw_pixel_rock(
-    surface: pygame.Surface,
-    rect: pygame.Rect,
-    color: tuple[int, int, int],
-) -> None:
-    """Draw an axis-aligned pixel-art cave boulder."""
-    x, y, width, height = rect
-    unit = max(3, min(width, height) // 6)
-    highlight = tuple(min(255, channel + 10) for channel in color)
-
-    shadow_points = [
-        (x + unit, y + height - unit),
-        (x + width - unit, y + height - unit),
-        (x + width - unit, y + height),
-        (x + unit, y + height),
-    ]
-    pygame.draw.polygon(surface, (5, 7, 14), shadow_points)
-
-    rock_points = [
-        (x, y + unit * 3),
-        (x + unit, y + unit * 3),
-        (x + unit, y + unit * 2),
-        (x + unit * 2, y + unit * 2),
-        (x + unit * 2, y + unit),
-        (x + width - unit * 2, y + unit),
-        (x + width - unit * 2, y + unit * 2),
-        (x + width - unit, y + unit * 2),
-        (x + width - unit, y + unit * 3),
-        (x + width, y + unit * 3),
-        (x + width, y + height - unit),
-        (x + width - unit, y + height - unit),
-        (x + width - unit, y + height),
-        (x + unit, y + height),
-        (x + unit, y + height - unit),
-        (x, y + height - unit),
-    ]
-    pygame.draw.polygon(surface, color, rock_points)
-    pygame.draw.rect(
-        surface,
-        highlight,
-        (x + unit * 2, y + unit * 2, max(unit, width // 3), unit),
-    )
-    pygame.draw.rect(
-        surface,
-        (8, 10, 18),
-        (x + width - unit * 3, y + height - unit * 2, unit * 2, unit),
-    )
-
-
-def make_cave_background() -> pygame.Surface:
-    """Build the static cave scene once so the main loop stays lightweight."""
-    background = pygame.Surface((WIDTH, HEIGHT)).convert()
-
-    for y in range(0, HEIGHT, 8):
-        depth = y / HEIGHT
-        color = (
-            int(8 + depth * 7),
-            int(10 + depth * 8),
-            int(20 + depth * 10),
-        )
-        pygame.draw.rect(background, color, (0, y, WIDTH, 8))
-
-    # Far wall shapes.
-    pygame.draw.polygon(
-        background,
-        (5, 7, 14),
-        [(0, 0), (WIDTH, 0), (WIDTH, 48), (900, 62), (820, 52), (745, 73),
-         (660, 55), (565, 70), (475, 49), (385, 66), (290, 52), (195, 74),
-         (102, 50), (0, 68)],
-    )
-    pygame.draw.polygon(
-        background,
-        (7, 9, 17),
-        [(0, 0), (82, 0), (92, 103), (72, 178), (88, 253), (65, 329),
-         (79, 418), (53, 522), (0, 548)],
-    )
-    pygame.draw.polygon(
-        background,
-        (7, 9, 17),
-        [(WIDTH, 0), (886, 0), (875, 112), (898, 188), (879, 281),
-         (900, 369), (881, 454), (910, 535), (WIDTH, 556)],
-    )
-
-    # Stalactites.
-    for points in (
-        [(128, 0), (176, 0), (176, 32), (168, 32), (168, 64), (160, 64), (160, 104), (152, 104), (152, 64), (144, 64), (144, 32), (128, 32)],
-        [(312, 0), (352, 0), (352, 24), (344, 24), (344, 56), (336, 56), (336, 80), (328, 56), (328, 24), (312, 24)],
-        [(592, 0), (640, 0), (640, 24), (632, 24), (632, 56), (624, 56), (624, 96), (608, 96), (608, 56), (600, 56), (600, 24), (592, 24)],
-        [(760, 0), (808, 0), (808, 32), (800, 32), (800, 72), (792, 72), (792, 112), (784, 112), (784, 72), (776, 72), (776, 32), (760, 32)],
-    ):
-        pygame.draw.polygon(background, (6, 8, 15), points)
-
-    # The cave floor begins in the middle distance and widens toward the viewer.
-    floor_horizon = [
-        (0, 286), (96, 274), (192, 282), (288, 268), (384, 279),
-        (480, 264), (576, 278), (672, 269), (768, 282), (864, 272), (960, 286),
-    ]
-    floor_points = floor_horizon + [(WIDTH, HEIGHT), (0, HEIGHT)]
-    pygame.draw.polygon(background, (10, 12, 21), floor_points)
-
-    # Soft vignette keeps the center visible while the cave edges stay dark.
-    vignette = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-    for inset in range(0, 112, 8):
-        alpha = max(2, 13 - inset // 10)
-        pygame.draw.rect(
-            vignette,
-            (0, 0, 4, alpha),
-            pygame.Rect(inset, inset // 2, WIDTH - inset * 2, HEIGHT - inset),
-            width=10,
-            border_radius=48,
-        )
-    background.blit(vignette, (0, 0))
-    return background
-
-
 class Mote:
     """A dim dust mote that helps the cave feel gently alive."""
 
-    def __init__(self, rng: random.Random) -> None:
+    def __init__(self, rng: random.Random, room: RoomDefinition) -> None:
         self.rng = rng
-        self.x = rng.uniform(85, WIDTH - 85)
-        self.y = rng.uniform(85, 520)
-        self.speed = rng.uniform(2.0, 8.0)
+        self.room = room
+        self.x = rng.uniform(*room.mote_x_range)
+        self.y = rng.uniform(*room.mote_y_range)
+        self.speed = rng.uniform(*room.mote_speed_range)
         self.phase = rng.uniform(0, TAU)
-        self.radius = rng.choice((1, 1, 1, 2))
-        self.alpha = rng.randint(18, 45)
+        self.radius = rng.choice(room.mote_radii)
+        self.alpha = rng.randint(*room.mote_alpha_range)
 
     def update(self, dt: float, elapsed: float) -> None:
         self.y -= self.speed * dt
-        self.x += math.sin(elapsed * 0.45 + self.phase) * 2.2 * dt
-        if self.y < 72:
-            self.y = self.rng.uniform(500, 545)
-            self.x = self.rng.uniform(85, WIDTH - 85)
+        self.x += (
+            math.sin(elapsed * self.room.mote_drift_speed + self.phase)
+            * self.room.mote_drift_amount
+            * dt
+        )
+        if self.y < self.room.mote_top:
+            self.y = self.rng.uniform(*self.room.mote_reset_y_range)
+            self.x = self.rng.uniform(*self.room.mote_x_range)
 
     def draw(self, surface: pygame.Surface) -> None:
         layer = pygame.Surface((self.radius * 4, self.radius * 4), pygame.SRCALPHA)
         pygame.draw.rect(
             layer,
-            (146, 160, 175, self.alpha),
+            (*self.room.mote_color, self.alpha),
             (self.radius, self.radius, self.radius * 2, self.radius * 2),
         )
         surface.blit(layer, (int(self.x) - self.radius * 2, int(self.y) - self.radius * 2))
@@ -1312,7 +1208,11 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     rng = random.Random(args.seed)
-    definitions = CharacterRepository(PROJECT_DIR, CHARACTER_PATH).load()
+    definitions = CharacterRepository(
+        PROJECT_DIR,
+        CHARACTER_PATH,
+        (ROOM.width, ROOM.height),
+    ).load()
     definitions_by_id = {definition.id: definition for definition in definitions}
     if set(definitions_by_id) != {"kadoka", "maru"}:
         raise ValueError("おばけの住処にはkadokaとmaruのキャラクター定義が必要です")
@@ -1330,11 +1230,11 @@ def main() -> int:
     screen = create_display(fullscreen)
     clock = pygame.time.Clock()
 
-    background = make_cave_background()
+    background = RoomRenderer(ROOM).render()
     placed_objects = load_placed_objects()
     talk_font = pygame.font.SysFont("Yu Gothic UI,Meiryo", 15)
     conversation_deck = load_conversation_deck()
-    movement_bounds = pygame.Rect(74, 80, WIDTH - 148, 446)
+    movement_bounds = pygame.Rect(ROOM.movement_bounds)
     ghosts = []
     for character_id in ("kadoka", "maru"):
         definition = definitions_by_id[character_id]
@@ -1353,7 +1253,7 @@ def main() -> int:
                 habitat_objects=placed_objects,
             )
         )
-    motes = [Mote(scenery_rng) for _ in range(34)]
+    motes = [Mote(scenery_rng, ROOM) for _ in range(ROOM.mote_count)]
 
     running = True
     elapsed = 0.0

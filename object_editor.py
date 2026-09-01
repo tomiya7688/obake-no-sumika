@@ -11,13 +11,17 @@ from tkinter import colorchooser, messagebox, ttk
 
 from PIL import Image, ImageDraw, ImageTk
 
+from engine.room_repository import RoomRepository
+
 
 PROJECT_DIR = Path(__file__).resolve().parent
 OBJECT_DIR = PROJECT_DIR / "objects"
 PLACEMENTS_PATH = PROJECT_DIR / "placed_objects.json"
 PREVIEW_PATH = PROJECT_DIR / "assets" / "editor_cave_preview.png"
-GAME_SIZE = (960, 540)
-PREVIEW_SIZE = (480, 270)
+ROOM_PATH = PROJECT_DIR / "room.json"
+ROOM = RoomRepository(ROOM_PATH).load()
+GAME_SIZE = (ROOM.width, ROOM.height)
+PREVIEW_SIZE = (480, round(480 * ROOM.height / ROOM.width))
 EDITOR_PIXELS = 512
 CANVAS_SIZES = (16, 32, 64, 128)
 EXPORT_SIZE = 1024

@@ -27,6 +27,7 @@
 - `game.py`: ゲーム、AI、会話シーケンス、イベント、描画。主なクラスは `Ghost`、`HabitatObject`、`Mote`。
 - `characters.json`: ゲームが直接読むキャラクター定義。表示名、画像、開始位置、表示身長、性格速度倍率、元画像の向き、吹き出し高さを保存。
 - `character_editor.py`: `characters.json` を共有処理経由で編集するTkエディター。
+- `room.json`: 16:9の部屋寸法、移動・水場領域、背景ポリゴン、環境粒子を保存する部屋定義。
 - `conversations.json`: 実行時に直接読む会話デッキ。会話変更はここを正とする。
 - `conversation_editor.py`: 会話JSONを直接編集するTkエディタ。
 - `placed_objects.json`: 配置、表示幅、タグ、初期表示状態。ゲーム座標で保存。
@@ -40,6 +41,16 @@
 - `VERSION`: 現在バージョンの正。公開時は `game.py`、`README.md`、`CHANGELOG.md`、`RELEASE_NOTES.md` も揃える。
 
 ## Data contracts
+
+部屋:
+
+```json
+{"schema_version":1,"size":{"width":960,"height":540},"movement_bounds":[74,80,812,446],"zones":{"water_rest":[335,348,354,168]}}
+```
+
+- 部屋サイズは16:9を維持する。キャラクター開始位置とオブジェクトエディターの座標上限もこの値を使う。
+- 背景は `background.gradient`、`background.polygons`、`background.vignette` の順で描画する。
+- 洞窟形状を変える場合は `room.json` を編集し、分離前基準との比較ではなく新しい意図した見た目を実画面確認する。
 
 キャラクター1件:
 
