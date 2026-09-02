@@ -48,6 +48,9 @@ class MainWindow:
                 command=lambda editor_id=editor.id: self._launch_editor(editor_id),
             ).pack(fill="x", pady=4)
         ttk.Separator(frame).pack(fill="x", pady=16)
+        ttk.Button(frame, text="プロジェクトを開く", command=self._open_project).pack(
+            fill="x", pady=4
+        )
         ttk.Button(frame, text="新規プロジェクトを作成", command=self._create_project).pack(
             fill="x", pady=4
         )
@@ -70,6 +73,33 @@ class MainWindow:
             return
         self.status.set(f"{label}を起動しました")
 
+    def open_project(self, manifest_path: Path) -> None:
+        manifest = load_project_manifest(manifest_path)
+        self._set_project(manifest)
+        self.status.set(f"プロジェクトを開きました: {manifest.root}")
+
+    def _open_project(self) -> None:
+        selected = filedialog.askopenfilename(
+            title="engine_project.json を選択",
+            parent=self.root,
+            initialdir=str(self.manifest.root.parent),
+            filetypes=(("Engine project", "engine_project.json"), ("JSON", "*.json")),
+        )
+        if not selected:
+            return
+        try:
+            self.open_project(Path(selected))
+        except (OSError, ValueError) as exc:
+            messagebox.showerror("開けません", str(exc))
+            self.status.set("プロジェクトを開けませんでした")
+
+    def _set_project(self, manifest: ProjectManifest) -> None:
+        self.manifest = manifest
+        self.launcher = ProcessLauncher(manifest)
+        for child in self.root.winfo_children():
+            child.destroy()
+        self._build()
+
     def _create_project(self) -> None:
         name = simpledialog.askstring(
             "新規プロジェクト",
@@ -91,12 +121,13 @@ class MainWindow:
             return
         try:
             manifest_path = self.project_creator.create_project(Path(parent), name)
-            load_project_manifest(manifest_path)
+            manifest = load_project_manifest(manifest_path)
+            self._set_project(manifest)
         except (OSError, ValueError) as exc:
             messagebox.showerror("作成できません", str(exc))
             self.status.set("新規プロジェクトの作成に失敗しました")
             return
-        self.status.set(f"新規プロジェクトを作成しました: {manifest_path.parent}")
+        self.status.set(f"新規プロジェクトを作成して開きました: {manifest_path.parent}")
         messagebox.showinfo(
             "作成しました",
             f"{manifest_path.parent}\n\nengine_project.json を作成しました。",

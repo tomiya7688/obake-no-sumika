@@ -34,7 +34,7 @@
 - `placed_objects.json`: 配置、表示幅、タグ、初期表示状態。ゲーム座標で保存。
 - `object_editor.py`: ドット絵作成、1024x1024透過PNG出力、既存物の挿入・移動・削除。
 - `engine_project.json`: 統合エンジンが読むゲーム・エディター・コンテンツの定義。
-- `engine/`: プロジェクト定義、読込処理、起動処理、統合GUIを分離した共通層。
+- `engine/`: プロジェクト定義、読込処理、起動処理、プロジェクト選択、統合GUIを分離した共通層。
 - `engine/project_creator.py`: エンジンから新規プロジェクト用の最小テンプレートを生成する処理。
 - `engine/*_repository.py`: キャラクター、部屋、会話、イベント、配置物、ドット絵ソースの共有JSON処理。GUIから直接JSONを読み書きしない。
 - `engine_app.py` / `run_engine.bat`: 統合エンジンの起動入口。
