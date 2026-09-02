@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import tkinter as tk
-from tkinter import messagebox, ttk
+from pathlib import Path
+from tkinter import filedialog, messagebox, simpledialog, ttk
 
+from .manifest_loader import load_project_manifest
 from .process_launcher import ProcessLauncher
+from .project_creator import ProjectCreator
 from .project_manifest import ProjectManifest
 
 
@@ -15,10 +18,12 @@ class MainWindow:
         root: tk.Tk,
         manifest: ProjectManifest,
         launcher: ProcessLauncher,
+        project_creator: ProjectCreator | None = None,
     ) -> None:
         self.root = root
         self.manifest = manifest
         self.launcher = launcher
+        self.project_creator = project_creator or ProjectCreator()
         self.status = tk.StringVar(value="準備できました")
         self._build()
 
@@ -43,6 +48,10 @@ class MainWindow:
                 command=lambda editor_id=editor.id: self._launch_editor(editor_id),
             ).pack(fill="x", pady=4)
         ttk.Separator(frame).pack(fill="x", pady=16)
+        ttk.Button(frame, text="新規プロジェクトを作成", command=self._create_project).pack(
+            fill="x", pady=4
+        )
+        ttk.Separator(frame).pack(fill="x", pady=16)
         ttk.Label(frame, textvariable=self.status).pack(anchor="w")
 
     def _launch_game(self) -> None:
@@ -60,3 +69,35 @@ class MainWindow:
             self.status.set(f"{label}の起動に失敗しました")
             return
         self.status.set(f"{label}を起動しました")
+
+    def _create_project(self) -> None:
+        name = simpledialog.askstring(
+            "新規プロジェクト",
+            "プロジェクト名",
+            parent=self.root,
+        )
+        if name is None:
+            return
+        name = name.strip()
+        if not name:
+            messagebox.showerror("作成できません", "プロジェクト名を入力してください。")
+            return
+        parent = filedialog.askdirectory(
+            title="作成先フォルダーを選択",
+            parent=self.root,
+            initialdir=str(self.manifest.root.parent),
+        )
+        if not parent:
+            return
+        try:
+            manifest_path = self.project_creator.create_project(Path(parent), name)
+            load_project_manifest(manifest_path)
+        except (OSError, ValueError) as exc:
+            messagebox.showerror("作成できません", str(exc))
+            self.status.set("新規プロジェクトの作成に失敗しました")
+            return
+        self.status.set(f"新規プロジェクトを作成しました: {manifest_path.parent}")
+        messagebox.showinfo(
+            "作成しました",
+            f"{manifest_path.parent}\n\nengine_project.json を作成しました。",
+        )
