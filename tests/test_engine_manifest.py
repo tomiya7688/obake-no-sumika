@@ -18,6 +18,7 @@ class EngineManifestTests(unittest.TestCase):
     def test_current_project_manifest_is_valid(self):
         manifest = load_project_manifest(PROJECT_DIR / "engine_project.json")
         self.assertEqual(manifest.name, "おばけの住処")
+        self.assertEqual(manifest.project_type, "standard")
         self.assertEqual(manifest.entrypoint, PROJECT_DIR / "game.py")
         self.assertEqual(
             [editor.id for editor in manifest.editors],
@@ -69,6 +70,27 @@ class EngineManifestTests(unittest.TestCase):
                 encoding="utf-8",
             )
             with self.assertRaisesRegex(ValueError, "Duplicate"):
+                load_project_manifest(manifest_path)
+
+    def test_manifest_rejects_empty_project_type(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "game.py").write_text("", encoding="utf-8")
+            manifest_path = root / "project.json"
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "name": "test",
+                        "project_type": " ",
+                        "entrypoint": "game.py",
+                        "editors": [],
+                        "content": {},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "project_type"):
                 load_project_manifest(manifest_path)
 
     def test_process_launcher_uses_project_python_and_root(self):

@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "name": "おばけの住処",
+  "project_type": "standard",
   "entrypoint": "game.py",
   "editors": [
     {

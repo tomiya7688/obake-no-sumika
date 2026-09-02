@@ -12,6 +12,7 @@ class ProjectManifest:
 
     schema_version: int
     name: str
+    project_type: str
     root: Path
     entrypoint: Path
     editors: tuple[EditorDefinition, ...]

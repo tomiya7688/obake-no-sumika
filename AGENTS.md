@@ -37,6 +37,7 @@
 - `engine/`: プロジェクト定義、読込処理、起動処理、プロジェクト選択、統合GUIを分離した共通層。
 - `engine/project_creator.py`: エンジンから新規プロジェクト用の最小テンプレートを生成する処理。
 - `engine/*_repository.py`: キャラクター、部屋、会話、イベント、配置物、ドット絵ソースの共有JSON処理。GUIから直接JSONを読み書きしない。
+- `projects/obakeno_sumika_special/`: 将来の高機能版用の別プロジェクトルート。通常版データを直接参照しない。
 - `engine_app.py` / `run_engine.bat`: 統合エンジンの起動入口。
 - `objects/`: 編集用 `*.source.json` と1024x1024 PNG。
 - `assets/`: かどか、まる、ゲーム機などの固定画像。
@@ -103,6 +104,7 @@
 - AIや会話姿勢を変えたら、独立行動、前向き移動、回転終了後の会話、吹き出し間隔、水浴び、ゲーム機イベントを確認する。
 - 画像・配置変更は画面上でも確認する。テスト成功だけで見た目の正しさを断定しない。
 - GitHub公開はVS CodeターミナルのGit / `gh` を使う。明示された変更だけをコミットする。
+- `obakeno_sumika_special` は `project_type` と専用 `projects/` 配下のデータで通常版から分離する。
 
 ## Verification
 

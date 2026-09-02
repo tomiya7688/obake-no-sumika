@@ -126,6 +126,7 @@ class ProjectCreator:
         return {
             "schema_version": 1,
             "name": name.strip(),
+            "project_type": "standard",
             "entrypoint": "game.py",
             "editors": [],
             "content": {

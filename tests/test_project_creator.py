@@ -24,6 +24,7 @@ class ProjectCreatorTests(unittest.TestCase):
             manifest = load_project_manifest(manifest_path)
 
             self.assertEqual(manifest.name, "test project")
+            self.assertEqual(manifest.project_type, "standard")
             self.assertEqual(manifest.root, Path(temp_dir).resolve() / "test project")
             self.assertEqual(manifest.editors, ())
             self.assertEqual(manifest.entrypoint, manifest.root / "game.py")

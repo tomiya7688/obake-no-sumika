@@ -56,6 +56,18 @@ def load_content_paths(root: Path, raw_content: object) -> dict[str, Path]:
     return content
 
 
+def load_project_type(raw_type: object) -> str:
+    """Load a project type label used to keep variants explicit."""
+    if raw_type is None:
+        return "standard"
+    project_type = str(raw_type).strip()
+    if not project_type:
+        raise ValueError("project_type must not be empty")
+    if any(character.isspace() for character in project_type):
+        raise ValueError("project_type must not contain whitespace")
+    return project_type
+
+
 def load_project_manifest(manifest_path: Path) -> ProjectManifest:
     """Load and validate one engine project manifest."""
     manifest_path = manifest_path.resolve()
@@ -67,10 +79,11 @@ def load_project_manifest(manifest_path: Path) -> ProjectManifest:
     name = str(raw.get("name", "")).strip()
     if not name:
         raise ValueError("Project name is required")
+    project_type = load_project_type(raw.get("project_type"))
     root = manifest_path.parent
     entrypoint = resolve_project_path(root, raw.get("entrypoint"))
     if not entrypoint.is_file():
         raise ValueError("Project entrypoint must be a file")
     editors = load_editor_definitions(root, raw.get("editors", []))
     content = load_content_paths(root, raw.get("content", {}))
-    return ProjectManifest(1, name, root, entrypoint, editors, content)
+    return ProjectManifest(1, name, project_type, root, entrypoint, editors, content)

@@ -35,6 +35,9 @@ class MainWindow:
         ttk.Label(frame, text=self.manifest.name, font=("Yu Gothic UI", 18, "bold")).pack(
             anchor="w", pady=(0, 4)
         )
+        ttk.Label(frame, text=f"type: {self.manifest.project_type}", foreground="#666666").pack(
+            anchor="w", pady=(0, 4)
+        )
         ttk.Label(frame, text=str(self.manifest.root), foreground="#666666").pack(
             anchor="w", pady=(0, 20)
         )
