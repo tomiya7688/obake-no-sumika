@@ -12,6 +12,7 @@ import pygame
 from engine.character_repository import CharacterRepository
 from engine.conversation_definition import ConversationDefinition
 from engine.conversation_repository import ConversationRepository
+from engine.evaluation_logger import EvaluationLogger
 from engine.event_repository import EventRepository
 from engine.placement_definition import PlacementDefinition
 from engine.placement_repository import PlacementRepository
@@ -1149,6 +1150,17 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="start in fullscreen mode",
     )
+    parser.add_argument(
+        "--evaluation-log",
+        type=Path,
+        help="write frame snapshots for development evaluation as JSONL",
+    )
+    parser.add_argument(
+        "--evaluation-interval",
+        type=int,
+        default=1,
+        help="record one evaluation snapshot every N frames",
+    )
     return parser.parse_args()
 
 
@@ -1207,60 +1219,71 @@ def main() -> int:
     frame_count = 0
     click_marker: pygame.Vector2 | None = None
     click_marker_timer = 0.0
+    evaluation_logger = (
+        EvaluationLogger(args.evaluation_log, args.evaluation_interval)
+        if args.evaluation_log
+        else None
+    )
 
-    while running:
-        if args.test_frames:
-            dt = 1.0 / FPS
-        else:
-            dt = min(clock.tick(FPS) / 1000.0, 0.05)
+    try:
+        while running:
+            if args.test_frames:
+                dt = 1.0 / FPS
+            else:
+                dt = min(clock.tick(FPS) / 1000.0, 0.05)
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
                     running = False
-                elif event.key == pygame.K_F11 or (
-                    event.key == pygame.K_RETURN
-                    and event.mod & pygame.KMOD_ALT
-                ):
-                    fullscreen = not fullscreen
-                    screen = create_display(fullscreen)
-            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                click_marker = pygame.Vector2(event.pos)
-                click_marker_timer = 1.0
-                ghosts[0].go_to((event.pos[0] - 24, event.pos[1]), movement_bounds)
-                ghosts[1].go_to((event.pos[0] + 24, event.pos[1]), movement_bounds)
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        running = False
+                    elif event.key == pygame.K_F11 or (
+                        event.key == pygame.K_RETURN
+                        and event.mod & pygame.KMOD_ALT
+                    ):
+                        fullscreen = not fullscreen
+                        screen = create_display(fullscreen)
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    click_marker = pygame.Vector2(event.pos)
+                    click_marker_timer = 1.0
+                    ghosts[0].go_to((event.pos[0] - 24, event.pos[1]), movement_bounds)
+                    ghosts[1].go_to((event.pos[0] + 24, event.pos[1]), movement_bounds)
 
-        elapsed += dt
-        click_marker_timer = max(0.0, click_marker_timer - dt)
-        for mote in motes:
-            mote.update(dt, elapsed)
-        ghosts[0].update(dt, movement_bounds, ghosts[1])
-        ghosts[1].update(dt, movement_bounds, ghosts[0])
+            elapsed += dt
+            click_marker_timer = max(0.0, click_marker_timer - dt)
+            for mote in motes:
+                mote.update(dt, elapsed)
+            ghosts[0].update(dt, movement_bounds, ghosts[1])
+            ghosts[1].update(dt, movement_bounds, ghosts[0])
+            if evaluation_logger is not None:
+                evaluation_logger.log_frame(frame_count, elapsed, ghosts, placed_objects)
 
-        screen.blit(background, (0, 0))
-        for habitat_object in placed_objects:
-            habitat_object.draw(screen)
-        for mote in motes:
-            mote.draw(screen)
-        if click_marker is not None and click_marker_timer > 0.0:
-            marker_color = (91, 116, 124)
-            marker_x = round(click_marker.x)
-            marker_y = round(click_marker.y)
-            pygame.draw.rect(screen, marker_color, (marker_x - 10, marker_y - 2, 6, 4))
-            pygame.draw.rect(screen, marker_color, (marker_x + 4, marker_y - 2, 6, 4))
-            pygame.draw.rect(screen, marker_color, (marker_x - 2, marker_y - 10, 4, 6))
-            pygame.draw.rect(screen, marker_color, (marker_x - 2, marker_y + 4, 4, 6))
-        mouse_position = pygame.mouse.get_pos()
-        for ghost in sorted(ghosts, key=lambda item: item.position.y):
-            ghost.draw(screen, elapsed, talk_font, mouse_position)
+            screen.blit(background, (0, 0))
+            for habitat_object in placed_objects:
+                habitat_object.draw(screen)
+            for mote in motes:
+                mote.draw(screen)
+            if click_marker is not None and click_marker_timer > 0.0:
+                marker_color = (91, 116, 124)
+                marker_x = round(click_marker.x)
+                marker_y = round(click_marker.y)
+                pygame.draw.rect(screen, marker_color, (marker_x - 10, marker_y - 2, 6, 4))
+                pygame.draw.rect(screen, marker_color, (marker_x + 4, marker_y - 2, 6, 4))
+                pygame.draw.rect(screen, marker_color, (marker_x - 2, marker_y - 10, 4, 6))
+                pygame.draw.rect(screen, marker_color, (marker_x - 2, marker_y + 4, 4, 6))
+            mouse_position = pygame.mouse.get_pos()
+            for ghost in sorted(ghosts, key=lambda item: item.position.y):
+                ghost.draw(screen, elapsed, talk_font, mouse_position)
 
-        pygame.display.flip()
-        frame_count += 1
+            pygame.display.flip()
+            frame_count += 1
 
-        if args.test_frames and frame_count >= args.test_frames:
-            running = False
+            if args.test_frames and frame_count >= args.test_frames:
+                running = False
+    finally:
+        if evaluation_logger is not None:
+            evaluation_logger.close()
 
     if args.screenshot:
         args.screenshot.parent.mkdir(parents=True, exist_ok=True)

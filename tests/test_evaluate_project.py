@@ -1,4 +1,5 @@
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -7,7 +8,12 @@ from unittest.mock import Mock, patch
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_DIR))
 
-from scripts.evaluate_project import build_checks, iter_python_files, run_check
+from scripts.evaluate_project import (
+    build_checks,
+    iter_python_files,
+    run_check,
+    validate_runtime_log,
+)
 
 
 class EvaluateProjectTests(unittest.TestCase):
@@ -29,6 +35,7 @@ class EvaluateProjectTests(unittest.TestCase):
                 "unit tests",
                 "engine manifest",
                 "standard game smoke",
+                "runtime evaluation log",
                 "special project validate",
             ],
         )
@@ -41,6 +48,19 @@ class EvaluateProjectTests(unittest.TestCase):
         _command, kwargs = run.call_args
         self.assertEqual(kwargs["cwd"], PROJECT_DIR)
         self.assertEqual(kwargs["env"]["X_TEST"], "1")
+
+    def test_validate_runtime_log_requires_ghost_payload(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            log = root / "runtime.jsonl"
+            log.write_text(
+                '{"ghosts":[{"name":"kadoka","x":1,"y":2,"vx":0,"vy":0,'
+                '"facing":1,"action":"stop"},{"name":"maru","x":3,"y":4,'
+                '"vx":0,"vy":0,"facing":-1,"action":"stop"}],"objects":[]}\n',
+                encoding="utf-8",
+            )
+
+            self.assertTrue(validate_runtime_log(root, Path("runtime.jsonl")))
 
 
 if __name__ == "__main__":

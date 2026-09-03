@@ -14,3 +14,6 @@ NVIDIA Corporation/
 
 # Locally built release packages
 *.zip
+
+# Development evaluation output
+tmp/
