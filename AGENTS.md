@@ -38,6 +38,7 @@
 - `engine/project_creator.py`: エンジンから新規プロジェクト用の最小テンプレートを生成する処理。
 - `engine/*_repository.py`: キャラクター、部屋、会話、イベント、配置物、ドット絵ソースの共有JSON処理。GUIから直接JSONを読み書きしない。
 - `projects/obakeno_sumika_special/`: 将来の高機能版用の別プロジェクトルート。通常版データを直接参照しない。
+- `scripts/evaluate_project.py`: 構文、単体テスト、エンジン検証、通常版スモーク、special版検証をまとめて実行する自動評価。
 - `engine_app.py` / `run_engine.bat`: 統合エンジンの起動入口。
 - `objects/`: 編集用 `*.source.json` と1024x1024 PNG。
 - `assets/`: かどか、まる、ゲーム機などの固定画像。
@@ -114,6 +115,7 @@
 .\.venv\Scripts\python.exe -m py_compile game.py conversation_editor.py object_editor.py tests\test_tagged_conversations.py
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 $env:SDL_VIDEODRIVER="dummy"; $env:SDL_AUDIODRIVER="dummy"; .\.venv\Scripts\python.exe game.py --test-frames 900 --seed 12345
+.\.venv\Scripts\python.exe scripts\evaluate_project.py
 ```
 
 UIや描画を変えた場合は、最後に `run_game.bat` と該当エディタを実画面で確認する。
