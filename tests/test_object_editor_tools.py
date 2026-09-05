@@ -114,6 +114,18 @@ class ObjectEditorToolTests(unittest.TestCase):
             ],
         )
 
+    def test_brush_cells_returns_centered_square(self):
+        self.assertEqual(
+            ObjectEditor.brush_cells(2, 2, 3, 6),
+            [(1, 1), (2, 1), (3, 1), (1, 2), (2, 2), (3, 2), (1, 3), (2, 3), (3, 3)],
+        )
+
+    def test_brush_cells_clips_at_canvas_edges(self):
+        self.assertEqual(
+            ObjectEditor.brush_cells(0, 0, 5, 4),
+            [(0, 0), (1, 0), (2, 0), (0, 1), (1, 1), (2, 1), (0, 2), (1, 2), (2, 2)],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

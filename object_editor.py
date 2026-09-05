@@ -77,6 +77,7 @@ class ObjectEditor:
         self.visible_var = tk.BooleanVar(value=True)
         self.status_var = tk.StringVar(value="左クリックで描く／右クリックで透明にします")
         self.show_grid_var = tk.BooleanVar(value=True)
+        self.brush_size_var = tk.IntVar(value=1)
 
         self.build_ui()
         self.redraw_editor()
@@ -182,6 +183,11 @@ class ObjectEditor:
             variable=self.show_grid_var,
             command=self.redraw_editor,
         ).grid(row=6, column=0, sticky="w", pady=(0, 10))
+
+        ttk.Label(tools, text="Brush size (cells)").grid(row=7, column=1, sticky="w", padx=(12, 0))
+        ttk.Combobox(
+            tools, textvariable=self.brush_size_var, values=(1, 3, 5), width=5, state="readonly"
+        ).grid(row=7, column=2, sticky="w")
 
         self.color_button = tk.Button(
             tools,
@@ -513,13 +519,30 @@ class ObjectEditor:
             pending.extend(((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)))
         return filled
 
+    @staticmethod
+    def brush_cells(center_x: int, center_y: int, size: int, canvas_size: int) -> list[tuple[int, int]]:
+        """Return clipped cells covered by an odd-sized square brush."""
+        size = max(1, int(size))
+        if size % 2 == 0:
+            size -= 1
+        radius = size // 2
+        return [
+            (x, y)
+            for y in range(max(0, center_y - radius), min(canvas_size, center_y + radius + 1))
+            for x in range(max(0, center_x - radius), min(canvas_size, center_x + radius + 1))
+        ]
+
     def paint_event(self, event: tk.Event, erase: bool) -> None:
         x, y = self.event_cell(event)
         if self.last_cell == (x, y):
             return
         self.last_cell = (x, y)
-        self.pixels[y][x] = None if erase else self.color
-        self.draw_editor_cell(x, y)
+        value = None if erase else self.color
+        for cell_x, cell_y in self.brush_cells(
+            x, y, self.brush_size_var.get(), self.canvas_size
+        ):
+            self.pixels[cell_y][cell_x] = value
+            self.draw_editor_cell(cell_x, cell_y)
 
     def redraw_editor(self) -> None:
         self.draw_canvas.delete("all")
