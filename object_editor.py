@@ -209,21 +209,27 @@ class ObjectEditor:
         ttk.Button(tools, text="背景を全部透明", command=self.clear_canvas).grid(
             row=13, column=0, sticky="ew"
         )
+        ttk.Button(tools, text="左右反転", command=self.flip_horizontal).grid(
+            row=14, column=0, sticky="ew", pady=(12, 4)
+        )
+        ttk.Button(tools, text="上下反転", command=self.flip_vertical).grid(
+            row=15, column=0, sticky="ew"
+        )
 
-        ttk.Separator(tools).grid(row=14, column=0, sticky="ew", pady=14)
-        ttk.Label(tools, text="オブジェクト名").grid(row=15, column=0, sticky="w")
+        ttk.Separator(tools).grid(row=16, column=0, sticky="ew", pady=14)
+        ttk.Label(tools, text="オブジェクト名").grid(row=17, column=0, sticky="w")
         ttk.Entry(tools, textvariable=self.name_var, width=20).grid(
-            row=16, column=0, sticky="ew", pady=(2, 6)
+            row=18, column=0, sticky="ew", pady=(2, 6)
         )
         ttk.Button(tools, text="1024×1024 PNGで保存", command=self.save_png).grid(
-            row=17, column=0, sticky="ew"
+            row=19, column=0, sticky="ew"
         )
         ttk.Label(
             tools,
             text="透明部分も含め、常に\n1024×1024で保存します。",
             foreground="#666666",
             justify="left",
-        ).grid(row=18, column=0, sticky="w", pady=(7, 0))
+        ).grid(row=20, column=0, sticky="w", pady=(7, 0))
 
         placement = ttk.Frame(outer)
         placement.grid(row=0, column=2, sticky="nsew")
@@ -376,6 +382,28 @@ class ObjectEditor:
         self.pixels = self.undo_stack.pop()
         self.redraw_editor()
         self.redraw_preview()
+
+    def flip_horizontal(self) -> None:
+        self.snapshot()
+        self.pixels = self.flipped_horizontal(self.pixels)
+        self.redraw_editor()
+        self.redraw_preview()
+        self.status_var.set("左右反転しました。")
+
+    def flip_vertical(self) -> None:
+        self.snapshot()
+        self.pixels = self.flipped_vertical(self.pixels)
+        self.redraw_editor()
+        self.redraw_preview()
+        self.status_var.set("上下反転しました。")
+
+    @staticmethod
+    def flipped_horizontal(pixels: list[list[str | None]]) -> list[list[str | None]]:
+        return [list(reversed(row)) for row in pixels]
+
+    @staticmethod
+    def flipped_vertical(pixels: list[list[str | None]]) -> list[list[str | None]]:
+        return [row[:] for row in reversed(pixels)]
 
     def begin_paint(self, event: tk.Event) -> None:
         tool = self.tool_var.get()

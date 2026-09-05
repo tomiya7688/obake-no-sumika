@@ -52,6 +52,36 @@ class ObjectEditorToolTests(unittest.TestCase):
         self.assertEqual(editor.pixels[0][0], "#ff0000")
         self.assertIsNone(editor.pixels[1][1])
 
+    def test_flipped_horizontal_reverses_each_row(self):
+        pixels = [
+            ["#111111", None, "#222222"],
+            ["#333333", "#444444", None],
+        ]
+
+        self.assertEqual(
+            ObjectEditor.flipped_horizontal(pixels),
+            [
+                ["#222222", None, "#111111"],
+                [None, "#444444", "#333333"],
+            ],
+        )
+
+    def test_flipped_vertical_reverses_row_order(self):
+        pixels = [
+            ["#111111", None],
+            ["#222222", "#333333"],
+            [None, "#444444"],
+        ]
+
+        self.assertEqual(
+            ObjectEditor.flipped_vertical(pixels),
+            [
+                [None, "#444444"],
+                ["#222222", "#333333"],
+                ["#111111", None],
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
