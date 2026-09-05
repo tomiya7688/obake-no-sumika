@@ -35,10 +35,12 @@
 - `placed_objects.json`: 配置、表示幅、タグ、初期表示状態。ゲーム座標で保存。
 - `object_editor.py`: ドット絵作成、1024x1024透過PNG出力、既存物の挿入・移動・削除。
 - `engine_project.json`: 統合エンジンが読むゲーム・エディター・コンテンツの定義。
+- `game_content.json`: 通常版ゲーム固有のコンテンツ定義。エンジン共通マニフェストから分離して読み込む。
 - `engine/`: プロジェクト定義、読込処理、起動処理、プロジェクト選択、統合GUIを分離した共通層。
 - `engine/project_creator.py`: エンジンから新規プロジェクト用の最小テンプレートを生成する処理。
 - `engine/*_repository.py`: キャラクター、部屋、会話、イベント、配置物、ドット絵ソースの共有JSON処理。GUIから直接JSONを読み書きしない。
 - `projects/obakeno_sumika_special/`: 将来の高機能版用の別プロジェクトルート。通常版データを直接参照しない。
+- `projects/obakeno_sumika_special/game_content.json`: special版固有のコンテンツ定義。
 - `scripts/evaluate_project.py`: 構文、単体テスト、エンジン検証、通常版スモーク、special版検証をまとめて実行する自動評価。
 - `engine/evaluation_logger.py`: 開発中の挙動確認用に、キャラクターと配置物の状態をJSONLへ記録する。
 - `engine_app.py` / `run_engine.bat`: 統合エンジンの起動入口。
@@ -99,6 +101,16 @@
 - `tag` は配置ごとに一意。既定タグは `water`、`small_rock`、`large_rock`、`found_item`、`game_device`。
 - `game_device` は初期非表示で、イベント中にまるが取り出して発光させ、2匹が反対側へ高速で逃げる。
 - 保存画像は1024x1024透過PNG。`width` はゲーム内表示幅で、画像の保存解像度とは別。
+
+エンジンマニフェスト:
+
+```json
+{"schema_version":1,"name":"...","project_type":"standard","entrypoint":"game.py","content_manifest":"game_content.json","editors":[]}
+```
+
+- `engine_project.json` はエンジンが起動に必要な共通情報だけを持つ。
+- ゲーム固有の `characters`、`room`、`placements`、`conversations` などのパスは `game_content.json` 側へ置く。
+- 互換性のため `content` を `engine_project.json` に直接書く旧形式も読み込める。両方ある場合は inline `content` が上書きする。
 
 ## Safe workflow
 

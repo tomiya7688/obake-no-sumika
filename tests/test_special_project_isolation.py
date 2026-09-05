@@ -24,6 +24,7 @@ class SpecialProjectIsolationTests(unittest.TestCase):
 
         self.assertEqual(manifest.project_type, "obakeno_sumika_special")
         self.assertEqual(manifest.root, SPECIAL_ROOT)
+        self.assertEqual(manifest.content_manifest, SPECIAL_ROOT / "game_content.json")
         for content_path in manifest.content.values():
             self.assertEqual(content_path, SPECIAL_ROOT / content_path.relative_to(SPECIAL_ROOT))
             self.assertNotEqual(content_path.parent, PROJECT_DIR)

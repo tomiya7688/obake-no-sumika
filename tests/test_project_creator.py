@@ -26,6 +26,7 @@ class ProjectCreatorTests(unittest.TestCase):
             self.assertEqual(manifest.name, "test project")
             self.assertEqual(manifest.project_type, "standard")
             self.assertEqual(manifest.root, Path(temp_dir).resolve() / "test project")
+            self.assertEqual(manifest.content_manifest, manifest.root / "game_content.json")
             self.assertEqual(manifest.editors, ())
             self.assertEqual(manifest.entrypoint, manifest.root / "game.py")
             self.assertEqual(manifest.content["characters"], manifest.root / "characters.json")

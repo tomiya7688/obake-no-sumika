@@ -3,6 +3,7 @@
   "name": "おばけの住処",
   "project_type": "standard",
   "entrypoint": "game.py",
+  "content_manifest": "game_content.json",
   "editors": [
     {
       "id": "character",
@@ -19,14 +20,5 @@
       "label": "オブジェクト・部屋エディター",
       "script": "object_editor.py"
     }
-  ],
-  "content": {
-    "characters": "characters.json",
-    "character_assets": "assets",
-    "room": "room.json",
-    "placements": "placed_objects.json",
-    "objects": "objects",
-    "conversations": "conversations.json",
-    "events": "events.json"
-  }
+  ]
 }

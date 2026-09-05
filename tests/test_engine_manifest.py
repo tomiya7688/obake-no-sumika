@@ -20,6 +20,7 @@ class EngineManifestTests(unittest.TestCase):
         self.assertEqual(manifest.name, "おばけの住処")
         self.assertEqual(manifest.project_type, "standard")
         self.assertEqual(manifest.entrypoint, PROJECT_DIR / "game.py")
+        self.assertEqual(manifest.content_manifest, PROJECT_DIR / "game_content.json")
         self.assertEqual(
             [editor.id for editor in manifest.editors],
             ["character", "conversation_event", "object_room"],
@@ -43,6 +44,35 @@ class EngineManifestTests(unittest.TestCase):
                         "entrypoint": "../outside.py",
                         "editors": [],
                         "content": {},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "escapes"):
+                load_project_manifest(manifest_path)
+
+    def test_content_manifest_rejects_paths_outside_project(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "game.py").write_text("", encoding="utf-8")
+            (root / "content.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "content": {"characters": "../characters.json"},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            manifest_path = root / "project.json"
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "name": "test",
+                        "entrypoint": "game.py",
+                        "editors": [],
+                        "content_manifest": "content.json",
                     }
                 ),
                 encoding="utf-8",

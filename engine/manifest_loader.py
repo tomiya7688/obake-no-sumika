@@ -56,6 +56,21 @@ def load_content_paths(root: Path, raw_content: object) -> dict[str, Path]:
     return content
 
 
+def load_content_manifest(root: Path, raw_manifest_path: object) -> tuple[dict[str, Path], Path | None]:
+    """Load game-specific content paths from an optional external manifest."""
+    if raw_manifest_path is None:
+        return {}, None
+    manifest_path = resolve_project_path(root, raw_manifest_path)
+    if not manifest_path.is_file():
+        raise ValueError("content_manifest must be a file")
+    raw = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        raise ValueError("content_manifest must contain an object")
+    if raw.get("schema_version") != 1:
+        raise ValueError("Unsupported content manifest schema version")
+    return load_content_paths(root, raw.get("content", {})), manifest_path
+
+
 def load_project_type(raw_type: object) -> str:
     """Load a project type label used to keep variants explicit."""
     if raw_type is None:
@@ -85,5 +100,7 @@ def load_project_manifest(manifest_path: Path) -> ProjectManifest:
     if not entrypoint.is_file():
         raise ValueError("Project entrypoint must be a file")
     editors = load_editor_definitions(root, raw.get("editors", []))
-    content = load_content_paths(root, raw.get("content", {}))
-    return ProjectManifest(1, name, project_type, root, entrypoint, editors, content)
+    external_content, content_manifest = load_content_manifest(root, raw.get("content_manifest"))
+    inline_content = load_content_paths(root, raw.get("content", {}))
+    content = {**external_content, **inline_content}
+    return ProjectManifest(1, name, project_type, root, entrypoint, editors, content, content_manifest)

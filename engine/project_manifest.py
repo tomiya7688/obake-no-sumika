@@ -17,6 +17,7 @@ class ProjectManifest:
     entrypoint: Path
     editors: tuple[EditorDefinition, ...]
     content: dict[str, Path]
+    content_manifest: Path | None = None
 
     def editor(self, editor_id: str) -> EditorDefinition:
         for editor in self.editors:

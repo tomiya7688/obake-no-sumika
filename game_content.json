@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "content": {
+    "characters": "characters.json",
+    "character_assets": "assets",
+    "room": "room.json",
+    "placements": "placed_objects.json",
+    "objects": "objects",
+    "conversations": "conversations.json",
+    "events": "events.json"
+  }
+}

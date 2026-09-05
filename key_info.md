@@ -14,6 +14,7 @@
 - `characters.json`: かどか・まるの表示名、画像、開始位置、身長、速度傾向、元画像の向き、吹き出し位置。
 - `conversations.json`: 会話のセリフ、手順、重み、イベント。
 - `events.json`: 会話から呼び出せるイベントと必要タグ。
+- `game_content.json`: ゲーム固有のデータファイル一覧。
 - `placed_objects.json`: 住処内のオブジェクト配置、タグ、表示状態、ゲーム内サイズ。
 - `room.json`: 住処の16:9寸法、移動範囲、水場、背景、ほこり粒。
 - `objects/*.source.json`: ドット絵オブジェクトの再編集用データ。

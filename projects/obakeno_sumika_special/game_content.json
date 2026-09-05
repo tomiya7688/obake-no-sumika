@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "content": {
+    "knowledge": "data/knowledge.json",
+    "conversation_tasks": "data/conversation_tasks.json",
+    "runtime_memory": "data/runtime_memory.json"
+  }
+}

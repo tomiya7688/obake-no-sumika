@@ -81,6 +81,7 @@ class ProjectCreator:
         (project_root / "assets").mkdir()
         (project_root / "objects").mkdir()
         self._write_json(project_root / "engine_project.json", self._manifest(name))
+        self._write_json(project_root / "game_content.json", self._content_manifest())
         self._write_json(project_root / "room.json", self._room())
         self._write_json(project_root / "characters.json", self._characters())
         self._write_json(project_root / "placed_objects.json", {"objects": []})
@@ -129,6 +130,12 @@ class ProjectCreator:
             "project_type": "standard",
             "entrypoint": "game.py",
             "editors": [],
+            "content_manifest": "game_content.json",
+        }
+
+    def _content_manifest(self) -> dict[str, object]:
+        return {
+            "schema_version": 1,
             "content": {
                 "characters": "characters.json",
                 "character_assets": "assets",

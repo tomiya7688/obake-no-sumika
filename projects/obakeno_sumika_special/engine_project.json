@@ -3,10 +3,6 @@
   "name": "obakeno_sumika_special",
   "project_type": "obakeno_sumika_special",
   "entrypoint": "game.py",
-  "editors": [],
-  "content": {
-    "knowledge": "data/knowledge.json",
-    "conversation_tasks": "data/conversation_tasks.json",
-    "runtime_memory": "data/runtime_memory.json"
-  }
+  "content_manifest": "game_content.json",
+  "editors": []
 }
