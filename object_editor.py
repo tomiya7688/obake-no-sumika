@@ -197,27 +197,30 @@ class ObjectEditor:
         ttk.Radiobutton(
             tools, text="透明消しゴム", variable=self.tool_var, value="eraser"
         ).grid(row=9, column=0, sticky="w")
+        ttk.Radiobutton(
+            tools, text="スポイト", variable=self.tool_var, value="eyedropper"
+        ).grid(row=10, column=0, sticky="w")
         ttk.Button(tools, text="1つ戻す", command=self.undo).grid(
-            row=10, column=0, sticky="ew", pady=(12, 4)
+            row=11, column=0, sticky="ew", pady=(12, 4)
         )
         ttk.Button(tools, text="背景を全部透明", command=self.clear_canvas).grid(
-            row=11, column=0, sticky="ew"
+            row=12, column=0, sticky="ew"
         )
 
-        ttk.Separator(tools).grid(row=12, column=0, sticky="ew", pady=14)
-        ttk.Label(tools, text="オブジェクト名").grid(row=13, column=0, sticky="w")
+        ttk.Separator(tools).grid(row=13, column=0, sticky="ew", pady=14)
+        ttk.Label(tools, text="オブジェクト名").grid(row=14, column=0, sticky="w")
         ttk.Entry(tools, textvariable=self.name_var, width=20).grid(
-            row=14, column=0, sticky="ew", pady=(2, 6)
+            row=15, column=0, sticky="ew", pady=(2, 6)
         )
         ttk.Button(tools, text="1024×1024 PNGで保存", command=self.save_png).grid(
-            row=15, column=0, sticky="ew"
+            row=16, column=0, sticky="ew"
         )
         ttk.Label(
             tools,
             text="透明部分も含め、常に\n1024×1024で保存します。",
             foreground="#666666",
             justify="left",
-        ).grid(row=16, column=0, sticky="w", pady=(7, 0))
+        ).grid(row=17, column=0, sticky="w", pady=(7, 0))
 
         placement = ttk.Frame(outer)
         placement.grid(row=0, column=2, sticky="nsew")
@@ -372,6 +375,9 @@ class ObjectEditor:
         self.redraw_preview()
 
     def begin_paint(self, event: tk.Event) -> None:
+        if self.tool_var.get() == "eyedropper":
+            self.pick_color(event)
+            return
         self.snapshot()
         self.painting = True
         self.last_cell = None
@@ -396,12 +402,27 @@ class ObjectEditor:
         self.last_cell = None
         self.redraw_preview()
 
-    def paint_event(self, event: tk.Event, erase: bool) -> None:
+    def event_cell(self, event: tk.Event) -> tuple[int, int]:
         cell = self.editor_cell_size()
         canvas_x = self.draw_canvas.canvasx(event.x)
         canvas_y = self.draw_canvas.canvasy(event.y)
         x = max(0, min(self.canvas_size - 1, int(canvas_x / cell)))
         y = max(0, min(self.canvas_size - 1, int(canvas_y / cell)))
+        return x, y
+
+    def pick_color(self, event: tk.Event) -> None:
+        x, y = self.event_cell(event)
+        picked = self.pixels[y][x]
+        if picked is None:
+            self.status_var.set("透明セルです。色は変更していません。")
+            return
+        self.color = picked
+        self.color_button.configure(bg=self.color, activebackground=self.color)
+        self.tool_var.set("pencil")
+        self.status_var.set(f"色を拾いました: {self.color}")
+
+    def paint_event(self, event: tk.Event, erase: bool) -> None:
+        x, y = self.event_cell(event)
         if self.last_cell == (x, y):
             return
         self.last_cell = (x, y)
