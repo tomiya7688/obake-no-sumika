@@ -25,6 +25,7 @@
 ## Source map
 
 - `game.py`: ゲーム、AI、会話シーケンス、イベント、描画。主なクラスは `Ghost`、`HabitatObject`、`Mote`。
+- `key_info.md`: 現在できること、起動方法、編集できるデータ、開発者向け確認の短い要約。
 - `characters.json`: ゲームが直接読むキャラクター定義。表示名、画像、開始位置、表示身長、性格速度倍率、元画像の向き、吹き出し高さを保存。
 - `character_editor.py`: `characters.json` を共有処理経由で編集するTkエディター。
 - `room.json`: 16:9の部屋寸法、移動・水場領域、背景ポリゴン、環境粒子を保存する部屋定義。
