@@ -215,21 +215,27 @@ class ObjectEditor:
         ttk.Button(tools, text="上下反転", command=self.flip_vertical).grid(
             row=15, column=0, sticky="ew"
         )
+        ttk.Button(tools, text="右90度回転", command=self.rotate_clockwise).grid(
+            row=16, column=0, sticky="ew", pady=(12, 4)
+        )
+        ttk.Button(tools, text="左90度回転", command=self.rotate_counterclockwise).grid(
+            row=17, column=0, sticky="ew"
+        )
 
-        ttk.Separator(tools).grid(row=16, column=0, sticky="ew", pady=14)
-        ttk.Label(tools, text="オブジェクト名").grid(row=17, column=0, sticky="w")
+        ttk.Separator(tools).grid(row=18, column=0, sticky="ew", pady=14)
+        ttk.Label(tools, text="オブジェクト名").grid(row=19, column=0, sticky="w")
         ttk.Entry(tools, textvariable=self.name_var, width=20).grid(
-            row=18, column=0, sticky="ew", pady=(2, 6)
+            row=20, column=0, sticky="ew", pady=(2, 6)
         )
         ttk.Button(tools, text="1024×1024 PNGで保存", command=self.save_png).grid(
-            row=19, column=0, sticky="ew"
+            row=21, column=0, sticky="ew"
         )
         ttk.Label(
             tools,
             text="透明部分も含め、常に\n1024×1024で保存します。",
             foreground="#666666",
             justify="left",
-        ).grid(row=20, column=0, sticky="w", pady=(7, 0))
+        ).grid(row=22, column=0, sticky="w", pady=(7, 0))
 
         placement = ttk.Frame(outer)
         placement.grid(row=0, column=2, sticky="nsew")
@@ -397,6 +403,20 @@ class ObjectEditor:
         self.redraw_preview()
         self.status_var.set("上下反転しました。")
 
+    def rotate_clockwise(self) -> None:
+        self.snapshot()
+        self.pixels = self.rotated_clockwise(self.pixels)
+        self.redraw_editor()
+        self.redraw_preview()
+        self.status_var.set("右に90度回転しました。")
+
+    def rotate_counterclockwise(self) -> None:
+        self.snapshot()
+        self.pixels = self.rotated_counterclockwise(self.pixels)
+        self.redraw_editor()
+        self.redraw_preview()
+        self.status_var.set("左に90度回転しました。")
+
     @staticmethod
     def flipped_horizontal(pixels: list[list[str | None]]) -> list[list[str | None]]:
         return [list(reversed(row)) for row in pixels]
@@ -404,6 +424,16 @@ class ObjectEditor:
     @staticmethod
     def flipped_vertical(pixels: list[list[str | None]]) -> list[list[str | None]]:
         return [row[:] for row in reversed(pixels)]
+
+    @staticmethod
+    def rotated_clockwise(pixels: list[list[str | None]]) -> list[list[str | None]]:
+        size = len(pixels)
+        return [[pixels[size - 1 - x][y] for x in range(size)] for y in range(size)]
+
+    @staticmethod
+    def rotated_counterclockwise(pixels: list[list[str | None]]) -> list[list[str | None]]:
+        size = len(pixels)
+        return [[pixels[x][size - 1 - y] for x in range(size)] for y in range(size)]
 
     def begin_paint(self, event: tk.Event) -> None:
         tool = self.tool_var.get()

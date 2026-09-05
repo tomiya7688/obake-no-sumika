@@ -82,6 +82,38 @@ class ObjectEditorToolTests(unittest.TestCase):
             ],
         )
 
+    def test_rotated_clockwise_turns_square_canvas_right(self):
+        pixels = [
+            ["a", "b", "c"],
+            ["d", "e", "f"],
+            ["g", "h", "i"],
+        ]
+
+        self.assertEqual(
+            ObjectEditor.rotated_clockwise(pixels),
+            [
+                ["g", "d", "a"],
+                ["h", "e", "b"],
+                ["i", "f", "c"],
+            ],
+        )
+
+    def test_rotated_counterclockwise_turns_square_canvas_left(self):
+        pixels = [
+            ["a", "b", "c"],
+            ["d", "e", "f"],
+            ["g", "h", "i"],
+        ]
+
+        self.assertEqual(
+            ObjectEditor.rotated_counterclockwise(pixels),
+            [
+                ["c", "f", "i"],
+                ["b", "e", "h"],
+                ["a", "d", "g"],
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
