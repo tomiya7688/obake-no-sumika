@@ -76,6 +76,7 @@ class ObjectEditor:
         self.tag_var = tk.StringVar(value="")
         self.visible_var = tk.BooleanVar(value=True)
         self.status_var = tk.StringVar(value="左クリックで描く／右クリックで透明にします")
+        self.show_grid_var = tk.BooleanVar(value=True)
 
         self.build_ui()
         self.redraw_editor()
@@ -175,6 +176,12 @@ class ObjectEditor:
         ttk.Label(tools, text="%　Ctrl+ホイールでも変更", foreground="#666666").grid(
             row=5, column=0, sticky="w", pady=(0, 10)
         )
+        ttk.Checkbutton(
+            tools,
+            text="グリッドを表示",
+            variable=self.show_grid_var,
+            command=self.redraw_editor,
+        ).grid(row=6, column=0, sticky="w", pady=(0, 10))
 
         self.color_button = tk.Button(
             tools,
@@ -183,34 +190,34 @@ class ObjectEditor:
             activebackground=self.color,
             command=self.choose_color,
         )
-        self.color_button.grid(row=6, column=0, sticky="ew", pady=(0, 8))
+        self.color_button.grid(row=7, column=0, sticky="ew", pady=(0, 8))
         ttk.Radiobutton(
             tools, text="えんぴつ", variable=self.tool_var, value="pencil"
-        ).grid(row=7, column=0, sticky="w")
+        ).grid(row=8, column=0, sticky="w")
         ttk.Radiobutton(
             tools, text="透明消しゴム", variable=self.tool_var, value="eraser"
-        ).grid(row=8, column=0, sticky="w")
+        ).grid(row=9, column=0, sticky="w")
         ttk.Button(tools, text="1つ戻す", command=self.undo).grid(
-            row=9, column=0, sticky="ew", pady=(12, 4)
+            row=10, column=0, sticky="ew", pady=(12, 4)
         )
         ttk.Button(tools, text="背景を全部透明", command=self.clear_canvas).grid(
-            row=10, column=0, sticky="ew"
+            row=11, column=0, sticky="ew"
         )
 
-        ttk.Separator(tools).grid(row=11, column=0, sticky="ew", pady=14)
-        ttk.Label(tools, text="オブジェクト名").grid(row=12, column=0, sticky="w")
+        ttk.Separator(tools).grid(row=12, column=0, sticky="ew", pady=14)
+        ttk.Label(tools, text="オブジェクト名").grid(row=13, column=0, sticky="w")
         ttk.Entry(tools, textvariable=self.name_var, width=20).grid(
-            row=13, column=0, sticky="ew", pady=(2, 6)
+            row=14, column=0, sticky="ew", pady=(2, 6)
         )
         ttk.Button(tools, text="1024×1024 PNGで保存", command=self.save_png).grid(
-            row=14, column=0, sticky="ew"
+            row=15, column=0, sticky="ew"
         )
         ttk.Label(
             tools,
             text="透明部分も含め、常に\n1024×1024で保存します。",
             foreground="#666666",
             justify="left",
-        ).grid(row=15, column=0, sticky="w", pady=(7, 0))
+        ).grid(row=16, column=0, sticky="w", pady=(7, 0))
 
         placement = ttk.Frame(outer)
         placement.grid(row=0, column=2, sticky="nsew")
@@ -408,12 +415,6 @@ class ObjectEditor:
         for y in range(self.canvas_size):
             for x in range(self.canvas_size):
                 self.draw_editor_cell(x, y)
-        if self.editor_cell_size() >= 6:
-            cell = self.editor_cell_size()
-            for index in range(self.canvas_size + 1):
-                point = round(index * cell)
-                self.draw_canvas.create_line(point, 0, point, extent, fill="#50545a")
-                self.draw_canvas.create_line(0, point, extent, point, fill="#50545a")
 
     def draw_editor_cell(self, x: int, y: int) -> None:
         tag = f"cell_{x}_{y}"
@@ -423,8 +424,9 @@ class ObjectEditor:
         x1, y1 = round((x + 1) * cell), round((y + 1) * cell)
         value = self.pixels[y][x]
         fill = value if value else ("#c7c9cc" if (x + y) % 2 else "#eeeeee")
+        outline = "#50545a" if self.show_grid_var.get() and cell >= 6 else ""
         self.draw_canvas.create_rectangle(
-            x0, y0, x1 + 1, y1 + 1, fill=fill, outline="", tags=tag
+            x0, y0, x1 + 1, y1 + 1, fill=fill, outline=outline, tags=tag
         )
 
     def source_image(self) -> Image.Image:
