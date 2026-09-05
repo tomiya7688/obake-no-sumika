@@ -200,27 +200,30 @@ class ObjectEditor:
         ttk.Radiobutton(
             tools, text="スポイト", variable=self.tool_var, value="eyedropper"
         ).grid(row=10, column=0, sticky="w")
+        ttk.Radiobutton(
+            tools, text="塗りつぶし", variable=self.tool_var, value="fill"
+        ).grid(row=11, column=0, sticky="w")
         ttk.Button(tools, text="1つ戻す", command=self.undo).grid(
-            row=11, column=0, sticky="ew", pady=(12, 4)
+            row=12, column=0, sticky="ew", pady=(12, 4)
         )
         ttk.Button(tools, text="背景を全部透明", command=self.clear_canvas).grid(
-            row=12, column=0, sticky="ew"
+            row=13, column=0, sticky="ew"
         )
 
-        ttk.Separator(tools).grid(row=13, column=0, sticky="ew", pady=14)
-        ttk.Label(tools, text="オブジェクト名").grid(row=14, column=0, sticky="w")
+        ttk.Separator(tools).grid(row=14, column=0, sticky="ew", pady=14)
+        ttk.Label(tools, text="オブジェクト名").grid(row=15, column=0, sticky="w")
         ttk.Entry(tools, textvariable=self.name_var, width=20).grid(
-            row=15, column=0, sticky="ew", pady=(2, 6)
+            row=16, column=0, sticky="ew", pady=(2, 6)
         )
         ttk.Button(tools, text="1024×1024 PNGで保存", command=self.save_png).grid(
-            row=16, column=0, sticky="ew"
+            row=17, column=0, sticky="ew"
         )
         ttk.Label(
             tools,
             text="透明部分も含め、常に\n1024×1024で保存します。",
             foreground="#666666",
             justify="left",
-        ).grid(row=17, column=0, sticky="w", pady=(7, 0))
+        ).grid(row=18, column=0, sticky="w", pady=(7, 0))
 
         placement = ttk.Frame(outer)
         placement.grid(row=0, column=2, sticky="nsew")
@@ -375,13 +378,18 @@ class ObjectEditor:
         self.redraw_preview()
 
     def begin_paint(self, event: tk.Event) -> None:
-        if self.tool_var.get() == "eyedropper":
+        tool = self.tool_var.get()
+        if tool == "eyedropper":
             self.pick_color(event)
+            return
+        if tool == "fill":
+            self.snapshot()
+            self.fill_event(event)
             return
         self.snapshot()
         self.painting = True
         self.last_cell = None
-        self.paint_event(event, self.tool_var.get() == "eraser")
+        self.paint_event(event, tool == "eraser")
 
     def begin_erase(self, event: tk.Event) -> None:
         self.snapshot()
@@ -420,6 +428,32 @@ class ObjectEditor:
         self.color_button.configure(bg=self.color, activebackground=self.color)
         self.tool_var.set("pencil")
         self.status_var.set(f"色を拾いました: {self.color}")
+
+    def fill_event(self, event: tk.Event) -> None:
+        x, y = self.event_cell(event)
+        target = self.pixels[y][x]
+        replacement = self.color
+        if target == replacement:
+            self.status_var.set("同じ色なので塗りつぶしませんでした。")
+            return
+        filled = self.fill_region(x, y, target, replacement)
+        self.redraw_editor()
+        self.redraw_preview()
+        self.status_var.set(f"{filled}マスを塗りつぶしました。")
+
+    def fill_region(self, start_x: int, start_y: int, target: str | None, replacement: str) -> int:
+        pending = [(start_x, start_y)]
+        filled = 0
+        while pending:
+            x, y = pending.pop()
+            if x < 0 or y < 0 or x >= self.canvas_size or y >= self.canvas_size:
+                continue
+            if self.pixels[y][x] != target:
+                continue
+            self.pixels[y][x] = replacement
+            filled += 1
+            pending.extend(((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)))
+        return filled
 
     def paint_event(self, event: tk.Event, erase: bool) -> None:
         x, y = self.event_cell(event)
