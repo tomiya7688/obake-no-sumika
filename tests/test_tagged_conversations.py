@@ -176,6 +176,31 @@ class TaggedConversationTests(unittest.TestCase):
         self.assertEqual(recorder.weights, [1.0, 9.0])
         self.assertEqual(maru.talk_text, "second")
 
+    def test_conversation_finish_has_afterglow_then_departure(self):
+        kadoka, maru = self.make_ghosts([], [])
+        bounds = pygame.Rect(74, 80, 812, 446)
+
+        kadoka.finish_conversation_sequence(maru, bounds)
+
+        self.assertEqual(kadoka.current_action, "talk_afterglow")
+        self.assertEqual(maru.current_action, "talk_afterglow")
+        self.assertIs(kadoka.talk_target, maru)
+        self.assertIs(maru.talk_target, kadoka)
+        self.assertTrue(kadoka.event_owner)
+        self.assertFalse(maru.event_owner)
+
+        kadoka.turning = False
+        maru.turning = False
+        kadoka.action_timer = 0.0
+        kadoka.update(0.01, bounds, maru)
+
+        self.assertEqual(kadoka.current_action, "talk_depart")
+        self.assertEqual(maru.current_action, "talk_depart")
+        self.assertIsNone(kadoka.talk_target)
+        self.assertIsNone(maru.talk_target)
+        self.assertLess(kadoka.pending_velocity.x, 0.0)
+        self.assertGreater(maru.pending_velocity.x, 0.0)
+
     def test_tag_normalization(self):
         self.assertEqual(normalize_tag("  大きい 岩  "), "大きい_岩")
 
