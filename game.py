@@ -304,12 +304,12 @@ class Ghost:
             and partner.spin_elapsed is None
             and self.current_action not in (
                 "talk", "talk_turn", "talk_align", "talk_wait_align",
-                "talk_pause", "seek_talk", "talk_sequence", "sequence_move",
+                "talk_pause", "talk_afterglow", "talk_depart", "seek_talk", "talk_sequence", "sequence_move",
                 "sequence_wait", "sequence_pause",
             )
             and partner.current_action not in (
                 "talk", "talk_turn", "talk_align", "talk_wait_align",
-                "talk_pause", "seek_talk", "loop", "turn", "approach",
+                "talk_pause", "talk_afterglow", "talk_depart", "seek_talk", "loop", "turn", "approach",
                 "talk_sequence", "sequence_move", "sequence_wait", "sequence_pause",
             )
         )
@@ -386,15 +386,39 @@ class Ghost:
             return ghosts
         return [next((ghost for ghost in ghosts if ghost.name == actor), self)]
 
+    def begin_conversation_afterglow(self, partner: "Ghost") -> None:
+        """Keep both ghosts facing each other briefly after their conversation."""
+        for ghost, target in ((self, partner), (partner, self)):
+            ghost.talk_text = ""
+            ghost.talk_target = target
+            ghost.current_action = "talk_afterglow"
+            ghost.action_timer = ghost.rng.uniform(1.1, 1.8)
+            ghost.velocity.update(0.0, 0.0)
+            ghost.desired_velocity.update(0.0, 0.0)
+            ghost.pending_velocity.update(0.0, 0.0)
+            ghost.face_toward(target)
+            ghost.event_owner = ghost is self
+
+    def begin_afterglow_departure(self) -> None:
+        """Leave a completed conversation slowly, each ghost moving outward."""
+        partner = self.talk_target
+        if partner is None:
+            return
+        horizontal = 1.0 if self.position.x >= partner.position.x else -1.0
+        direction = pygame.Vector2(horizontal, self.rng.uniform(-0.16, 0.16))
+        self.current_action = "talk_depart"
+        self.action_timer = self.rng.uniform(1.2, 2.0)
+        self.steering_speed = self.rng.uniform(0.65, 1.1)
+        self.set_motion_target(direction.normalize() * self.random_speed())
+        self.talk_target = None
+        self.event_owner = False
+
     def finish_conversation_sequence(self, partner: "Ghost", bounds: pygame.Rect) -> None:
         for ghost in (self, partner):
-            ghost.talk_text = ""
-            ghost.talk_target = None
-            ghost.event_owner = False
             ghost.sequence_movers.clear()
-            ghost.begin_random_action(bounds, partner if ghost is self else self)
         self.sequence_steps = []
         self.sequence_index = 0
+        self.begin_conversation_afterglow(partner)
 
     def run_next_conversation_step(
         self,
@@ -882,6 +906,20 @@ class Ghost:
                 )
             ):
                 self.talk_target = None
+                self.begin_random_action(bounds, partner)
+        elif self.current_action == "talk_afterglow":
+            self.velocity.update(0.0, 0.0)
+            self.action_timer -= dt
+            if self.event_owner and self.action_timer <= 0.0 and self.talk_target is not None:
+                partner_afterglow = self.talk_target
+                self.begin_afterglow_departure()
+                partner_afterglow.begin_afterglow_departure()
+        elif self.current_action == "talk_depart":
+            self.action_timer -= dt
+            self.velocity = self.velocity.lerp(
+                self.desired_velocity, min(1.0, dt * self.steering_speed)
+            )
+            if self.action_timer <= 0.0:
                 self.begin_random_action(bounds, partner)
         elif self.current_action == "talk_sequence":
             self.velocity = self.velocity.lerp(pygame.Vector2(), min(1.0, dt * 8.0))
