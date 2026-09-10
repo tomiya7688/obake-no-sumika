@@ -78,6 +78,7 @@ class CharacterRepository:
             personality=self._number(raw.get("personality"), "personality", 0.25, 3.0),
             native_facing=1 if self._integer(raw.get("native_facing"), "native_facing", -1, 1) >= 0 else -1,
             bubble_y_offset=self._integer(raw.get("bubble_y_offset", 0), "bubble_y_offset", -200, 200),
+            behavior_weights=self._behavior_weights(raw.get("behavior_weights", {})),
         )
         self.validate(definition)
         return definition
@@ -102,6 +103,13 @@ class CharacterRepository:
             raise ValueError("native_facing must be -1 or 1")
         if not -200 <= definition.bubble_y_offset <= 200:
             raise ValueError("bubble_y_offset must be between -200 and 200")
+        seen_actions = set()
+        for action, weight in definition.behavior_weights:
+            if not action.strip() or action in seen_actions:
+                raise ValueError("behavior_weights action names must be unique and non-empty")
+            if not 0.0 <= weight <= 100.0:
+                raise ValueError("behavior_weights values must be between 0 and 100")
+            seen_actions.add(action)
 
     def _resolve_image(self, raw_path: object) -> Path:
         if not isinstance(raw_path, str) or not raw_path.strip():
@@ -127,7 +135,20 @@ class CharacterRepository:
             "personality": definition.personality,
             "native_facing": definition.native_facing,
             "bubble_y_offset": definition.bubble_y_offset,
+            "behavior_weights": dict(definition.behavior_weights),
         }
+
+    def _behavior_weights(self, raw: object) -> tuple[tuple[str, float], ...]:
+        if not isinstance(raw, dict):
+            raise ValueError("behavior_weights must be an object")
+        weights = []
+        for raw_action, raw_weight in raw.items():
+            if not isinstance(raw_action, str) or not raw_action.strip():
+                raise ValueError("behavior_weights action names must be non-empty strings")
+            weights.append(
+                (raw_action.strip(), self._number(raw_weight, "behavior weight", 0.0, 100.0))
+            )
+        return tuple(weights)
 
     @staticmethod
     def _integer(value: object, label: str, minimum: int, maximum: int) -> int:

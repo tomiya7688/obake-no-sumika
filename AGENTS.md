@@ -64,12 +64,13 @@
 キャラクター1件:
 
 ```json
-{"id":"kadoka","display_name":"かどか","image":"assets/kadoka.png","start_position":[320,340],"display_height":64,"personality":0.92,"native_facing":1,"bubble_y_offset":0}
+{"id":"kadoka","display_name":"かどか","image":"assets/kadoka.png","start_position":[320,340],"display_height":64,"personality":0.92,"native_facing":1,"bubble_y_offset":0,"behavior_weights":{"stop":3,"forward":4,"dash":2}}
 ```
 
 - `id` は会話・イベントとの接続に使うため、現在のゲームでは `kadoka` と `maru` を維持する。
 - 画像はプロジェクト内の相対パスだけを許可する。
 - 2匹を同じ身長・横並びにするときは `display_height` と開始位置Yを同じにする。
+- `behavior_weights` は任意の `{行動名: 重み}`。未指定行動は共通AIの既定重みを使い、`0` はその行動を選ばない。既知の行動は `stop`、`forward`、`turn`、`loop`、`dash`、`seek_talk`、`water_stop`。
 
 会話1件:
 
