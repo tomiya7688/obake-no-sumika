@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 
@@ -17,3 +17,4 @@ class CharacterDefinition:
     personality: float
     native_facing: int
     bubble_y_offset: int
+    behavior_weights: tuple[tuple[str, float], ...] = field(default_factory=tuple)

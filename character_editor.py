@@ -46,6 +46,7 @@ class CharacterEditor:
         self.personality_var = tk.StringVar()
         self.facing_var = tk.StringVar()
         self.bubble_y_var = tk.StringVar()
+        self.behavior_weights_var = tk.StringVar()
         self.status_var = tk.StringVar(value="キャラクターを選択してください")
 
         self._build_ui()
@@ -80,6 +81,7 @@ class CharacterEditor:
             ("表示身長（16～256 px）", self.height_var),
             ("行動速度倍率（0.25～3.0）", self.personality_var),
             ("吹き出し高さ補正（-200～200）", self.bubble_y_var),
+            ("行動重み（例: stop=2, forward=4）", self.behavior_weights_var),
         )
         for row, (label, variable) in enumerate(fields):
             ttk.Label(form, text=label).grid(row=row, column=0, sticky="w", pady=5)
@@ -147,6 +149,9 @@ class CharacterEditor:
         self.personality_var.set(str(definition.personality))
         self.facing_var.set(next(label for label, value in FACING_LABELS.items() if value == definition.native_facing))
         self.bubble_y_var.set(str(definition.bubble_y_offset))
+        self.behavior_weights_var.set(
+            ", ".join(f"{action}={weight:g}" for action, weight in definition.behavior_weights)
+        )
         self._show_preview(definition.image)
         self.status_var.set(f"{definition.display_name}を編集中")
 
@@ -178,9 +183,27 @@ class CharacterEditor:
             personality=float(self.personality_var.get()),
             native_facing=FACING_LABELS.get(self.facing_var.get(), 1),
             bubble_y_offset=int(self.bubble_y_var.get()),
+            behavior_weights=self._behavior_weights_from_text(),
         )
         self.repository.validate(definition)
         return definition
+
+    def _behavior_weights_from_text(self) -> tuple[tuple[str, float], ...]:
+        text = self.behavior_weights_var.get().strip()
+        if not text:
+            return ()
+        weights = []
+        seen_actions = set()
+        for item in text.split(","):
+            action, separator, raw_weight = item.strip().partition("=")
+            if not separator or not action.strip():
+                raise ValueError("行動重みは action=weight の形式で入力してください")
+            action = action.strip()
+            if action in seen_actions:
+                raise ValueError("行動重みの名前が重複しています")
+            weights.append((action, float(raw_weight.strip())))
+            seen_actions.add(action)
+        return tuple(weights)
 
     def _apply_fields(self) -> bool:
         try:

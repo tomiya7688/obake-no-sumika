@@ -195,6 +195,7 @@ class Ghost:
         target_height: int,
         rng: random.Random,
         personality: float,
+        behavior_weights: dict[str, float] | None = None,
         native_facing: int = 1,
         name: str = "ghost",
         display_name: str | None = None,
@@ -211,6 +212,7 @@ class Ghost:
         self.position = pygame.Vector2(position)
         self.rng = rng
         self.personality = personality
+        self.behavior_weights = dict(behavior_weights or {})
         self.native_facing = 1 if native_facing >= 0 else -1
         self.name = name
         self.display_name = display_name or name
@@ -292,6 +294,10 @@ class Ghost:
         else:
             speed = self.rng.uniform(17.0, 38.0)
         return speed * self.personality
+
+    def action_weight(self, action: str, default: float) -> float:
+        """Use a character override when present, otherwise the shared default."""
+        return self.behavior_weights.get(action, default)
 
     def can_seek_conversation(self, partner: "Ghost | None") -> bool:
         return (
@@ -506,26 +512,27 @@ class Ghost:
             and partner.talk_target is self
         )
         self.talk_target = None
-        if self.personality < 1.0:
-            actions = (
-                "stop", "stop", "forward", "forward", "forward", "forward",
-                "turn", "loop", "dash", "dash",
-            )
-        else:
-            actions = (
-                "stop", "forward", "forward", "forward", "forward", "turn",
-                "loop", "dash", "dash", "dash",
-            )
+        action_weights = {
+            "stop": 2.0 if self.personality < 1.0 else 1.0,
+            "forward": 4.0,
+            "turn": 1.0,
+            "loop": 1.0,
+            "dash": 2.0 if self.personality < 1.0 else 3.0,
+        }
+        for action, default in tuple(action_weights.items()):
+            action_weights[action] = self.action_weight(action, default)
 
         if being_approached:
-            actions = tuple(action for action in actions if action != "loop")
+            action_weights.pop("loop", None)
 
         if self.can_seek_conversation(partner):
-            actions += ("seek_talk", "seek_talk")
+            action_weights["seek_talk"] = self.action_weight("seek_talk", 2.0)
         if SPRING_REST_AREA.collidepoint(self.position):
-            actions += ("water_stop", "water_stop")
+            action_weights["water_stop"] = self.action_weight("water_stop", 2.0)
 
-        action = self.rng.choice(actions)
+        actions = tuple(action for action, weight in action_weights.items() if weight > 0.0)
+        weights = [action_weights[action] for action in actions]
+        action = self.rng.choices(actions, weights=weights, k=1)[0]
         if action == "seek_talk" and partner is not None:
             self.seek_conversation(partner)
             return
@@ -1242,6 +1249,7 @@ def main() -> int:
                 definition.display_height,
                 character_rngs[character_id],
                 definition.personality,
+                behavior_weights=dict(definition.behavior_weights),
                 native_facing=definition.native_facing,
                 name=definition.id,
                 display_name=definition.display_name,

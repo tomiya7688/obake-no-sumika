@@ -24,6 +24,8 @@ class CharacterRepositoryTests(unittest.TestCase):
         self.assertEqual([item.display_height for item in definitions], [64, 64])
         self.assertEqual([item.start_y for item in definitions], [340, 340])
         self.assertEqual(definitions[1].native_facing, -1)
+        self.assertEqual(dict(definitions[0].behavior_weights)["stop"], 3.0)
+        self.assertEqual(dict(definitions[1].behavior_weights)["dash"], 4.0)
 
     def test_duplicate_ids_are_rejected(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -67,6 +69,22 @@ class CharacterRepositoryTests(unittest.TestCase):
             )
             repository.save([expected])
             self.assertEqual(repository.load(), (expected,))
+
+    def test_behavior_weights_are_validated_and_round_trip(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "ghost.png").write_bytes(b"placeholder")
+            data_path = root / "characters.json"
+            item = self.character_payload("ghost")
+            item["behavior_weights"] = {"stop": 2, "forward": 5}
+            data_path.write_text(
+                json.dumps({"schema_version": 1, "characters": [item]}),
+                encoding="utf-8",
+            )
+
+            loaded = CharacterRepository(root, data_path, (960, 540)).load()[0]
+
+            self.assertEqual(loaded.behavior_weights, (("stop", 2.0), ("forward", 5.0)))
 
     @staticmethod
     def character_payload(character_id: str) -> dict[str, object]:

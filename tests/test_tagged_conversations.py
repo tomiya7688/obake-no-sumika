@@ -176,6 +176,20 @@ class TaggedConversationTests(unittest.TestCase):
         self.assertEqual(recorder.weights, [1.0, 9.0])
         self.assertEqual(maru.talk_text, "second")
 
+    def test_behavior_weights_choose_shared_action_without_name_branch(self):
+        kadoka, _maru = self.make_ghosts([], [])
+        kadoka.behavior_weights = {
+            "stop": 0.0,
+            "forward": 0.0,
+            "turn": 0.0,
+            "loop": 0.0,
+            "dash": 1.0,
+        }
+
+        kadoka.begin_random_action(pygame.Rect(74, 80, 812, 446))
+
+        self.assertEqual(kadoka.current_action, "dash")
+
     def test_conversation_finish_has_afterglow_then_departure(self):
         kadoka, maru = self.make_ghosts([], [])
         bounds = pygame.Rect(74, 80, 812, 446)
