@@ -290,12 +290,27 @@
       {
         "type": "say",
         "speaker": "kadoka",
-        "text": "おまんじゅう、あるよ"
+        "text": "つづき"
       },
       {
         "type": "say",
         "speaker": "maru",
         "text": "どこなのだ！"
+      },
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "あっちにおいた"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "いくのだーーーー"
+      },
+      {
+        "type": "move",
+        "actor": "maru",
+        "tag": "small_rock"
       }
     ]
   },
