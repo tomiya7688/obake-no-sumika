@@ -12,9 +12,15 @@ sys.path.insert(0, str(PROJECT_DIR))
 
 from engine.manifest_loader import load_project_manifest
 from engine.process_launcher import ProcessLauncher
+import engine_app
 
 
 class EngineManifestTests(unittest.TestCase):
+    def test_validate_mode_does_not_require_tkinter(self):
+        with patch.object(sys, "argv", ["engine_app.py", "--validate"]):
+            with patch.dict(sys.modules, {"tkinter": None}):
+                self.assertEqual(engine_app.main(), 0)
+
     def test_current_project_manifest_is_valid(self):
         manifest = load_project_manifest(PROJECT_DIR / "engine_project.json")
         self.assertEqual(manifest.name, "おばけの住処")
