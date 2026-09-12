@@ -1,12 +1,9 @@
 from __future__ import annotations
 
 import argparse
-import tkinter as tk
 from pathlib import Path
 
-from engine.main_window import MainWindow
 from engine.manifest_loader import load_project_manifest
-from engine.process_launcher import ProcessLauncher
 
 
 DEFAULT_MANIFEST = Path(__file__).resolve().parent / "engine_project.json"
@@ -28,6 +25,13 @@ def main() -> int:
             f"/ content={len(manifest.content)}"
         )
         return 0
+    try:
+        import tkinter as tk
+    except ModuleNotFoundError as exc:
+        raise RuntimeError("GUIの起動にはTkinterが必要です。--validate はTkinterなしで実行できます。") from exc
+    from engine.main_window import MainWindow
+    from engine.process_launcher import ProcessLauncher
+
     root = tk.Tk()
     MainWindow(root, manifest, ProcessLauncher(manifest))
     root.mainloop()
