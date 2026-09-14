@@ -19,6 +19,12 @@ jobs:
     name: Project validation (Python 3.12)
     runs-on: windows-latest
     timeout-minutes: 15
+    env:
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: "utf-8"
+      PYGAME_HIDE_SUPPORT_PROMPT: "1"
+      TEMP: ${{ runner.temp }}
+      TMP: ${{ runner.temp }}
 
     steps:
       - name: Checkout
