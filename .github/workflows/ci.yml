@@ -23,8 +23,6 @@ jobs:
       PYTHONUTF8: "1"
       PYTHONIOENCODING: "utf-8"
       PYGAME_HIDE_SUPPORT_PROMPT: "1"
-      TEMP: ${{ runner.temp }}
-      TMP: ${{ runner.temp }}
 
     steps:
       - name: Checkout
@@ -44,4 +42,7 @@ jobs:
         run: python -m pip check
 
       - name: Run project evaluation
+        env:
+          TEMP: ${{ runner.temp }}
+          TMP: ${{ runner.temp }}
         run: python scripts/evaluate_project.py --frames 180
