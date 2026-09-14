@@ -14,7 +14,7 @@ AI / Codex / Claude Code が最初に読む小さい索引です。詳細仕様�
 - 現在の開発予定・優先順位: `docs/開発予定.md`
 - エンジン設計: `docs/エンジン化機能説明書.md`
 - 現在できること・起動方法: `key_info.md`
-- 詳細な開発規約・データ契約: `AGENTS.md`
+- 詳細な開発規約・データ契約: `docs/ai-development-contract.md`
 - 実装・テスト: source / `tests/`
 - タスク: GitHub Issues
 
@@ -24,7 +24,7 @@ AI / Codex / Claude Code が最初に読む小さい索引です。詳細仕様�
 2. この `AI_CONTEXT.md`
 3. `docs/context-routing.md` から対象領域だけ選ぶ
 4. 対象 source と対応 test
-5. 必要な場合だけ詳細 docs / `AGENTS.md`
+5. 必要な場合だけ `docs/ai-development-contract.md` の該当節
 
 `docs/開発予定.md` は Source of Truth だが、通常タスクでは対象節を検索して読む。ロードマップ全体・優先順位・横断変更を判断するときだけ全文確認する。
 
