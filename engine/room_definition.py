@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-
 Color = tuple[int, int, int]
 Point = tuple[int, int]
 PolygonLayer = tuple[Color, tuple[Point, ...]]

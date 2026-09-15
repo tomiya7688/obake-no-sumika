@@ -1,11 +1,9 @@
 import json
-import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_DIR))
@@ -27,9 +25,7 @@ class EngineManifestTests(unittest.TestCase):
         )
         self.assertEqual(manifest.content["characters"], PROJECT_DIR / "characters.json")
         self.assertEqual(manifest.content["room"], PROJECT_DIR / "room.json")
-        self.assertEqual(
-            manifest.content["placements"], PROJECT_DIR / "placed_objects.json"
-        )
+        self.assertEqual(manifest.content["placements"], PROJECT_DIR / "placed_objects.json")
         self.assertEqual(manifest.content["events"], PROJECT_DIR / "events.json")
 
     def test_manifest_rejects_paths_outside_project(self):

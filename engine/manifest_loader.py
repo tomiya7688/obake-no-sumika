@@ -56,7 +56,9 @@ def load_content_paths(root: Path, raw_content: object) -> dict[str, Path]:
     return content
 
 
-def load_content_manifest(root: Path, raw_manifest_path: object) -> tuple[dict[str, Path], Path | None]:
+def load_content_manifest(
+    root: Path, raw_manifest_path: object
+) -> tuple[dict[str, Path], Path | None]:
     """Load game-specific content paths from an optional external manifest."""
     if raw_manifest_path is None:
         return {}, None
@@ -103,4 +105,6 @@ def load_project_manifest(manifest_path: Path) -> ProjectManifest:
     external_content, content_manifest = load_content_manifest(root, raw.get("content_manifest"))
     inline_content = load_content_paths(root, raw.get("content", {}))
     content = {**external_content, **inline_content}
-    return ProjectManifest(1, name, project_type, root, entrypoint, editors, content, content_manifest)
+    return ProjectManifest(
+        1, name, project_type, root, entrypoint, editors, content, content_manifest
+    )

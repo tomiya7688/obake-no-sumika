@@ -5,7 +5,6 @@ import json
 import subprocess
 from pathlib import Path
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -46,15 +45,11 @@ def collect_snapshot(base: str | None, limit: int, commits: int) -> dict[str, ob
         "working_files": git_text(["diff", "--name-status"], limit),
         "staged_files": git_text(["diff", "--cached", "--name-status"], limit),
         "working_stat": git_text(["diff", "--stat"], limit),
-        "recent_commits": git_text(
-            ["log", f"-{commits}", "--oneline", "--decorate=no"], limit
-        ),
+        "recent_commits": git_text(["log", f"-{commits}", "--oneline", "--decorate=no"], limit),
     }
     if base:
         snapshot["base"] = base
-        snapshot["base_files"] = git_text(
-            ["diff", "--name-status", f"{base}...HEAD"], limit
-        )
+        snapshot["base_files"] = git_text(["diff", "--name-status", f"{base}...HEAD"], limit)
         snapshot["base_stat"] = git_text(["diff", "--stat", f"{base}...HEAD"], limit)
         snapshot["base_commits"] = git_text(
             ["log", "--oneline", f"{base}..HEAD", f"-{commits}"], limit

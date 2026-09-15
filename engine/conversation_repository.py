@@ -75,9 +75,7 @@ class ConversationRepository:
                 return {"type": "event", "event": event_id}
         return None
 
-    def _parse_entry(
-        self, raw: object, strict: bool
-    ) -> ConversationDefinition | None:
+    def _parse_entry(self, raw: object, strict: bool) -> ConversationDefinition | None:
         if not isinstance(raw, dict):
             if strict:
                 raise ValueError("Each conversation must be an object")
@@ -122,11 +120,7 @@ class ConversationRepository:
 
     @staticmethod
     def _serialize(definition: ConversationDefinition) -> dict[str, object]:
-        weight = (
-            int(definition.weight)
-            if definition.weight.is_integer()
-            else definition.weight
-        )
+        weight = int(definition.weight) if definition.weight.is_integer() else definition.weight
         return {
             "weight": weight,
             "steps": [dict(step) for step in definition.steps],

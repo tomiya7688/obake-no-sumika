@@ -76,8 +76,12 @@ class CharacterRepository:
             start_y=self._integer(start[1], "start y", 0, self.room_height),
             display_height=self._integer(raw.get("display_height"), "display_height", 16, 256),
             personality=self._number(raw.get("personality"), "personality", 0.25, 3.0),
-            native_facing=1 if self._integer(raw.get("native_facing"), "native_facing", -1, 1) >= 0 else -1,
-            bubble_y_offset=self._integer(raw.get("bubble_y_offset", 0), "bubble_y_offset", -200, 200),
+            native_facing=1
+            if self._integer(raw.get("native_facing"), "native_facing", -1, 1) >= 0
+            else -1,
+            bubble_y_offset=self._integer(
+                raw.get("bubble_y_offset", 0), "bubble_y_offset", -200, 200
+            ),
         )
         self.validate(definition)
         return definition

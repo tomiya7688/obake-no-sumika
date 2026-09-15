@@ -4,7 +4,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_DIR))
 
@@ -62,9 +61,7 @@ class CharacterRepositoryTests(unittest.TestCase):
                 encoding="utf-8",
             )
             repository = CharacterRepository(root, data_path, (960, 540))
-            expected = CharacterDefinition(
-                "ghost", "おばけ", image, 100, 200, 72, 1.25, -1, -20
-            )
+            expected = CharacterDefinition("ghost", "おばけ", image, 100, 200, 72, 1.25, -1, -20)
             repository.save([expected])
             self.assertEqual(repository.load(), (expected,))
 
