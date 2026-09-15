@@ -7,7 +7,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_LOG = Path("tmp/evaluation/runtime.jsonl")
 
@@ -29,7 +28,9 @@ def iter_python_files(project_root: Path) -> list[Path]:
     return sorted(files)
 
 
-def build_checks(project_root: Path, frame_count: int) -> list[tuple[str, list[str], dict[str, str]]]:
+def build_checks(
+    project_root: Path, frame_count: int
+) -> list[tuple[str, list[str], dict[str, str]]]:
     python = str(project_python(project_root))
     dummy_env = {"SDL_VIDEODRIVER": "dummy", "SDL_AUDIODRIVER": "dummy"}
     py_files = [str(path.relative_to(project_root)) for path in iter_python_files(project_root)]

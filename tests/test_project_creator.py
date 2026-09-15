@@ -4,7 +4,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_DIR))
 
@@ -57,7 +56,7 @@ class ProjectCreatorTests(unittest.TestCase):
 
     def test_project_name_is_sanitized_for_folder_name(self):
         with tempfile.TemporaryDirectory() as temp_dir:
-            manifest_path = ProjectCreator().create_project(Path(temp_dir), 'a:b?c')
+            manifest_path = ProjectCreator().create_project(Path(temp_dir), "a:b?c")
 
             self.assertEqual(manifest_path.parent.name, "a_b_c")
             manifest = load_project_manifest(manifest_path)

@@ -12,7 +12,6 @@ from engine.character_definition import CharacterDefinition
 from engine.character_repository import CharacterRepository
 from engine.room_repository import RoomRepository
 
-
 PROJECT_DIR = Path(__file__).resolve().parent
 CHARACTER_PATH = PROJECT_DIR / "characters.json"
 ROOM_PATH = PROJECT_DIR / "room.json"
@@ -117,9 +116,7 @@ class CharacterEditor:
 
         buttons = ttk.Frame(form)
         buttons.grid(row=preview_row + 1, column=0, columnspan=2, sticky="ew")
-        ttk.Button(buttons, text="変更を反映", command=self._apply_fields).pack(
-            side="left"
-        )
+        ttk.Button(buttons, text="変更を反映", command=self._apply_fields).pack(side="left")
         ttk.Button(buttons, text="characters.jsonへ保存", command=self._save).pack(
             side="left", padx=(8, 0)
         )
@@ -145,7 +142,11 @@ class CharacterEditor:
         self.start_y_var.set(str(definition.start_y))
         self.height_var.set(str(definition.display_height))
         self.personality_var.set(str(definition.personality))
-        self.facing_var.set(next(label for label, value in FACING_LABELS.items() if value == definition.native_facing))
+        self.facing_var.set(
+            next(
+                label for label, value in FACING_LABELS.items() if value == definition.native_facing
+            )
+        )
         self.bubble_y_var.set(str(definition.bubble_y_offset))
         self._show_preview(definition.image)
         self.status_var.set(f"{definition.display_name}を編集中")

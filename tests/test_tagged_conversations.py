@@ -3,7 +3,6 @@ import sys
 import unittest
 from pathlib import Path
 
-
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_DIR))
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
@@ -30,16 +29,28 @@ class TaggedConversationTests(unittest.TestCase):
     def make_ghosts(self, habitat_objects, steps):
         deck = (ConversationDefinition(1.0, tuple(steps)),)
         kadoka = game.Ghost(
-            game.ASSET_DIR / "kadoka.png", (300, 300), 64,
-            __import__("random").Random(1), 1.0, name="kadoka",
+            game.ASSET_DIR / "kadoka.png",
+            (300, 300),
+            64,
+            __import__("random").Random(1),
+            1.0,
+            name="kadoka",
             display_name="かどか",
-            conversation_deck=deck, habitat_objects=habitat_objects,
+            conversation_deck=deck,
+            habitat_objects=habitat_objects,
         )
         maru = game.Ghost(
-            game.ASSET_DIR / "maru.png", (500, 300), 64,
-            __import__("random").Random(2), 1.0, native_facing=-1, name="maru",
-            display_name="まる", bubble_y_offset=-34,
-            conversation_deck=deck, habitat_objects=habitat_objects,
+            game.ASSET_DIR / "maru.png",
+            (500, 300),
+            64,
+            __import__("random").Random(2),
+            1.0,
+            native_facing=-1,
+            name="maru",
+            display_name="まる",
+            bubble_y_offset=-34,
+            conversation_deck=deck,
+            habitat_objects=habitat_objects,
         )
         kadoka.event_owner = True
         maru.event_owner = False
@@ -93,7 +104,8 @@ class TaggedConversationTests(unittest.TestCase):
     def test_game_device_conversation_is_in_the_deck(self):
         deck = game.load_conversation_deck()
         matching = [
-            item for item in deck
+            item
+            for item in deck
             if any(
                 step.get("type") == "event" and step.get("event") == "game_device"
                 for step in item.steps
@@ -112,8 +124,15 @@ class TaggedConversationTests(unittest.TestCase):
         image = pygame.Surface((20, 20), pygame.SRCALPHA)
         item = game.HabitatObject(
             PlacementDefinition(
-                "test", "test", game.ASSET_DIR / "kadoka.png", None,
-                "treasure", 400, 350, 20, True,
+                "test",
+                "test",
+                game.ASSET_DIR / "kadoka.png",
+                None,
+                "treasure",
+                400,
+                350,
+                20,
+                True,
             ),
             image,
             image.get_rect(center=(400, 350)),
@@ -134,8 +153,15 @@ class TaggedConversationTests(unittest.TestCase):
         image = pygame.Surface((20, 20), pygame.SRCALPHA)
         item = game.HabitatObject(
             PlacementDefinition(
-                "test", "test", game.ASSET_DIR / "kadoka.png", None,
-                "water", 600, 420, 20, True,
+                "test",
+                "test",
+                game.ASSET_DIR / "kadoka.png",
+                None,
+                "water",
+                600,
+                420,
+                20,
+                True,
             ),
             image,
             image.get_rect(center=(600, 420)),

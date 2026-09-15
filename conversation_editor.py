@@ -12,7 +12,6 @@ from engine.event_repository import EventRepository
 from engine.placement_repository import PlacementRepository
 from engine.room_repository import RoomRepository
 
-
 PROJECT_DIR = Path(__file__).resolve().parent
 DECK_PATH = PROJECT_DIR / "conversations.json"
 PLACEMENTS_PATH = PROJECT_DIR / "placed_objects.json"
@@ -139,9 +138,7 @@ class ConversationEditor:
             ("↑", lambda: self.move_step(-1)),
             ("↓", lambda: self.move_step(1)),
         ):
-            ttk.Button(step_buttons, text=label, command=command).pack(
-                side="left", padx=(0, 4)
-            )
+            ttk.Button(step_buttons, text=label, command=command).pack(side="left", padx=(0, 4))
         fields = ttk.LabelFrame(outer, text="選択した手順を編集", padding=12)
         fields.grid(row=0, column=2, sticky="nsew")
         fields.columnconfigure(0, weight=1)
@@ -243,7 +240,9 @@ class ConversationEditor:
         self.text.delete("1.0", "end")
         self.text.insert("1.0", step.get("text", ""))
         self.tag_var.set(step.get("tag", self.tags[0] if self.tags else ""))
-        self.event_var.set(EVENT_LABELS.get(step.get("event", "water_bath"), EVENT_LABELS["water_bath"]))
+        self.event_var.set(
+            EVENT_LABELS.get(step.get("event", "water_bath"), EVENT_LABELS["water_bath"])
+        )
         self.loading_fields = False
         self.update_field_states()
 
@@ -326,10 +325,15 @@ class ConversationEditor:
 
     def add_conversation(self) -> None:
         self.commit_step()
-        self.data.append({"weight": 1, "steps": [
-            {"type": "say", "speaker": "kadoka", "text": "新しいセリフ"},
-            {"type": "say", "speaker": "maru", "text": "新しいセリフなのだ！"},
-        ]})
+        self.data.append(
+            {
+                "weight": 1,
+                "steps": [
+                    {"type": "say", "speaker": "kadoka", "text": "新しいセリフ"},
+                    {"type": "say", "speaker": "maru", "text": "新しいセリフなのだ！"},
+                ],
+            }
+        )
         self.refresh_conversations(len(self.data) - 1)
         self.status_var.set("未保存の変更があります")
 
@@ -350,7 +354,10 @@ class ConversationEditor:
         destination = self.current_conversation + amount
         if not 0 <= destination < len(self.data):
             return
-        self.data[self.current_conversation], self.data[destination] = self.data[destination], self.data[self.current_conversation]
+        self.data[self.current_conversation], self.data[destination] = (
+            self.data[destination],
+            self.data[self.current_conversation],
+        )
         self.refresh_conversations(destination)
         self.status_var.set("未保存の変更があります")
 

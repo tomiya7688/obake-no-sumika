@@ -20,7 +20,6 @@ from engine.room_definition import RoomDefinition
 from engine.room_renderer import RoomRenderer
 from engine.room_repository import RoomRepository
 
-
 VERSION = "0.2.0"
 TAU = math.tau
 PROJECT_DIR = Path(__file__).resolve().parent
@@ -302,15 +301,34 @@ class Ghost:
             and not partner.turning
             and self.spin_elapsed is None
             and partner.spin_elapsed is None
-            and self.current_action not in (
-                "talk", "talk_turn", "talk_align", "talk_wait_align",
-                "talk_pause", "seek_talk", "talk_sequence", "sequence_move",
-                "sequence_wait", "sequence_pause",
+            and self.current_action
+            not in (
+                "talk",
+                "talk_turn",
+                "talk_align",
+                "talk_wait_align",
+                "talk_pause",
+                "seek_talk",
+                "talk_sequence",
+                "sequence_move",
+                "sequence_wait",
+                "sequence_pause",
             )
-            and partner.current_action not in (
-                "talk", "talk_turn", "talk_align", "talk_wait_align",
-                "talk_pause", "seek_talk", "loop", "turn", "approach",
-                "talk_sequence", "sequence_move", "sequence_wait", "sequence_pause",
+            and partner.current_action
+            not in (
+                "talk",
+                "talk_turn",
+                "talk_align",
+                "talk_wait_align",
+                "talk_pause",
+                "seek_talk",
+                "loop",
+                "turn",
+                "approach",
+                "talk_sequence",
+                "sequence_move",
+                "sequence_wait",
+                "sequence_pause",
             )
         )
 
@@ -430,7 +448,9 @@ class Ghost:
                 if step_type == "move" and bounds is not None:
                     self.sequence_movers = {ghost.name for ghost in actors}
                     spacing = 54 if len(actors) > 1 else 42
-                    destination = target_object.center if target_object.visible else target_object.home_center
+                    destination = (
+                        target_object.center if target_object.visible else target_object.home_center
+                    )
                     for index, ghost in enumerate(actors):
                         offset = (index * 2 - (len(actors) - 1)) * spacing
                         ghost.go_to(
@@ -484,13 +504,29 @@ class Ghost:
         self.talk_target = None
         if self.personality < 1.0:
             actions = (
-                "stop", "stop", "forward", "forward", "forward", "forward",
-                "turn", "loop", "dash", "dash",
+                "stop",
+                "stop",
+                "forward",
+                "forward",
+                "forward",
+                "forward",
+                "turn",
+                "loop",
+                "dash",
+                "dash",
             )
         else:
             actions = (
-                "stop", "forward", "forward", "forward", "forward", "turn",
-                "loop", "dash", "dash", "dash",
+                "stop",
+                "forward",
+                "forward",
+                "forward",
+                "forward",
+                "turn",
+                "loop",
+                "dash",
+                "dash",
+                "dash",
             )
 
         if being_approached:
@@ -544,9 +580,7 @@ class Ghost:
                 if self.desired_velocity.length_squared() > 0.1
                 else pygame.Vector2(self.facing, 0.0)
             )
-            self.desired_velocity = (
-                heading * self.rng.uniform(110.0, 160.0) * self.personality
-            )
+            self.desired_velocity = heading * self.rng.uniform(110.0, 160.0) * self.personality
             self.pending_velocity = self.desired_velocity.copy()
             self.steering_speed = self.rng.uniform(4.0, 6.5)
             self.action_timer = self.rng.uniform(0.65, 1.7)
@@ -618,9 +652,7 @@ class Ghost:
     def flee_from(self, source: "Ghost", bounds: pygame.Rect) -> None:
         direction_sign = 1 if self.position.x >= source.position.x else -1
         target_x = (
-            bounds.right - self.half_width
-            if direction_sign > 0
-            else bounds.left + self.half_width
+            bounds.right - self.half_width if direction_sign > 0 else bounds.left + self.half_width
         )
         target_y = clamp(
             self.position.y + self.rng.uniform(-100.0, 100.0),
@@ -710,9 +742,7 @@ class Ghost:
                 device.put_away()
             self.talk_text = ""
             partner.talk_text = ""
-            left_ghost, right_ghost = sorted(
-                (self, partner), key=lambda ghost: ghost.position.x
-            )
+            left_ghost, right_ghost = sorted((self, partner), key=lambda ghost: ghost.position.x)
             left_ghost.go_to(
                 (bounds.left + left_ghost.half_width, left_ghost.position.y),
                 bounds,
@@ -734,17 +764,11 @@ class Ghost:
     def start_spin(self, bounds: pygame.Rect) -> bool:
         """Begin a slow travelling loop when there is space around the ghost."""
         forward_edge = (
-            bounds.right - self.half_width
-            if self.facing > 0
-            else bounds.left + self.half_width
+            bounds.right - self.half_width if self.facing > 0 else bounds.left + self.half_width
         )
         forward_room = (forward_edge - self.position.x) * self.facing
         top_room = self.position.y - (bounds.top + self.half_height)
-        if (
-            forward_room < 115.0
-            or top_room < 164.0
-            or self.turning
-        ):
+        if forward_room < 115.0 or top_room < 164.0 or self.turning:
             return False
 
         self.spin_elapsed = 0.0
@@ -790,8 +814,7 @@ class Ghost:
             # A travelling loop: enter along the baseline, make one large loop,
             # then leave farther ahead instead of returning to the start.
             self.spin_offset.update(
-                self.facing
-                * (self.spin_travel * progress + self.spin_radius.x * math.sin(orbit)),
+                self.facing * (self.spin_travel * progress + self.spin_radius.x * math.sin(orbit)),
                 -self.spin_radius.y * (1.0 - math.cos(orbit)),
             )
             # Turn with the loop's tangent. Rightward loops rotate CCW on screen;
@@ -841,8 +864,7 @@ class Ghost:
             right = bounds.right - self.half_width
             meeting_point = pygame.Vector2(
                 clamp(
-                    self.talk_target.position.x
-                    + self.talk_side * CONVERSATION_DISTANCE,
+                    self.talk_target.position.x + self.talk_side * CONVERSATION_DISTANCE,
                     left,
                     right,
                 ),
@@ -876,10 +898,7 @@ class Ghost:
             elif (
                 not self.event_owner
                 and self.action_timer <= -1.0
-                and (
-                    self.talk_target is None
-                    or self.talk_target.current_action != "talk_pause"
-                )
+                and (self.talk_target is None or self.talk_target.current_action != "talk_pause")
             ):
                 self.talk_target = None
                 self.begin_random_action(bounds, partner)
@@ -913,16 +932,10 @@ class Ghost:
             self.action_timer -= dt
             left = bounds.left + self.half_width
             right = bounds.right - self.half_width
-            meeting_x = (
-                self.talk_target.position.x
-                + self.talk_side * CONVERSATION_DISTANCE
-            )
+            meeting_x = self.talk_target.position.x + self.talk_side * CONVERSATION_DISTANCE
             if meeting_x < left or meeting_x > right:
                 self.talk_side *= -1
-                meeting_x = (
-                    self.talk_target.position.x
-                    + self.talk_side * CONVERSATION_DISTANCE
-                )
+                meeting_x = self.talk_target.position.x + self.talk_side * CONVERSATION_DISTANCE
             meeting_point = pygame.Vector2(
                 clamp(meeting_x, left, right),
                 self.talk_target.position.y,
@@ -946,7 +959,10 @@ class Ghost:
                     self.desired_velocity,
                     min(1.0, dt * self.steering_speed),
                 )
-        elif self.current_action in ("approach", "event_move", "flee", "sequence_move") and self.click_target is not None:
+        elif (
+            self.current_action in ("approach", "event_move", "flee", "sequence_move")
+            and self.click_target is not None
+        ):
             direction = self.click_target - self.position
             if direction.length() <= 10.0:
                 self.position = self.click_target.copy()
@@ -994,11 +1010,7 @@ class Ghost:
             self.velocity = self.velocity.lerp(pygame.Vector2(), blend)
             if self.action_timer <= 0.0:
                 self.talk_text = ""
-                if (
-                    finished_action == "talk"
-                    and self.pending_event
-                    and partner is not None
-                ):
+                if finished_action == "talk" and self.pending_event and partner is not None:
                     if self.event_owner:
                         self.begin_scripted_event(self.pending_event, partner, bounds)
                     else:
@@ -1100,7 +1112,10 @@ class Ghost:
         rect = rendered.get_rect(center=(round(draw_position.x), round(draw_position.y)))
         surface.blit(rendered, rect)
 
-        if self.current_action in ("talk", "talk_sequence", "script", "script_wait") and self.talk_text:
+        if (
+            self.current_action in ("talk", "talk_sequence", "script", "script_wait")
+            and self.talk_text
+        ):
             text_surface = talk_font.render(self.talk_text, True, (25, 27, 34))
             bubble = text_surface.get_rect()
             bubble.inflate_ip(16, 10)
@@ -1115,7 +1130,11 @@ class Ghost:
             pygame.draw.polygon(
                 surface,
                 (225, 226, 218),
-                [(tail_x - 5, bubble.bottom), (tail_x + 5, bubble.bottom), (rect.centerx, bubble.bottom + 7)],
+                [
+                    (tail_x - 5, bubble.bottom),
+                    (tail_x + 5, bubble.bottom),
+                    (rect.centerx, bubble.bottom + 7),
+                ],
             )
             surface.blit(text_surface, text_surface.get_rect(center=bubble.center))
 
@@ -1178,8 +1197,7 @@ def main() -> int:
     # Each ghost owns a separate random stream. One ghost's choices never
     # consume or synchronize the other ghost's future behavior.
     character_rngs = {
-        character_id: random.Random(rng.getrandbits(64))
-        for character_id in ("kadoka", "maru")
+        character_id: random.Random(rng.getrandbits(64)) for character_id in ("kadoka", "maru")
     }
     scenery_rng = random.Random(rng.getrandbits(64))
 
@@ -1239,8 +1257,7 @@ def main() -> int:
                     if event.key == pygame.K_ESCAPE:
                         running = False
                     elif event.key == pygame.K_F11 or (
-                        event.key == pygame.K_RETURN
-                        and event.mod & pygame.KMOD_ALT
+                        event.key == pygame.K_RETURN and event.mod & pygame.KMOD_ALT
                     ):
                         fullscreen = not fullscreen
                         screen = create_display(fullscreen)

@@ -6,8 +6,7 @@ import struct
 import zlib
 from pathlib import Path
 
-
-STARTER_GAME = '''from __future__ import annotations
+STARTER_GAME = """from __future__ import annotations
 
 import argparse
 import json
@@ -66,7 +65,7 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-'''
+"""
 
 
 class ProjectCreator:

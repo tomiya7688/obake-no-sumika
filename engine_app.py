@@ -8,7 +8,6 @@ from engine.main_window import MainWindow
 from engine.manifest_loader import load_project_manifest
 from engine.process_launcher import ProcessLauncher
 
-
 DEFAULT_MANIFEST = Path(__file__).resolve().parent / "engine_project.json"
 
 

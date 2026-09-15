@@ -41,9 +41,7 @@ class MainWindow:
         ttk.Label(frame, text=str(self.manifest.root), foreground="#666666").pack(
             anchor="w", pady=(0, 20)
         )
-        ttk.Button(frame, text="ゲームを実行", command=self._launch_game).pack(
-            fill="x", pady=4
-        )
+        ttk.Button(frame, text="ゲームを実行", command=self._launch_game).pack(fill="x", pady=4)
         for editor in self.manifest.editors:
             ttk.Button(
                 frame,
