@@ -21,7 +21,7 @@ jobs:
     timeout-minutes: 15
     env:
       PYTHONUTF8: "1"
-      PYTHONIOENCODING: "utf-8"
+      PYTHONIOENCODING: utf-8
       PYGAME_HIDE_SUPPORT_PROMPT: "1"
 
     steps:
@@ -40,7 +40,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --disable-pip-version-check -r requirements.txt
-          python -m pip install --disable-pip-version-check -r tools/quality/requirements.txt
+          python -m pip install --disable-pip-version-check --upgrade -r tools/quality/requirements.txt
 
       - name: Check installed dependencies
         run: python -m pip check
