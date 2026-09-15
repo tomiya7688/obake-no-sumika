@@ -2,13 +2,13 @@
   "engine": {
     "warmup": 1,
     "runs": 7,
-    "max_median_ms": 200.0,
-    "max_single_ms": 500.0
+    "max_median_ms": 25.0,
+    "max_single_ms": 60.0
   },
   "game": {
     "frames": 600,
     "runs": 3,
-    "max_median_ms_per_frame": 12.0,
-    "max_single_ms_per_frame": 20.0
+    "max_median_ms_per_frame": 4.0,
+    "max_single_ms_per_frame": 8.0
   }
 }
