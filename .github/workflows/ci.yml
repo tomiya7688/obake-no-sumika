@@ -49,12 +49,15 @@ jobs:
         run: ruff check .
 
       - name: Ruff format
+        if: ${{ always() }}
         run: ruff format --check .
 
       - name: UPD design check
+        if: ${{ always() }}
         run: upd-commander-check . --ignore "tests/**" --ignore "tools/**"
 
       - name: Run project evaluation
+        if: ${{ always() }}
         env:
           TEMP: ${{ runner.temp }}
           TMP: ${{ runner.temp }}
