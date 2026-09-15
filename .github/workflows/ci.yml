@@ -33,13 +33,26 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: requirements.txt
+          cache-dependency-path: |
+            requirements.txt
+            tools/quality/requirements.txt
 
       - name: Install dependencies
-        run: python -m pip install --disable-pip-version-check -r requirements.txt
+        run: |
+          python -m pip install --disable-pip-version-check -r requirements.txt
+          python -m pip install --disable-pip-version-check -r tools/quality/requirements.txt
 
       - name: Check installed dependencies
         run: python -m pip check
+
+      - name: Ruff lint
+        run: ruff check .
+
+      - name: Ruff format
+        run: ruff format --check .
+
+      - name: UPD design check
+        run: upd-commander-check . --ignore "tests/**" --ignore "tools/**"
 
       - name: Run project evaluation
         env:
