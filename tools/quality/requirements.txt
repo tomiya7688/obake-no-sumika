@@ -1,2 +1,2 @@
-ruff==0.16.7
-upd-commander-checker @ git+https://github.com/tomiya7688/upd-commander-base-design.git@8abe0828e173e62ad42f69cfcfa002b6bf73c3b9#subdirectory=support_tools/python/upd_commander_checker
+ruff
+upd-commander-checker @ git+https://github.com/tomiya7688/upd-commander-base-design.git#subdirectory=support_tools/python/upd_commander_checker
