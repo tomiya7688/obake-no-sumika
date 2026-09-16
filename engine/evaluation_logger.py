@@ -69,4 +69,7 @@ class EvaluationLogger:
     def _vector_payload(self, value: object | None) -> dict[str, float] | None:
         if value is None:
             return None
-        return {"x": round(float(value.x), 3), "y": round(float(value.y), 3)}
+        return {
+            "x": round(float(getattr(value, "x")), 3),
+            "y": round(float(getattr(value, "y")), 3),
+        }
