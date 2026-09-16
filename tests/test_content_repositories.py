@@ -90,7 +90,7 @@ class ContentRepositoryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             repository = PixelObjectRepository(root, root / "objects", (16, 32), 1024)
-            pixels = [[None for _ in range(16)] for _ in range(16)]
+            pixels: list[list[str | None]] = [[None for _ in range(16)] for _ in range(16)]
             pixels[3][4] = "#12ABef"
             png_path, source_path = repository.save("test object", 16, pixels)
             with Image.open(png_path) as image:
