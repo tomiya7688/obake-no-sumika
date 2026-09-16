@@ -135,7 +135,7 @@ class CharacterRepository:
 
     @staticmethod
     def _integer(value: object, label: str, minimum: int, maximum: int) -> int:
-        if isinstance(value, bool):
+        if isinstance(value, bool) or not isinstance(value, (int, float, str)):
             raise ValueError(f"{label} must be an integer")
         try:
             number = int(value)
@@ -147,7 +147,7 @@ class CharacterRepository:
 
     @staticmethod
     def _number(value: object, label: str, minimum: float, maximum: float) -> float:
-        if isinstance(value, bool):
+        if isinstance(value, bool) or not isinstance(value, (int, float, str)):
             raise ValueError(f"{label} must be a number")
         try:
             number = float(value)
