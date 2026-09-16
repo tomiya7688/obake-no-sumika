@@ -56,19 +56,50 @@ jobs:
         if: ${{ always() }}
         run: upd-commander-check . --ignore "tests/**" --ignore "tools/**"
 
+      - name: Prepare runtime performance baseline
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: pwsh
+        run: |
+          $basePath = Join-Path $env:RUNNER_TEMP "obake-perf-base"
+          git fetch origin $env:BASE_SHA --depth=1
+          git worktree add --detach "$basePath" $env:BASE_SHA
+
+      - name: Baseline engine performance
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        env:
+          SDL_VIDEODRIVER: dummy
+          SDL_AUDIODRIVER: dummy
+        shell: pwsh
+        run: python "$env:RUNNER_TEMP\obake-perf-base\tools\performance\check_runtime.py" --config tools/performance/thresholds.json --only engine --output "$env:RUNNER_TEMP\perf-base-engine.json"
+
+      - name: Baseline game performance
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        env:
+          SDL_VIDEODRIVER: dummy
+          SDL_AUDIODRIVER: dummy
+        shell: pwsh
+        run: python "$env:RUNNER_TEMP\obake-perf-base\tools\performance\check_runtime.py" --config tools/performance/thresholds.json --only game --output "$env:RUNNER_TEMP\perf-base-game.json"
+
       - name: Engine runtime performance
         if: ${{ always() }}
         env:
           SDL_VIDEODRIVER: dummy
           SDL_AUDIODRIVER: dummy
-        run: python tools/performance/check_runtime.py --only engine --output tmp/performance/engine.json
+        run: python tools/performance/check_runtime.py --only engine --output tmp/performance/head-engine.json
 
       - name: Game runtime performance
         if: ${{ always() }}
         env:
           SDL_VIDEODRIVER: dummy
           SDL_AUDIODRIVER: dummy
-        run: python tools/performance/check_runtime.py --only game --output tmp/performance/game.json
+        run: python tools/performance/check_runtime.py --only game --output tmp/performance/head-game.json
+
+      - name: Runtime performance regression
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        shell: pwsh
+        run: python tools/performance/compare_runtime.py --base-engine "$env:RUNNER_TEMP\perf-base-engine.json" --head-engine tmp/performance/head-engine.json --base-game "$env:RUNNER_TEMP\perf-base-game.json" --head-game tmp/performance/head-game.json
 
       - name: Run project evaluation
         if: ${{ always() }}
