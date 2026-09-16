@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import tkinter as tk
+from functools import partial
 from pathlib import Path
 from tkinter import filedialog, messagebox, simpledialog, ttk
 
@@ -46,7 +47,7 @@ class MainWindow:
             ttk.Button(
                 frame,
                 text=editor.label,
-                command=lambda editor_id=editor.id: self._launch_editor(editor_id),
+                command=partial(self._launch_editor, editor.id),
             ).pack(fill="x", pady=4)
         ttk.Separator(frame).pack(fill="x", pady=16)
         ttk.Button(frame, text="プロジェクトを開く", command=self._open_project).pack(
