@@ -22,10 +22,12 @@
 
 ## CI運用
 
-- lint / format / tests / smoke / dependency check / design checker はすべて実行する。
+- lint / format / type check / tests / smoke / dependency check / design checker / runtime performance check はすべて実行する。
 - チェッカーに severity や rule 単位の CI gate 設定がある場合は、それを使用して通常の Warning / Attention も修正対象として扱う。
 - 必要な設定機能が自作チェッカーに存在しない場合、その場しのぎでチェック自体を無効化せず、チェッカー本体のリポジトリへ Issue を作成する。
 - upstream が対応するまでの局所例外は、性能上または互換性上の理由を明記する。
+- 既存違反が多いチェッカーを新規導入する場合もチェッカー自体は必須実行する。必要なら一時baselineを置き、新規悪化を禁止しながらbaselineを段階的に0へ下げる。
+- baselineは既存違反を恒久的に許可する仕組みではない。改善時は上限も下げ、追跡Issueを完了するまで残件を管理する。
 
 ## バージョン方針
 
