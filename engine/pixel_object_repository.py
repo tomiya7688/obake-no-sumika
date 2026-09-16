@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
+from typing import cast
 
 from PIL import Image
 
@@ -73,7 +74,7 @@ class PixelObjectRepository:
         canvas_size = raw.get("canvas_size")
         pixels = raw.get("pixels")
         self.image_from_pixels(canvas_size, pixels)
-        return canvas_size, pixels
+        return cast(int, canvas_size), cast(list[list[str | None]], pixels)
 
     def image_from_pixels(
         self,
