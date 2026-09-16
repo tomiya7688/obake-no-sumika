@@ -54,7 +54,7 @@ jobs:
 
       - name: Mypy type check
         if: ${{ always() }}
-        run: mypy .
+        run: python tools/quality/check_mypy.py
 
       - name: UPD design check
         if: ${{ always() }}
