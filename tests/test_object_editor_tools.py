@@ -52,7 +52,7 @@ class ObjectEditorToolTests(unittest.TestCase):
         self.assertIsNone(editor.pixels[1][1])
 
     def test_flipped_horizontal_reverses_each_row(self):
-        pixels = [
+        pixels: list[list[str | None]] = [
             ["#111111", None, "#222222"],
             ["#333333", "#444444", None],
         ]
@@ -66,7 +66,7 @@ class ObjectEditorToolTests(unittest.TestCase):
         )
 
     def test_flipped_vertical_reverses_row_order(self):
-        pixels = [
+        pixels: list[list[str | None]] = [
             ["#111111", None],
             ["#222222", "#333333"],
             [None, "#444444"],
@@ -82,7 +82,7 @@ class ObjectEditorToolTests(unittest.TestCase):
         )
 
     def test_rotated_clockwise_turns_square_canvas_right(self):
-        pixels = [
+        pixels: list[list[str | None]] = [
             ["a", "b", "c"],
             ["d", "e", "f"],
             ["g", "h", "i"],
@@ -98,7 +98,7 @@ class ObjectEditorToolTests(unittest.TestCase):
         )
 
     def test_rotated_counterclockwise_turns_square_canvas_left(self):
-        pixels = [
+        pixels: list[list[str | None]] = [
             ["a", "b", "c"],
             ["d", "e", "f"],
             ["g", "h", "i"],
