@@ -109,19 +109,19 @@ class PixelObjectRepository:
 
     def library_images(self, extra_images: list[Path]) -> list[Path]:
         self.object_dir.mkdir(parents=True, exist_ok=True)
-        images = [path.resolve() for path in self.object_dir.glob("*.png")]
-        images.extend(path.resolve() for path in extra_images if path.is_file())
-        unique = []
-        seen = set()
-        for path in images:
-            self._inside_project(path)
-            if path in seen:
-                continue
-            seen.add(path)
-            unique.append(path)
-        return sorted(unique, key=lambda path: path.name.lower())
+        paths = {path.resolve() for path in self.object_dir.glob("*.png")}
+        for path in extra_images:
+            resolved = path.resolve()
+            self._inside_project(resolved)
+            if resolved.suffix.lower() == ".png" and resolved.is_file():
+                paths.add(resolved)
+        return sorted(paths, key=lambda path: (path.stem, path.as_posix()))
+
+    def source_for_image(self, image_path: Path) -> Path:
+        image_path = image_path.resolve()
+        self._inside_project(image_path)
+        return image_path.with_name(f"{image_path.stem}.source.json")
 
     def _inside_project(self, path: Path) -> None:
-        path = path.resolve()
         if path != self.project_root and self.project_root not in path.parents:
-            raise ValueError(f"Path escapes project root: {path}")
+            raise ValueError(f"Path escapes the project root: {path}")
