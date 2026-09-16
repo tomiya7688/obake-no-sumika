@@ -42,7 +42,10 @@ class RoomRepositoryTests(unittest.TestCase):
 
     def test_non_16_by_9_room_is_rejected(self):
         raw = self.current_payload()
-        raw["size"]["height"] = 541
+        size = raw.get("size")
+        self.assertIsInstance(size, dict)
+        assert isinstance(size, dict)
+        size["height"] = 541
         with self.assertRaisesRegex(ValueError, "16:9"):
             self.load_temporary(raw)
 
