@@ -111,9 +111,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     config = load_json(args.config)
-    engine_ok = compare_engine(
-        load_json(args.base_engine), load_json(args.head_engine), config
-    )
+    engine_ok = compare_engine(load_json(args.base_engine), load_json(args.head_engine), config)
     game_ok = compare_game(load_json(args.base_game), load_json(args.head_game), config)
     if engine_ok and game_ok:
         print("[OK] runtime regression")
