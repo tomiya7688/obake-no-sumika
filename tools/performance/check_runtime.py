@@ -192,7 +192,7 @@ def benchmark_game(section: dict[str, object]) -> dict[str, object]:
     }
 
 
-def write_results(path: Path, results: dict[str, object]) -> None:
+def write_results(path: Path, results: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(results, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
@@ -208,7 +208,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     config = load_config(args.config)
-    results: dict[str, object] = {}
+    results: dict[str, dict[str, object]] = {}
 
     if args.only in ("all", "engine"):
         results["engine"] = benchmark_engine(config_section(config, "engine"))
