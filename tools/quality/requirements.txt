@@ -1,2 +1,3 @@
 ruff
+mypy
 upd-commander-checker @ git+https://github.com/tomiya7688/upd-commander-base-design.git#subdirectory=support_tools/python/upd_commander_checker
