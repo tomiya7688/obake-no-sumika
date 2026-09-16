@@ -17,7 +17,10 @@ def main() -> int:
     args = parser.parse_args()
     knowledge = load_knowledge()
     if args.validate:
-        print(f"OK: special knowledge entries={len(knowledge.get('knowledge', []))}")
+        entries = knowledge.get("knowledge", [])
+        if not isinstance(entries, list):
+            raise ValueError("knowledge must be a list")
+        print(f"OK: special knowledge entries={len(entries)}")
     else:
         print("obakeno_sumika_special is a separated placeholder project.")
     return 0
