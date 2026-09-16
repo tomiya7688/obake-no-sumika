@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
+from typing import cast
 
 from PIL import Image
 
@@ -73,7 +74,7 @@ class PixelObjectRepository:
         canvas_size = raw.get("canvas_size")
         pixels = raw.get("pixels")
         self.image_from_pixels(canvas_size, pixels)
-        return canvas_size, pixels
+        return cast(int, canvas_size), cast(list[list[str | None]], pixels)
 
     def image_from_pixels(
         self,
@@ -108,19 +109,19 @@ class PixelObjectRepository:
 
     def library_images(self, extra_images: list[Path]) -> list[Path]:
         self.object_dir.mkdir(parents=True, exist_ok=True)
-        paths = {path.resolve() for path in self.object_dir.glob("*.png")}
-        for path in extra_images:
-            resolved = path.resolve()
-            self._inside_project(resolved)
-            if resolved.suffix.lower() == ".png" and resolved.is_file():
-                paths.add(resolved)
-        return sorted(paths, key=lambda path: (path.stem, path.as_posix()))
-
-    def source_for_image(self, image_path: Path) -> Path:
-        image_path = image_path.resolve()
-        self._inside_project(image_path)
-        return image_path.with_name(f"{image_path.stem}.source.json")
+        images = [path.resolve() for path in self.object_dir.glob("*.png")]
+        images.extend(path.resolve() for path in extra_images if path.is_file())
+        unique = []
+        seen = set()
+        for path in images:
+            self._inside_project(path)
+            if path in seen:
+                continue
+            seen.add(path)
+            unique.append(path)
+        return sorted(unique, key=lambda path: path.name.lower())
 
     def _inside_project(self, path: Path) -> None:
+        path = path.resolve()
         if path != self.project_root and self.project_root not in path.parents:
-            raise ValueError(f"Path escapes the project root: {path}")
+            raise ValueError(f"Path escapes project root: {path}")
