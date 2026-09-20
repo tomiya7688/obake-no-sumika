@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import argparse
 import math
+import os
 import random
 from pathlib import Path
+
+os.environ.setdefault("SDL_RENDER_SCALE_QUALITY", "nearest")
 
 import pygame
 
@@ -206,7 +209,7 @@ class Ghost:
         if visible_bounds.width and visible_bounds.height:
             source = source.subsurface(visible_bounds).copy()
         target_width = max(1, round(source.get_width() * target_height / source.get_height()))
-        self.image = pygame.transform.smoothscale(source, (target_width, target_height))
+        self.image = pygame.transform.scale(source, (target_width, target_height))
         self.position = pygame.Vector2(position)
         self.rng = rng
         self.personality = personality
