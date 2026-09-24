@@ -1,6 +1,6 @@
 # Codex cheat sheet
 
-このファイルは開発時の最初の参照先。全体説明が必要な場合だけ `README.md` を読む。
+最初に `docs/context/project.md` を読み、対象領域の文書だけを選ぶ。このファイルはゲーム固有の不変条件と検証方法が必要な時に読む。全体説明が必要な場合だけ `README.md` を読む。
 
 ## Required roadmap
 
