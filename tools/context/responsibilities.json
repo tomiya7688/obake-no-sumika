@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "rules": [
+    {"paths": ["game.py"], "context": "docs/context/game.md", "related": ["game_content.json"], "tests": ["tests/test_tagged_conversations.py"]},
+    {"paths": ["characters.json", "engine/character_*.py"], "context": "docs/context/game.md", "related": ["engine/character_repository.py", "characters.json"], "tests": ["tests/test_character_repository.py"]},
+    {"paths": ["room.json", "engine/room_*.py"], "context": "docs/context/game.md", "related": ["engine/room_repository.py", "room.json"], "tests": ["tests/test_room_repository.py"]},
+    {"paths": ["conversations.json", "events.json", "engine/conversation_*.py", "engine/event_*.py"], "context": "docs/context/game.md", "related": ["conversations.json", "events.json"], "tests": ["tests/test_tagged_conversations.py", "tests/test_content_repositories.py"]},
+    {"paths": ["placed_objects.json", "objects/*", "assets/*", "engine/placement_*.py", "engine/pixel_object_*.py"], "context": "docs/context/game.md", "related": ["placed_objects.json", "object_editor.py"], "tests": ["tests/test_content_repositories.py", "tests/test_object_editor_tools.py"]},
+    {"paths": ["engine/*_repository.py", "engine/*_definition.py", "engine/room_renderer.py"], "context": "docs/context/engine.md", "related": [], "tests": []},
+    {"paths": ["engine/editor_definition.py"], "context": "docs/context/engine.md", "related": ["engine_project.json"], "tests": ["tests/test_engine_manifest.py"]},
+    {"paths": ["engine_project.json", "game_content.json", "engine/manifest_loader.py", "engine/project_manifest.py"], "context": "docs/context/engine.md", "related": ["engine_project.json", "game_content.json"], "tests": ["tests/test_engine_manifest.py"]},
+    {"paths": ["engine/process_launcher.py", "engine/project_creator.py"], "context": "docs/context/engine.md", "related": ["engine_project.json"], "tests": ["tests/test_engine_manifest.py", "tests/test_project_creator.py"]},
+    {"paths": ["engine/evaluation_logger.py"], "context": "docs/context/engine.md", "related": ["game.py"], "tests": ["tests/test_evaluation_logger.py"]},
+    {"paths": ["character_editor.py"], "context": "docs/context/developer_tools.md", "related": ["engine/character_repository.py"], "tests": ["tests/test_character_repository.py"]},
+    {"paths": ["conversation_editor.py"], "context": "docs/context/developer_tools.md", "related": ["engine/conversation_repository.py"], "tests": ["tests/test_tagged_conversations.py"]},
+    {"paths": ["object_editor.py"], "context": "docs/context/developer_tools.md", "related": ["engine/pixel_object_repository.py"], "tests": ["tests/test_object_editor_tools.py"]},
+    {"paths": ["engine_app.py", "engine/main_window.py", "run_*.bat"], "context": "docs/context/developer_tools.md", "related": ["engine_project.json"], "tests": ["tests/test_main_window.py", "tests/test_engine_manifest.py"]},
+    {"paths": ["scripts/evaluate_project.py", "tests/test_evaluate_project.py"], "context": "docs/context/developer_tools.md", "related": ["scripts/evaluate_project.py"], "tests": ["tests/test_evaluate_project.py"]},
+    {"paths": ["tools/context/*", "tools/context/script/*", "tests/test_context_selection.py"], "context": "docs/context/developer_tools.md", "related": ["tools/context/responsibilities.json"], "tests": ["tests/test_context_selection.py"]},
+    {"paths": ["projects/*"], "context": "docs/context/portability.md", "related": ["projects/obakeno_sumika_special/engine_project.json"], "tests": ["tests/test_special_project_isolation.py"]}
+  ]
+}
