@@ -12,4 +12,4 @@
 | `engine/project_creator.py` | 新規プロジェクトの最小データ生成 | `tests/test_project_creator.py` |
 | `engine/evaluation_logger.py` | 実行中の状態をJSONLへ記録 | `tests/test_evaluation_logger.py` |
 
-`engine/main_window.py` はTk GUIなので [developer_tools.md](developer_tools.md) を参照。マニフェストの検証だけなら `.\.venv\Scripts\python.exe engine_app.py --validate` でGUIを起動せずに実行できる。
+`engine/main_window.py` はTk GUIなので [developer_tools.md](developer_tools.md) を参照。マニフェストの検証は `.\.venv\Scripts\python.exe engine_app.py --validate`、プロジェクト構成のJSON表示は `--describe` でGUIを起動せずに実行できる。使用例は [CUIコマンドシート](cli_commands.md)。
