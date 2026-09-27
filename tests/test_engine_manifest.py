@@ -1,8 +1,10 @@
+import io
 import json
 import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
@@ -16,6 +18,18 @@ import engine_app
 
 
 class EngineManifestTests(unittest.TestCase):
+    def test_describe_mode_is_json_and_does_not_require_tkinter(self):
+        output = io.StringIO()
+        with patch.object(sys, "argv", ["engine_app.py", "--describe"]):
+            with patch.dict(sys.modules, {"tkinter": None}):
+                with redirect_stdout(output):
+                    self.assertEqual(engine_app.main(), 0)
+        payload = json.loads(output.getvalue())
+        self.assertEqual(payload["project_type"], "standard")
+        self.assertEqual(payload["entrypoint"], "game.py")
+        self.assertEqual(payload["editors"][0]["id"], "character")
+        self.assertEqual(payload["content"]["room"], "room.json")
+
     def test_validate_mode_does_not_require_tkinter(self):
         with patch.object(sys, "argv", ["engine_app.py", "--validate"]):
             with patch.dict(sys.modules, {"tkinter": None}):
