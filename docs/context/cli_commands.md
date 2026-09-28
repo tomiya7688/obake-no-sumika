@@ -17,6 +17,7 @@ PowerShellでリポジトリのルートから実行する。Pythonはこのプ�
 
 ```powershell
 .\.venv\Scripts\python.exe tools/context/script/select_files.py --json game.py
+.\.venv\Scripts\python.exe tools/repo_sync/script/report.py --fetch --json
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 .\.venv\Scripts\python.exe scripts/evaluate_project.py
 ```
