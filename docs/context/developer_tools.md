@@ -18,3 +18,7 @@
 ## 責務表の更新
 
 `tools/context/responsibilities.json` を機械検索用の正本とする。各ルールの `paths` はリポジトリ相対のパスまたはglob、`context` は領域文書、`related` は追加で読む候補、`tests` は関連テスト。複数ルールに一致すれば結果は重複なく統合される。新しい主要ファイルを追加したら対応ルールと `tests/test_context_selection.py` を更新し、文書の責務表も合わせる。未登録ファイルは `unmapped_files` として表示し、推測で分類しない。
+
+点検コマンド: `.\.venv\Scripts\python.exe tools/context/script/audit.py --scope engine --scope tools --json`。Git管理下のファイルを使い、欠落した参照先を `errors`、一致するファイルのないルールを `unmatched_patterns`、対象領域の未登録ファイルを `unmapped_files` に出す。`--scope` は未登録ファイルの表示範囲だけを絞る。参照先とルールの点検は常に全体に対して行う。
+
+欠落参照があれば終了コード1。未登録や未使用ルールも失敗にする場合は `--strict`。点検結果を確認して正本のルールを手動更新し、再実行する。未追跡の新規ファイルは点検対象に含まれないため、Gitに追加してから確認する。対象ファイルと責務表を書き換える処理はない。

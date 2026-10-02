@@ -4,8 +4,10 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 import unittest
 
+from tools.context.script.audit import audit_mapping
 from tools.context.script.select_files import load_mapping, normalize_path, select_files
 
 
@@ -61,6 +63,32 @@ class ContextSelectionTests(unittest.TestCase):
             check=True,
         )
         self.assertEqual(json.loads(result.stdout)["tests"], ["tests/test_room_repository.py"])
+
+    def test_audit_scope_does_not_make_other_rules_look_unused(self) -> None:
+        rule = {"paths": ["engine/*.py", "game.py", "stale.py"],
+                "context": "docs/context/project.md", "related": [], "tests": []}
+        report = audit_mapping(ROOT, ["engine/room_repository.py", "game.py", "unknown.py"],
+                               [rule], ("engine/",))
+        self.assertEqual(report["errors"], [])
+        self.assertEqual(report["unmapped_files"], [])
+        self.assertEqual(report["unmatched_patterns"], ["stale.py"])
+        unscoped = audit_mapping(ROOT, ["game.py", "unknown.py"], [rule])
+        self.assertEqual(unscoped["unmapped_files"], ["unknown.py"])
+
+    def test_audit_reports_missing_and_escaping_references(self) -> None:
+        rule = {"paths": ["game.py"], "context": "missing.md",
+                "related": ["../outside.py"], "tests": []}
+        report = audit_mapping(ROOT, ["game.py"], [rule])
+        self.assertEqual(len(report["errors"]), 2)
+        self.assertIn("missing file", report["errors"][0])
+        self.assertIn("repository-relative", report["errors"][1])
+
+    def test_mapping_rejects_non_object_json(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "mapping.json"
+            path.write_text("[]", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "responsibility table"):
+                load_mapping(path)
 
 
 if __name__ == "__main__":
