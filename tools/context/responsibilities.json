@@ -2,6 +2,7 @@
   "schema_version": 1,
   "rules": [
     {"paths": ["docs/context/*.md"], "context": "docs/context/project.md", "related": [], "tests": []},
+    {"paths": ["godot/*", "run_godot.bat", "tests/test_godot_runtime.py", "docs/GDScript移行機能説明書.md"], "context": "docs/context/godot.md", "related": ["godot/README.md", "docs/GDScript移行機能説明書.md"], "tests": ["tests/test_godot_runtime.py"]},
     {"paths": ["tools/diff_summary/*", "tools/diff_summary/script/*", "tests/test_diff_summary.py"], "context": "docs/context/developer_tools.md", "related": ["tools/context/responsibilities.json"], "tests": ["tests/test_diff_summary.py"]},
     {"paths": ["game.py"], "context": "docs/context/game.md", "related": ["game_content.json"], "tests": ["tests/test_tagged_conversations.py"]},
     {"paths": ["characters.json", "engine/character_*.py"], "context": "docs/context/game.md", "related": ["engine/character_repository.py", "characters.json"], "tests": ["tests/test_character_repository.py"]},

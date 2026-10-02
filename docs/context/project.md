@@ -8,6 +8,7 @@
 | JSONの読込・検証、プロジェクト定義、共通起動処理 | [engine.md](engine.md) | `engine/`, `engine_project.json`, `game_content.json` |
 | Tkエディター、起動バッチ、自動評価 | [developer_tools.md](developer_tools.md) | `*_editor.py`, `engine_app.py`, `scripts/` |
 | Python以外の実装、配布構成、共有データ契約 | [portability.md](portability.md) | `engine_project.json`, `game_content.json`, 各種JSON |
+| Godot / GDScript移行版 | [godot.md](godot.md) | `godot/`, `run_godot.bat` |
 
 ## 1回の作業
 

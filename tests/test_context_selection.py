@@ -44,6 +44,12 @@ class ContextSelectionTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 normalize_path(value)
 
+    def test_godot_change_selects_only_godot_context(self) -> None:
+        result = select_files(["godot/scripts/ghost_model.gd"], self.rules)
+        self.assertEqual(result["contexts"], ["docs/context/project.md", "docs/context/godot.md"])
+        self.assertEqual(result["tests"], ["tests/test_godot_runtime.py"])
+        self.assertEqual(result["unmapped_files"], [])
+
     def test_responsibility_references_exist(self) -> None:
         for rule in self.rules:
             for field in ("context", "related", "tests"):
