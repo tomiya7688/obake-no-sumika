@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "files": {
+    "play.entry": "",
+    "edit.entry": "",
+    "data/characters.json": {},
+    "data/room.json": {},
+    "override.json": {}
+  },
+  "directories": ["assets"],
+  "cases": [
+    {
+      "id": "minimal_defaults_and_unicode_name",
+      "manifest": {"schema_version": 1, "name": " おばけの住処 ", "entrypoint": "play.entry"},
+      "expected": {"status": "accepted", "result": {"schema_version": 1, "name": "おばけの住処", "project_type": "standard", "entrypoint": "play.entry", "editors": [], "content": {}, "content_manifest": null}}
+    },
+    {
+      "id": "editor_order_and_trimmed_metadata",
+      "manifest": {
+        "schema_version": 1, "name": "test", "project_type": " custom_variant ", "entrypoint": "play.entry",
+        "editors": [{"id": " second ", "label": " 二番 ", "script": "edit.entry"}, {"id": "first", "label": "一番", "script": "play.entry"}],
+        "future_field": "ignored"
+      },
+      "expected": {"status": "accepted", "result": {"schema_version": 1, "name": "test", "project_type": "custom_variant", "entrypoint": "play.entry", "editors": [{"id": "second", "label": "二番", "script": "edit.entry"}, {"id": "first", "label": "一番", "script": "play.entry"}], "content": {}, "content_manifest": null}}
+    },
+    {
+      "id": "nested_external_paths_are_root_relative",
+      "files": {"config/content.json": {"schema_version": 1, "content": {"characters": "data/characters.json"}}},
+      "manifest": {"schema_version": 1, "name": "test", "entrypoint": "play.entry", "content_manifest": "config/content.json"},
+      "expected": {"status": "accepted", "result": {"schema_version": 1, "name": "test", "project_type": "standard", "entrypoint": "play.entry", "editors": [], "content": {"characters": "data/characters.json"}, "content_manifest": "config/content.json"}}
+    },
+    {
+      "id": "inline_content_overrides_external",
+      "files": {"content.json": {"schema_version": 1, "content": {"characters": "data/characters.json", "room": "data/room.json"}}},
+      "manifest": {"schema_version": 1, "name": "test", "entrypoint": "play.entry", "content_manifest": "content.json", "content": {"characters": "override.json"}},
+      "expected": {"status": "accepted", "result": {"schema_version": 1, "name": "test", "project_type": "standard", "entrypoint": "play.entry", "editors": [], "content": {"characters": "override.json", "room": "data/room.json"}, "content_manifest": "content.json"}}
+    },
+    {
+      "id": "inline_directory_and_normalized_path",
+      "manifest": {"schema_version": 1, "name": "test", "project_type": "special", "entrypoint": "./data/../play.entry", "content": {" assets ": "assets", "root": "."}},
+      "expected": {"status": "accepted", "result": {"schema_version": 1, "name": "test", "project_type": "special", "entrypoint": "play.entry", "editors": [], "content": {"assets": "assets", "root": "."}, "content_manifest": null}}
+    },
+    {
+      "id": "null_optional_values_and_empty_external",
+      "files": {"content.json": {"schema_version": 1}},
+      "manifest": {"schema_version": 1, "name": "test", "project_type": null, "entrypoint": "play.entry", "content_manifest": "content.json"},
+      "expected": {"status": "accepted", "result": {"schema_version": 1, "name": "test", "project_type": "standard", "entrypoint": "play.entry", "editors": [], "content": {}, "content_manifest": "content.json"}}
+    },
+    {
+      "id": "project_must_be_object",
+      "manifest": [],
+      "expected": {"status": "rejected"}
+    },
+    {
+      "id": "unsupported_project_schema",
+      "manifest": {"schema_version": 2, "name": "test", "entrypoint": "play.entry"},
+      "expected": {"status": "rejected"}
+    },
+    {
+      "id": "blank_project_name",
+      "manifest": {"schema_version": 1, "name": "  ", "entrypoint": "play.entry"},
+      "expected": {"status": "rejected"}
+    },
+    {
+      "id": "project_type_contains_whitespace",
+      "manifest": {"schema_version": 1, "name": "test", "project_type": "custom variant", "entrypoint": "play.entry"},
+      "expected": {"status": "rejected"}
+    },
+    {
+      "id": "entrypoint_missing",
+      "manifest": {"schema_version": 1, "name": "test", "entrypoint": "missing.entry"},
+      "expected": {"status": "rejected"}
+    },
+    {
+      "id": "entrypoint_outside_root",
+      "manifest": {"schema_version": 1, "name": "test", "entrypoint": "../outside.entry"},
+      "expected": {"status": "rejected"}
+    },
+    {
+      "id": "entrypoint_is_directory",
+      "manifest": {"schema_version": 1, "name": "test", "entrypoint": "assets"},
+      "expected": {"status": "rejected"}
+    },
+    {
+      "id": "editors_must_be_array",
+      "manifest": {"schema_version": 1, "name": "test", "entrypoint": "play.entry", "editors": {}},
+      "expected": {"status": "rejected"}
+    },
+    {
+      "id": "duplicate_trimmed_editor_ids",
+      "manifest": {"schema_version": 1, "name": "test", "entrypoint": "play.entry", "editors": [{"id": "same", "label": "one", "script": "edit.entry"}, {"id": " same ", "label": "two", "script": "edit.entry"}]},
+      "expected": {"status": "rejected"}
+    },
+    {
+      "id": "editor_label_missing",
+      "manifest": {"schema_version": 1, "name": "test", "entrypoint": "play.entry", "editors": [{"id": "edit", "script": "edit.entry"}]},
+      "expected": {"status": "rejected"}
+    },
+    {
+      "id": "editor_script_is_directory",
+      "manifest": {"schema_version": 1, "name": "test", "entrypoint": "play.entry", "editors": [{"id": "edit", "label": "edit", "script": "assets"}]},
+      "expected": {"status": "rejected"}
+    },
+    {
+      "id": "external_content_must_be_object",
+      "files": {"content.json": []},
+      "manifest": {"schema_version": 1, "name": "test", "entrypoint": "play.entry", "content_manifest": "content.json"},
+      "expected": {"status": "rejected"}
+    },
+    {
+      "id": "unsupported_external_schema",
+      "files": {"content.json": {"schema_version": 2}},
+      "manifest": {"schema_version": 1, "name": "test", "entrypoint": "play.entry", "content_manifest": "content.json"},
+      "expected": {"status": "rejected"}
+    },
+    {
+      "id": "invalid_external_path_even_if_overridden",
+      "files": {"content.json": {"schema_version": 1, "content": {"characters": "../outside.entry"}}},
+      "manifest": {"schema_version": 1, "name": "test", "entrypoint": "play.entry", "content_manifest": "content.json", "content": {"characters": "override.json"}},
+      "expected": {"status": "rejected"}
+    },
+    {
+      "id": "inline_content_must_be_object",
+      "manifest": {"schema_version": 1, "name": "test", "entrypoint": "play.entry", "content": []},
+      "expected": {"status": "rejected"}
+    },
+    {
+      "id": "content_path_missing",
+      "manifest": {"schema_version": 1, "name": "test", "entrypoint": "play.entry", "content": {"room": "missing.json"}},
+      "expected": {"status": "rejected"}
+    }
+  ]
+}
