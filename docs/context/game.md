@@ -6,6 +6,7 @@
 | --- | --- | --- |
 | `game.py` | おばけの移動、会話手順、イベント実行、描画、入力 | `tests/test_tagged_conversations.py` |
 | `characters.json` | 見た目、開始位置、速度倍率、行動重み | `tests/test_character_repository.py` |
+| `tools/context/script/character_info.py` | キャラクター単位・項目単位で設定を取得 | `tests/test_character_context.py` |
 | `room.json` | 16:9の部屋、移動範囲、水場、背景 | `tests/test_room_repository.py` |
 | `conversations.json`, `events.json` | 会話デッキとイベント定義 | `tests/test_tagged_conversations.py`, `tests/test_content_repositories.py` |
 | `placed_objects.json`, `objects/`, `assets/` | 配置、編集用ドット絵、固定画像 | `tests/test_content_repositories.py` |
