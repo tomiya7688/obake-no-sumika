@@ -2,6 +2,7 @@ extends RefCounted
 ## Read-only adapter for the source checkout's shared JSON/PNG.
 ## Full Python validation parity and exported/PCK layouts are later milestones.
 
+const ConversationDeck = preload("res://scripts/conversation_deck.gd")
 var root: String
 var error: String = ""
 
@@ -37,17 +38,28 @@ func path_for(raw: Variant) -> String:
 	return current
 
 
-func read_json(raw: Variant) -> Dictionary:
+func read_json_value(raw: Variant) -> Variant:
 	var path := path_for(raw)
 	if path.is_empty():
-		return {}
+		return null
 	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null:
-		return fail("Cannot read JSON: " + str(raw))
+		error = "Cannot read JSON: " + str(raw)
+		return null
 	var parser := JSON.new()
-	if parser.parse(file.get_as_text()) != OK or not parser.data is Dictionary:
-		return fail("Invalid JSON object: " + str(raw))
+	if parser.parse(file.get_as_text()) != OK:
+		error = "Invalid JSON: " + str(raw)
+		return null
 	return parser.data
+
+
+func read_json(raw: Variant) -> Dictionary:
+	var data: Variant = read_json_value(raw)
+	if not error.is_empty():
+		return {}
+	if not data is Dictionary:
+		return fail("Invalid JSON object: " + str(raw))
+	return data
 
 
 func read_image(raw: Variant, crop: bool) -> Image:
@@ -162,4 +174,12 @@ func load_project(project_root: String) -> Dictionary:
 		if image == null:
 			return {}
 		object_data.append({"definition": definition, "image": image})
-	return {"room": room, "characters": ghost_data, "objects": object_data}
+	var raw_deck: Variant = read_json_value(content.get("conversations"))
+	if not error.is_empty():
+		return {}
+	var deck := ConversationDeck.parse(raw_deck)
+	if not deck.error.is_empty():
+		return fail(deck.error)
+	if not finite_number(room.get("conversation_distance")) or room.conversation_distance < 80 or room.conversation_distance > 300:
+		return fail("Conversation distance must be between 80 and 300")
+	return {"room": room, "characters": ghost_data, "objects": object_data, "conversations": deck.cards, "skipped_conversations": deck.skipped}

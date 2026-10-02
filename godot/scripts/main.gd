@@ -2,6 +2,8 @@ extends Node2D
 
 const ContentLoader = preload("res://scripts/content_loader.gd")
 const GhostModel = preload("res://scripts/ghost_model.gd")
+const ConversationController = preload("res://scripts/conversation_controller.gd")
+const BubbleView = preload("res://scripts/bubble_view.gd")
 var room: Dictionary
 var ghosts: Array = []
 var views: Array[Sprite2D] = []
@@ -10,6 +12,8 @@ var frame_count: int = 0
 var test_frames: int = 0
 var screenshot: String = ""
 var evaluation: FileAccess
+var conversations: Variant = null
+var bubbles: Array = []
 
 
 func option(name: String, fallback: String = "") -> String:
@@ -57,6 +61,12 @@ func _ready() -> void:
 		world.add_child(sprite)
 		ghosts.append(model)
 		views.append(sprite)
+		var bubble := BubbleView.new()
+		bubble.z_index = 100
+		add_child(bubble)
+		bubbles.append(bubble)
+	conversations = ConversationController.new(ghosts, data.conversations, float(room.conversation_distance))
+	print("CONVERSATION_DECK runnable=", data.conversations.size(), " skipped=", data.skipped_conversations)
 	test_frames = int(option("test-frames", "0"))
 	screenshot = option("screenshot")
 	var log_path := option("evaluation-log")
@@ -76,20 +86,26 @@ func refresh_views() -> void:
 		views[index].rotation = model.angle
 		views[index].flip_h = model.facing != model.native_facing
 		views[index].scale = Vector2(model.turn_scale, 1)
+		var bubble = bubbles[index]
+		bubble.set_message(model.talk_text)
+		var point: Vector2 = model.draw_position() + Vector2(-bubble.extent.x * 0.5, -model.half_size.y - bubble.extent.y - 10 + model.bubble_y_offset)
+		bubble.position = Vector2(clampf(point.x, 12, 948 - bubble.extent.x), clampf(point.y, 12, 528 - bubble.extent.y))
 
 
 func _process(delta: float) -> void:
 	if ghosts.is_empty():
 		return
+	var fixed_delta := 1.0 / 60.0 if test_frames > 0 else minf(delta, 0.05)
 	for model in ghosts:
-		model.step(1.0 / 60.0 if test_frames > 0 else minf(delta, 0.05))
+		model.step(fixed_delta)
+	conversations.step(fixed_delta)
 	refresh_views()
 	frame_count += 1
 	if evaluation != null and frame_count % 10 == 0:
 		var snapshots: Array = []
 		for model in ghosts:
 			snapshots.append(model.snapshot())
-		evaluation.store_line(JSON.stringify({"frame": frame_count, "ghosts": snapshots}))
+		evaluation.store_line(JSON.stringify({"frame": frame_count, "ghosts": snapshots, "conversation": conversations.snapshot()}))
 	if test_frames > 0 and frame_count >= test_frames:
 		set_process(false)
 		if not screenshot.is_empty() and DisplayServer.get_name() != "headless":
@@ -117,6 +133,8 @@ func _unhandled_input(event: InputEvent) -> void:
 func send_click(point: Vector2) -> void:
 	if ghosts.size() != 2:
 		return
+	if conversations.phase != "idle":
+		conversations.cancel()
 	var left = ghosts[0] if ghosts[0].position.x < ghosts[1].position.x else ghosts[1]
 	var right = ghosts[1] if left == ghosts[0] else ghosts[0]
 	# Clamp the pair's center, not each destination independently, to keep spacing at walls.

@@ -1,7 +1,7 @@
 extends RefCounted
 ## Simulation only: no scene, texture, window, file writes, or shared RNG.
 
-const ACTIONS := ["stop", "forward", "turn", "loop", "dash", "water_stop"]
+const ACTIONS := ["stop", "forward", "turn", "loop", "dash", "water_stop", "seek_talk"]
 var id: String
 var display_name: String
 var native_facing: int
@@ -33,6 +33,15 @@ var loop_radius := Vector2(70, 88)
 var loop_travel: float = 150.0
 var angle: float = 0.0
 var target: Variant = null
+var navigation_action: String = "click_move"
+var navigation_speed: float = 75
+var partner: WeakRef = null
+var conversation_available: bool = false
+var conversation_controlled: bool = false
+var talk_request: bool = false
+var talk_cooldown: float
+var talk_text: String = ""
+var bubble_y_offset: float
 
 
 func _init(definition: Dictionary, size: Vector2, movement: Rect2, water_zone: Rect2, base_seed: int) -> void:
@@ -57,6 +66,8 @@ func _init(definition: Dictionary, size: Vector2, movement: Rect2, water_zone: R
 	bob_phase = rng.randf_range(0, TAU)
 	bob_speed = rng.randf_range(0.17, 0.29) * personality
 	bob_height = rng.randf_range(3.5, 6.5)
+	talk_cooldown = rng.randf_range(3, 9)
+	bubble_y_offset = float(definition.get("bubble_y_offset", 0))
 
 
 func clamp_position(point: Vector2) -> Vector2:
@@ -105,12 +116,15 @@ func begin_loop() -> bool:
 
 
 func choose_action() -> void:
+	var other: Variant = partner.get_ref() if partner != null else null
 	var available: Array[String] = []
 	var chances: Array[float] = []
 	var total := 0.0
-	var defaults := {"stop": 2.0 if personality < 1 else 1.0, "forward": 4.0, "turn": 1.0, "loop": 1.0, "dash": 2.0 if personality < 1 else 3.0, "water_stop": 2.0}
+	var defaults := {"stop": 2.0 if personality < 1 else 1.0, "forward": 4.0, "turn": 1.0, "loop": 1.0, "dash": 2.0 if personality < 1 else 3.0, "water_stop": 2.0, "seek_talk": 2.0}
 	for candidate in ACTIONS:
 		if candidate == "water_stop" and not water.has_point(position):
+			continue
+		if candidate == "seek_talk" and (not conversation_available or other == null or talk_cooldown > 0 or other.talk_cooldown > 0 or other.conversation_controlled or other.target != null):
 			continue
 		var weight := float(weights.get(candidate, defaults[candidate]))
 		if weight > 0:
@@ -134,6 +148,11 @@ func choose_action() -> void:
 			return
 		selected = "forward"
 	action = selected
+	if action == "seek_talk":
+		talk_request = true
+		velocity = Vector2.ZERO
+		action_timer = 1.0
+		return
 	if action in ["stop", "water_stop"]:
 		velocity = Vector2.ZERO
 		if action == "water_stop":
@@ -150,14 +169,24 @@ func choose_action() -> void:
 	action_timer = rng.randf_range(0.65, 1.7) if action == "dash" else rng.randf_range(1.4, 7.5)
 
 
-func go_to(point: Vector2) -> void:
+func go_to(point: Vector2, travel_action: String = "click_move", speed: float = 75) -> void:
 	# Finish the current loop/turn before responding; never cancel half a revolution.
 	target = clamp_position(point)
+	navigation_action = travel_action
+	navigation_speed = speed
+
+
+func face_toward(direction: int) -> void:
+	set_velocity(Vector2(direction, 0))
+	velocity = Vector2.ZERO
+	pending_velocity = Vector2.ZERO
+	angle = 0
 
 
 func step(delta: float) -> void:
 	delta = maxf(delta, 0)
 	elapsed += delta
+	talk_cooldown = maxf(0, talk_cooldown - delta)
 	if action == "loop":
 		loop_elapsed += delta
 		var progress := clampf(loop_elapsed / loop_duration, 0, 1)
@@ -181,17 +210,21 @@ func step(delta: float) -> void:
 			turn_scale = 1
 			velocity = pending_velocity
 		return
+	if conversation_controlled and target == null:
+		velocity = Vector2.ZERO
+		angle = 0
+		return
 	if target != null:
 		var distance: Vector2 = target - position
 		if distance.length() <= 3:
 			position = target
 			target = null
-			action = "stop"
-			action_timer = rng.randf_range(0.8, 1.8)
+			action = "talk_wait" if conversation_controlled else "stop"
+			action_timer = 1.0 if conversation_controlled else rng.randf_range(0.8, 1.8)
 			velocity = Vector2.ZERO
 		else:
-			action = "click_move"
-			set_velocity(distance.normalized() * minf(75 * personality, distance.length() / maxf(delta, 0.001)))
+			action = navigation_action
+			set_velocity(distance.normalized() * minf(navigation_speed * personality, distance.length() / maxf(delta, 0.001)))
 	else:
 		action_timer -= delta
 		if action_timer <= 0:
@@ -215,4 +248,4 @@ func draw_position() -> Vector2:
 
 
 func snapshot() -> Dictionary:
-	return {"name": id, "x": position.x, "y": position.y, "vx": velocity.x, "vy": velocity.y, "facing": facing, "action": action, "turning": turning, "spin": angle, "target": [target.x, target.y] if target != null else null}
+	return {"name": id, "x": position.x, "y": position.y, "vx": velocity.x, "vy": velocity.y, "facing": facing, "action": action, "turning": turning, "spin": angle, "target": [target.x, target.y] if target != null else null, "talk": talk_text}

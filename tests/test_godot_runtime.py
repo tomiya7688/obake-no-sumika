@@ -28,6 +28,7 @@ class GodotRuntimeTests(unittest.TestCase):
         output = result.stdout + result.stderr
         self.assertEqual(result.returncode, 0, output)
         self.assertNotIn("SCRIPT ERROR:", output)
+        self.assertNotIn("\nERROR:", output)
         return output
 
     def test_simulation_and_shared_content(self) -> None:
@@ -38,6 +39,11 @@ class GodotRuntimeTests(unittest.TestCase):
     def test_source_game_smoke(self) -> None:
         output = self.run_godot("--", "--test-frames", "180", "--seed", "12345")
         self.assertIn("GODOT_SMOKE_OK frames=180 ghosts=2", output)
+
+    def test_conversation_choreography_and_deck(self) -> None:
+        output = self.run_godot("--script", "res://tests/test_conversations.gd")
+        self.assertIn("failures=0", output)
+        self.assertIn("GODOT_CONVERSATION_TESTS", output)
 
 
 if __name__ == "__main__":
