@@ -20,6 +20,7 @@
     {"paths": ["scripts/evaluate_project.py", "tests/test_evaluate_project.py"], "context": "docs/context/developer_tools.md", "related": ["scripts/evaluate_project.py"], "tests": ["tests/test_evaluate_project.py"]},
     {"paths": ["tools/context/*", "tools/context/script/*", "tests/test_context_selection.py"], "context": "docs/context/developer_tools.md", "related": ["tools/context/responsibilities.json"], "tests": ["tests/test_context_selection.py"]},
     {"paths": ["docs/context/cli_commands.md"], "context": "docs/context/developer_tools.md", "related": ["engine_app.py"], "tests": ["tests/test_engine_manifest.py"]},
+    {"paths": ["tools/context/script/character_info.py", "tests/test_character_context.py"], "context": "docs/context/game.md", "related": ["engine/character_repository.py", "engine/room_repository.py"], "tests": ["tests/test_character_context.py"]},
     {"paths": ["projects/*"], "context": "docs/context/portability.md", "related": ["projects/obakeno_sumika_special/engine_project.json"], "tests": ["tests/test_special_project_isolation.py"]}
   ]
 }

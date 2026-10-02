@@ -13,6 +13,15 @@ PowerShellでリポジトリのルートから実行する。Pythonはこのプ�
 
 `--describe` は名前、project_type、ゲーム入口、利用可能なエディターIDとスクリプト、コンテンツ名とパスをJSONで返す。パスは指定したプロジェクトのルートからの相対パス。`--validate` はマニフェストと参照パスの検証であり、全コンテンツの意味検証ではない。`--project` には対象の `engine_project.json` を渡す。
 
+## 必要なキャラクター設定だけ取得する
+
+```powershell
+.\.venv\Scripts\python.exe tools/context/script/character_info.py --list
+.\.venv\Scripts\python.exe tools/context/script/character_info.py --id maru --field personality --field behavior_weights
+```
+
+`--list` はIDと表示名だけ、`--id` は指定した1匹の設定をJSONで返す。`--field` を繰り返すとその項目とIDだけを返す。省略時は1匹の全設定。項目は `display_name`、`image`、`start_position`、`display_height`、`personality`、`native_facing`、`bubble_y_offset`、`behavior_weights`。`personality` は速度倍率で、`behavior_weights` は設定済みの重み（AI側の未指定行動の既定値は含まない）。`--project` で別マニフェストを指定でき、共通リポジトリで設定を検証する。キャラクター設定のないプロジェクトはエラーになる。
+
 ## 変更箇所を絞り、確認する
 
 ```powershell
