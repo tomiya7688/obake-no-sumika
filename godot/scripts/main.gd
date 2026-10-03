@@ -7,9 +7,12 @@ const ConversationController = preload("res://scripts/conversation_controller.gd
 const BubbleView = preload("res://scripts/bubble_view.gd")
 const EventView = preload("res://scripts/event_view.gd")
 const NameView = preload("res://scripts/name_view.gd")
+const ShadowView = preload("res://scripts/shadow_view.gd")
 var room: Dictionary
 var ghosts: Array = []
 var views: Array[Sprite2D] = []
+var shadows: Array[Sprite2D] = []
+var shadow_layer := Node2D.new()
 var objects: Array = []
 var object_views: Array[Sprite2D] = []
 var object_sizes: Array = []
@@ -53,6 +56,8 @@ func _ready() -> void:
 	var water := Rect2(raw_water[0], raw_water[1], raw_water[2], raw_water[3])
 	world.y_sort_enabled = true
 	add_child(world)
+	# Floor shadows draw after the z=0 spring, but below z=1 ghosts/rocks.
+	add_child(shadow_layer)
 	event_view.z_index = 80
 	add_child(event_view)
 	name_view.z_index = 90 # Below dialogue, above the room and event effects.
@@ -84,6 +89,9 @@ func _ready() -> void:
 		world.add_child(sprite)
 		ghosts.append(model)
 		views.append(sprite)
+		var shadow := ShadowView.new(size)
+		shadow_layer.add_child(shadow)
+		shadows.append(shadow)
 		var bubble := BubbleView.new()
 		bubble.z_index = 100
 		add_child(bubble)
@@ -109,6 +117,8 @@ func refresh_views() -> void:
 		object_views[index].visible = objects[index].visible
 	for index in ghosts.size():
 		var model = ghosts[index]
+		shadows[index].follow(model.position, model.half_size.y)
+		shadows[index].visible = views[index].visible
 		views[index].position = model.draw_position()
 		views[index].rotation = model.angle
 		views[index].flip_h = model.facing != model.native_facing

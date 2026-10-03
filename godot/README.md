@@ -1,6 +1,6 @@
 # おばけの住処: GDScript移行版
 
-Godot 4の通常版ソースランタイム。個別移動、通常会話、タグ付きオブジェクト操作、水浴び・ゲーム機イベント、名前ホバーを移植済み。統合エディター・配布はまだ未移植。既存JSONとPNGをリポジトリの親から直接読むため、`godot/` 単体では起動できない。
+Godot 4の通常版ソースランタイム。個別移動、通常会話、タグ付きオブジェクト操作、水浴び・ゲーム機イベント、名前ホバー、床の影を移植済み。粒子・ビネット、統合エディター・配布はまだ未移植。既存JSONとPNGをリポジトリの親から直接読むため、`godot/` 単体では起動できない。
 
 ## 起動
 
@@ -32,6 +32,8 @@ Windowsではリポジトリ直下の `run_godot.bat` に実行ファイルの�
 
 水浴びはタグ付き水場の配置位置を使い、水場配置がなければ `room.json` のwater_rest中心を使う。ゲーム機イベントはカタログのrequired_tagを必要とし、標準はgame_device。既存会話エディターのevent手順をそのまま編集できる。現在のデッキは25カードすべて対応する。これはエンジンGUIへのGodot起動統合や入力検証の完全互換を意味しない。
 
+おばけの下には薄いドット状の影を表示する。影は宙返りの移動軌道に追従し、終了時も滑らかに前進へつながる。細かな上下浮遊で影自体は揺れず、体の回転・振り返りにも影は変形しない。水面より前、岩やおばけより後ろの床レイヤーに描画する。
+
 ## 検証
 
 ```powershell
@@ -41,12 +43,15 @@ $env:GODOT_BIN="C:\path\Godot_win64_console.exe"
 & $env:GODOT_BIN --headless --path godot --script res://tests/test_objects.gd
 & $env:GODOT_BIN --headless --path godot --script res://tests/test_events.gd
 & $env:GODOT_BIN --headless --path godot --script res://tests/test_hover.gd
+& $env:GODOT_BIN --headless --path godot --script res://tests/test_shadows.gd
 & $env:GODOT_BIN --headless --path godot -- --test-frames 900 --seed 12345
 .\.venv\Scripts\python.exe -m unittest tests.test_godot_runtime -v
 .\.venv\Scripts\python.exe scripts/evaluate_project.py
 ```
 
 環境変数未指定でPATHにもGodotがない場合、Python側のGodotテストは**skip**する。Pythonのテスト成功だけでGDScript検証済みとは扱わない。
+
+影の実描画チェックは非headlessで `--script res://tests/test_shadows.gd -- --screenshot-prefix <出力フォルダー/名前>`。通常時、左右の宙返り、水面上の4枚を保存し、影の表示あり/なしの描画ピクセル比較で水面より前・岩より後ろの描画順も確認する。
 
 `--test-frames` は固定delta 1/60秒で終了する。Godotのエンジンオプションとゲーム側のオプションは `--` で分離する。描画を保存したい場合は非headlessで `--screenshot <PNGのパス>` を追加できる。`--evaluation-log <JSONLのパス>` で状態を保存できる。出力先の親フォルダーは先に作る。
 

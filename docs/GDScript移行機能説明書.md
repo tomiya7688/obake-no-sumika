@@ -1,6 +1,6 @@
 # Godot / GDScript移行: 個別移動・会話・タグ操作
 
-追跡: Issue #54。Python版は参照実装として残し、既存のエディターやデータを変更しない。現在の範囲は通常版の描画・個別移動、say/move/take/putの会話と水浴び・ゲーム機イベント、名前ホバー。配布等は未移植で、移行完了ではない。
+追跡: Issue #54。Python版は参照実装として残し、既存のエディターやデータを変更しない。現在の範囲は通常版の描画・個別移動、say/move/take/putの会話と水浴び・ゲーム機イベント、名前ホバー、床の影。配布等は未移植で、移行完了ではない。
 
 ## 責務
 
@@ -16,12 +16,14 @@
 | `godot/scripts/event_view.gd` | 発光のドット状の光線 | 可視かつ発光中の配置物と表示サイズ |
 | `godot/scripts/bubble_view.gd` | 日本語の吹き出しと幅に応じた改行 | モデルの発話文字列。行動状態を変更しない |
 | `godot/scripts/name_view.gd` | ホバー中だけの日本語名札、画面内への配置 | キャラクターの表示名と描画矩形。入力を消費せず行動状態を変更しない |
+| `godot/scripts/shadow_view.gd` | 薄いドット状の影とモデル位置への追従 | 表示サイズ、現在位置。回転や浮遊揺れを継承せず、AIを変更しない |
 | `godot/scripts/main.gd` | 描画、入力、ウィンドウ、固定deltaスモーク、ログ | 読込済みデータとモデル |
 | `godot/tests/test_runtime.gd` | GDScriptの実挙動テスト | 読込アダプターとモデル |
 | `godot/tests/test_conversations.gd` | 会話デッキと姿勢・中断・再開の検証 | デッキ、モデル、コントローラー、会話場面 |
 | `godot/tests/test_objects.gd` | タグ操作、到着待ち、再整列、表示状態・中断の検証 | 配置物、デッキ、モデル、シーン |
 | `godot/tests/test_events.gd` | イベントカタログ、姿勢、順序、逃走、清掃の検証 | カタログ、イベント、会話、描画 |
 | `godot/tests/test_hover.gd` | 回転・振り返り・重なり・画面端・入力変換・全画面の検証 | シーン、名前表示、注入したマウス/キー入力 |
+| `godot/tests/test_shadows.gd` | 影の画像、宙返り終了時の連続性、床と岩の描画順を検証 | モデル、影、実描画のピクセル比較 |
 | `tests/test_godot_runtime.py` | Godot実行テストをPythonのテスト入口に接続 | `GODOT_BIN` またはPATH上の `godot` |
 
 ```mermaid
@@ -132,6 +134,14 @@ stateDiagram-v2
 
 マウス入力はウィンドウ座標で保持し、各描画更新でViewportのstretch/letterbox変換とCanvas変換を逆適用する。これによりマウスを動かさなくても、おばけの移動やウィンドウサイズ変更・全画面切替に追従する。入力を消費しないのでクリック集合も従来どおり動く。乱数、行動、会話、共有データへの書込みは行わない。入力変換テストはGodot公式の [Viewport API](https://docs.godotengine.org/en/stable/classes/class_viewport.html#class-viewport-method-push-input) の `push_input` を使う。
 
+## 床の影
+
+各おばけに独立した `ShadowView` を1つ用意する。表示幅の58%・表示身長の8%（最低5px）のRGBA画像を一度だけ生成し、原典と同じ2本の矩形・色 `(0,0,5)`・alpha 46/34で描く。矩形の重なりはalphaを加算せず、後の矩形で上書きする。画像をフレームごとに作り直さず、nearestでドット感を維持する。
+
+影の中心Xはモデルの現在X、上端Yは現在Y + 表示身長/2 + 19px。Godotモデルの現在位置には宙返りの移動軌道が含まれるため、開始位置へ固定したり終了時だけ位置を切り替えたりしない。左右の宙返りから次の前進まで1/60秒刻みで追従・連続性を検証する。細かな浮遊揺れ、回転角、左右反転、振り返りの横幅は影に適用しない。おばけを非表示にした時は影も非表示にする。
+
+影はキャラクターSpriteの子ではなく、床専用の独立レイヤーに配置する。水面と同じz=0で水面より後に描き、z=1の岩とおばけより後ろにする。実描画の表示あり/なしのピクセル比較でこの順序を確認する。影は名前ホバーの対象にせず、乱数・行動・会話や共有データを変更しない。Python版の描画処理はこの移行作業では変更しない。
+
 ## 読込と配布の境界
 
 ソース実行時は `godot/` の親を通常版のコンテンツルートとして読む。PNGやJSONをGodot専用コピーへ分岐させない。`--content-root` で別の通常版ルートを明示できる。
@@ -142,6 +152,6 @@ Godotのエクスポート/PCK単独配布は未対応。今はリポジトリ�
 
 ## 未移植
 
-粒子・影・ビネット、統合エディター連携、配布構成。システムに日本語フォントがない環境や配布時のフォント同梱は後続対応。
+粒子・ビネット、統合エディター連携、配布構成。システムに日本語フォントがない環境や配布時のフォント同梱は後続対応。
 
 評価ログは10フレームごとに `frame`、`ghosts`（name/x/y/vx/vy/facing/action/turning/spin/target/talk）、`conversation`（phase/initiator/step/completed/movers/event/last_event）、`objects`（id/tag/x/y/visible/glowing）をJSONLに記録する。eventにはid/phase/timerを含む。Python版の評価ログとの完全互換ではない。

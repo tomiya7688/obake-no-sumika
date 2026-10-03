@@ -60,6 +60,11 @@ class GodotRuntimeTests(unittest.TestCase):
         self.assertIn("failures=0", output)
         self.assertIn("GODOT_HOVER_TESTS", output)
 
+    def test_floor_shadows_and_loop_continuity(self) -> None:
+        output = self.run_godot("--script", "res://tests/test_shadows.gd")
+        self.assertIn("failures=0", output)
+        self.assertIn("GODOT_SHADOW_TESTS", output)
+
 
 if __name__ == "__main__":
     unittest.main()
