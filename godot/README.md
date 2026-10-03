@@ -1,6 +1,6 @@
 # おばけの住処: GDScript移行版
 
-Godot 4の通常版ソースランタイム。個別移動、通常会話、タグ付きオブジェクト操作、水浴び・ゲーム機イベントを移植済み。名前ホバー・統合エディター・配布はまだ未移植。既存JSONとPNGをリポジトリの親から直接読むため、`godot/` 単体では起動できない。
+Godot 4の通常版ソースランタイム。個別移動、通常会話、タグ付きオブジェクト操作、水浴び・ゲーム機イベント、名前ホバーを移植済み。統合エディター・配布はまだ未移植。既存JSONとPNGをリポジトリの親から直接読むため、`godot/` 単体では起動できない。
 
 ## 起動
 
@@ -12,7 +12,7 @@ Windowsではリポジトリ直下の `run_godot.bat` に実行ファイルの�
 .\run_godot.bat "C:\path\Godot_win64.exe"
 ```
 
-左クリックで集合、F11 / Alt+Enterで全画面切替、Escで終了。停止/前進/高速前進/進路変更/一周の移動宙返り/水場停止に加え、相手へ話しかける行動を実装している。会話時は横並びで向き合って止まり、既存JSONの台詞を吹き出しに順番に表示する。
+左クリックで集合、F11 / Alt+Enterで全画面切替、Escで終了。おばけにマウスを重ねると、`characters.json` の表示名を下に小さく表示する。離れると消え、回転中・全画面・余白付きのウィンドウでも追従する。停止/前進/高速前進/進路変更/一周の移動宙返り/水場停止に加え、相手へ話しかける行動を実装している。会話時は横並びで向き合って止まり、既存JSONの台詞を吹き出しに順番に表示する。
 
 会話は `conversations.json` を共用し、重み付きで抽選する。say、タグ付きmove/take/put、専用eventを順番に実行する。移動中は台詞を出さず、次の発話前に横並びで向き合い直す。カタログにある未実装イベントのカードや配置タグが欠落するカードは**全体を抽選から除外**する。カタログにないIDやterminalイベントの後に手順が続くカードは入力エラー。会話中にクリックすると会話を中断して集合する。共有ファイルをGodot用に書き換える必要はない。
 
@@ -40,6 +40,7 @@ $env:GODOT_BIN="C:\path\Godot_win64_console.exe"
 & $env:GODOT_BIN --headless --path godot --script res://tests/test_conversations.gd
 & $env:GODOT_BIN --headless --path godot --script res://tests/test_objects.gd
 & $env:GODOT_BIN --headless --path godot --script res://tests/test_events.gd
+& $env:GODOT_BIN --headless --path godot --script res://tests/test_hover.gd
 & $env:GODOT_BIN --headless --path godot -- --test-frames 900 --seed 12345
 .\.venv\Scripts\python.exe -m unittest tests.test_godot_runtime -v
 .\.venv\Scripts\python.exe scripts/evaluate_project.py
@@ -49,7 +50,7 @@ $env:GODOT_BIN="C:\path\Godot_win64_console.exe"
 
 `--test-frames` は固定delta 1/60秒で終了する。Godotのエンジンオプションとゲーム側のオプションは `--` で分離する。描画を保存したい場合は非headlessで `--screenshot <PNGのパス>` を追加できる。`--evaluation-log <JSONLのパス>` で状態を保存できる。出力先の親フォルダーは先に作る。
 
-会話の描画チェックは非headlessで `--script res://tests/test_conversations.gd -- --screenshot <PNGのパス>`。タグ操作後の描画は `--script res://tests/test_objects.gd -- --screenshot <PNGのパス>`。専用イベントは `--script res://tests/test_events.gd -- --screenshot-prefix <出力フォルダー/名前>` で水浴びと発光時の2枚を保存する。100秒相当の通常AIは `--headless --fixed-fps 60 --path godot -- --test-frames 6000 --seed 12345 --evaluation-log <JSONLのパス>` で高速に確認できる。状態ログには発話、会話フェーズ、イベント段階、移動担当者、配置物の位置・表示・発光状態も含まれる。
+会話の描画チェックは非headlessで `--script res://tests/test_conversations.gd -- --screenshot <PNGのパス>`。タグ操作後の描画は `--script res://tests/test_objects.gd -- --screenshot <PNGのパス>`。専用イベントは `--script res://tests/test_events.gd -- --screenshot-prefix <出力フォルダー/名前>` で水浴びと発光時の2枚を保存する。名前ホバーは `--script res://tests/test_hover.gd -- --screenshot-prefix <出力フォルダー/名前>` で2匹・会話併用・余白付きウィンドウ・全画面の5枚を保存する（入力イベントを自動注入した実描画テストで、手動マウス操作ではない）。100秒相当の通常AIは `--headless --fixed-fps 60 --path godot -- --test-frames 6000 --seed 12345 --evaluation-log <JSONLのパス>` で高速に確認できる。状態ログには発話、会話フェーズ、イベント段階、移動担当者、配置物の位置・表示・発光状態も含まれる。
 
 構造と移行境界は [機能説明書](../docs/GDScript移行機能説明書.md)、次回の読込範囲は [Godotコンテキスト](../docs/context/godot.md)。
 

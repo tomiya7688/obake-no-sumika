@@ -55,6 +55,11 @@ class GodotRuntimeTests(unittest.TestCase):
         self.assertIn("failures=0", output)
         self.assertIn("GODOT_EVENT_TESTS", output)
 
+    def test_name_hover_and_stretched_pointer_input(self) -> None:
+        output = self.run_godot("--script", "res://tests/test_hover.gd")
+        self.assertIn("failures=0", output)
+        self.assertIn("GODOT_HOVER_TESTS", output)
+
 
 if __name__ == "__main__":
     unittest.main()

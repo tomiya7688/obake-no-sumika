@@ -6,6 +6,7 @@ const ObjectModel = preload("res://scripts/object_model.gd")
 const ConversationController = preload("res://scripts/conversation_controller.gd")
 const BubbleView = preload("res://scripts/bubble_view.gd")
 const EventView = preload("res://scripts/event_view.gd")
+const NameView = preload("res://scripts/name_view.gd")
 var room: Dictionary
 var ghosts: Array = []
 var views: Array[Sprite2D] = []
@@ -20,6 +21,10 @@ var screenshot: String = ""
 var evaluation: FileAccess
 var conversations: Variant = null
 var bubbles: Array = []
+var name_view := NameView.new()
+var hovered_id: String = ""
+var pointer_inside_window: bool = true
+var pointer_window_position := Vector2.ZERO
 
 
 func option(name: String, fallback: String = "") -> String:
@@ -50,6 +55,11 @@ func _ready() -> void:
 	add_child(world)
 	event_view.z_index = 80
 	add_child(event_view)
+	name_view.z_index = 90 # Below dialogue, above the room and event effects.
+	add_child(name_view)
+	get_window().mouse_entered.connect(set_pointer_inside.bind(true))
+	get_window().mouse_exited.connect(set_pointer_inside.bind(false))
+	pointer_window_position = get_viewport().get_final_transform() * get_viewport().get_mouse_position()
 	for item in data.objects:
 		var model := ObjectModel.new(item.definition)
 		var sprite := Sprite2D.new()
@@ -107,6 +117,51 @@ func refresh_views() -> void:
 		bubble.set_message(model.talk_text)
 		var point: Vector2 = model.draw_position() + Vector2(-bubble.extent.x * 0.5, -model.half_size.y - bubble.extent.y - 10 + model.bubble_y_offset)
 		bubble.position = Vector2(clampf(point.x, 12, 948 - bubble.extent.x), clampf(point.y, 12, 528 - bubble.extent.y))
+	update_hover(pointer_world_position(), pointer_inside_window)
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventMouse:
+		# Keep window pixels so resizing/fullscreen can remap a stationary pointer.
+		# Unlike polling the OS pointer, this also supports viewport-forwarded input.
+		pointer_window_position = get_viewport().get_final_transform() * event.position
+		pointer_inside_window = true
+
+
+func pointer_world_position() -> Vector2:
+	return get_global_transform_with_canvas().affine_inverse() * (get_viewport().get_final_transform().affine_inverse() * pointer_window_position)
+
+
+func set_pointer_inside(inside: bool) -> void:
+	pointer_inside_window = inside
+	if inside:
+		pointer_window_position = get_viewport().get_final_transform() * get_viewport().get_mouse_position()
+	update_hover(pointer_world_position(), inside)
+
+
+func rendered_bounds(sprite: Sprite2D) -> Rect2:
+	var local := sprite.get_rect()
+	var result := Rect2(sprite.to_global(local.position), Vector2.ZERO)
+	for corner in [local.end, Vector2(local.end.x, local.position.y), Vector2(local.position.x, local.end.y)]:
+		result = result.expand(sprite.to_global(corner))
+	return result
+
+
+func update_hover(point: Vector2, inside: bool = true) -> void:
+	var selected := -1
+	var front_y := -INF
+	if inside:
+		for index in views.size():
+			var sprite := views[index]
+			# Undo the same rotation and turn squeeze used for rendering. Viewport
+			# stretching/letterboxing is already removed by pointer_world_position.
+			if sprite.is_visible_in_tree() and sprite.get_rect().has_point(sprite.to_local(point)) and sprite.global_position.y >= front_y:
+				selected = index
+				front_y = sprite.global_position.y
+	hovered_id = ghosts[selected].id if selected >= 0 else ""
+	name_view.set_label(ghosts[selected].display_name if selected >= 0 else "")
+	if selected >= 0:
+		name_view.place_below(rendered_bounds(views[selected]), Rect2(6, 6, 948, 528))
 
 
 func _process(delta: float) -> void:
@@ -147,7 +202,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			var full := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if full else DisplayServer.WINDOW_MODE_FULLSCREEN)
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-		send_click(get_global_mouse_position())
+		send_click(pointer_world_position())
 
 
 func send_click(point: Vector2) -> void:

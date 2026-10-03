@@ -1,6 +1,6 @@
 # Godot / GDScript移行: 個別移動・会話・タグ操作
 
-追跡: Issue #54。Python版は参照実装として残し、既存のエディターやデータを変更しない。現在の範囲は通常版の描画・個別移動、say/move/take/putの会話と水浴び・ゲーム機イベント。名前ホバーや配布等は未移植で、移行完了ではない。
+追跡: Issue #54。Python版は参照実装として残し、既存のエディターやデータを変更しない。現在の範囲は通常版の描画・個別移動、say/move/take/putの会話と水浴び・ゲーム機イベント、名前ホバー。配布等は未移植で、移行完了ではない。
 
 ## 責務
 
@@ -15,11 +15,13 @@
 | `godot/scripts/scripted_events.gd` | 水浴び・ゲーム機の時間順序、移動と終了時清掃 | 2匹と配置物。NodeやTexture不要 |
 | `godot/scripts/event_view.gd` | 発光のドット状の光線 | 可視かつ発光中の配置物と表示サイズ |
 | `godot/scripts/bubble_view.gd` | 日本語の吹き出しと幅に応じた改行 | モデルの発話文字列。行動状態を変更しない |
+| `godot/scripts/name_view.gd` | ホバー中だけの日本語名札、画面内への配置 | キャラクターの表示名と描画矩形。入力を消費せず行動状態を変更しない |
 | `godot/scripts/main.gd` | 描画、入力、ウィンドウ、固定deltaスモーク、ログ | 読込済みデータとモデル |
 | `godot/tests/test_runtime.gd` | GDScriptの実挙動テスト | 読込アダプターとモデル |
 | `godot/tests/test_conversations.gd` | 会話デッキと姿勢・中断・再開の検証 | デッキ、モデル、コントローラー、会話場面 |
 | `godot/tests/test_objects.gd` | タグ操作、到着待ち、再整列、表示状態・中断の検証 | 配置物、デッキ、モデル、シーン |
 | `godot/tests/test_events.gd` | イベントカタログ、姿勢、順序、逃走、清掃の検証 | カタログ、イベント、会話、描画 |
+| `godot/tests/test_hover.gd` | 回転・振り返り・重なり・画面端・入力変換・全画面の検証 | シーン、名前表示、注入したマウス/キー入力 |
 | `tests/test_godot_runtime.py` | Godot実行テストをPythonのテスト入口に接続 | `GODOT_BIN` またはPATH上の `godot` |
 
 ```mermaid
@@ -122,6 +124,14 @@ stateDiagram-v2
 
 会話と同じく、回転中に発話しない。水場が端にある場合もペア中心をクランプして横間隔を維持する。waterタグの水面は床として2匹の背面へ描画し、顔を隠さない。移動段階は25秒で解除。イベント開始後のゲーム機は通常終了・クリック中断・タイムアウトの全経路で収納し、発光も消す。イベント外でtakeされた他の配置物には触れない。起動時に必要タグが欠落するカードは抽選不可にし、台詞だけの部分実行を防ぐ。イベントは乱数を追加消費せず、両者の通常AIの独立性を保つ。
 
+## 名前ホバー
+
+表示名は `characters.json` から読んだモデルの `display_name` を使う。描画中のSpriteのローカル矩形で判定し、透明ピクセルごとの判定は行わない。回転・左右反転・振り返りの横幅・浮遊後の位置を反映し、重なった場合はYソートで手前に描かれる1匹だけを選ぶ。同じYなら後から追加したSpriteを優先する。画面から隠したSpriteは対象外。
+
+名札は回転・反転しない独立した描画ノードで、実際の回転後の外接矩形の下へ配置し、内部画面の端から6px内側に収める。吹き出しより後ろのレイヤーにし、会話の上側の表示と併用できる。マウスが離れる・ウィンドウから出ると消す。
+
+マウス入力はウィンドウ座標で保持し、各描画更新でViewportのstretch/letterbox変換とCanvas変換を逆適用する。これによりマウスを動かさなくても、おばけの移動やウィンドウサイズ変更・全画面切替に追従する。入力を消費しないのでクリック集合も従来どおり動く。乱数、行動、会話、共有データへの書込みは行わない。入力変換テストはGodot公式の [Viewport API](https://docs.godotengine.org/en/stable/classes/class_viewport.html#class-viewport-method-push-input) の `push_input` を使う。
+
 ## 読込と配布の境界
 
 ソース実行時は `godot/` の親を通常版のコンテンツルートとして読む。PNGやJSONをGodot専用コピーへ分岐させない。`--content-root` で別の通常版ルートを明示できる。
@@ -132,6 +142,6 @@ Godotのエクスポート/PCK単独配布は未対応。今はリポジトリ�
 
 ## 未移植
 
-名前ホバー、粒子・影・ビネット、統合エディター連携、配布構成。システムに日本語フォントがない環境や配布時のフォント同梱は後続対応。
+粒子・影・ビネット、統合エディター連携、配布構成。システムに日本語フォントがない環境や配布時のフォント同梱は後続対応。
 
 評価ログは10フレームごとに `frame`、`ghosts`（name/x/y/vx/vy/facing/action/turning/spin/target/talk）、`conversation`（phase/initiator/step/completed/movers/event/last_event）、`objects`（id/tag/x/y/visible/glowing）をJSONLに記録する。eventにはid/phase/timerを含む。Python版の評価ログとの完全互換ではない。
