@@ -100,7 +100,7 @@ func run_tests() -> void:
 	]:
 		check(not Deck.parse([{"steps": [instruction]}]).error.is_empty(), "Malformed object instruction is rejected")
 	var mixed := Deck.parse([{"steps": steps + [{"type": "event", "event": "game_device"}]}])
-	check(mixed.cards.is_empty() and mixed.skipped == 1, "Unported event still excludes the whole card, including object actions")
+	check(mixed.cards.is_empty() and mixed.skipped == 1, "Without a catalog, an event excludes the whole card including object actions")
 	var pair := make_pair()
 	var missing := Controller.new(pair, parsed.cards, 145)
 	var rng_before: int = pair[0].rng.state

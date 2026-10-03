@@ -50,6 +50,11 @@ class GodotRuntimeTests(unittest.TestCase):
         self.assertIn("failures=0", output)
         self.assertIn("GODOT_OBJECT_TESTS", output)
 
+    def test_scripted_events_and_cleanup(self) -> None:
+        output = self.run_godot("--script", "res://tests/test_events.gd")
+        self.assertIn("failures=0", output)
+        self.assertIn("GODOT_EVENT_TESTS", output)
+
 
 if __name__ == "__main__":
     unittest.main()

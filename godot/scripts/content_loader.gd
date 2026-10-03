@@ -4,6 +4,7 @@ extends RefCounted
 
 const ConversationDeck = preload("res://scripts/conversation_deck.gd")
 const ObjectModel = preload("res://scripts/object_model.gd")
+const EventCatalog = preload("res://scripts/event_catalog.gd")
 var root: String
 var error: String = ""
 
@@ -200,11 +201,15 @@ func load_project(project_root: String) -> Dictionary:
 			return {}
 		object_data.append({"definition": definition, "image": image})
 	var raw_deck: Variant = read_json_value(content.get("conversations"))
+	var raw_events := read_json(content.get("events"))
 	if not error.is_empty():
 		return {}
-	var deck := ConversationDeck.parse(raw_deck)
+	var catalog := EventCatalog.parse(raw_events)
+	if not catalog.error.is_empty():
+		return fail(catalog.error)
+	var deck := ConversationDeck.parse(raw_deck, catalog.events)
 	if not deck.error.is_empty():
 		return fail(deck.error)
 	if not finite_number(room.get("conversation_distance")) or room.conversation_distance < 80 or room.conversation_distance > 300:
 		return fail("Conversation distance must be between 80 and 300")
-	return {"room": room, "characters": ghost_data, "objects": object_data, "conversations": deck.cards, "skipped_conversations": deck.skipped}
+	return {"room": room, "characters": ghost_data, "objects": object_data, "conversations": deck.cards, "events": catalog.events, "skipped_conversations": deck.skipped}

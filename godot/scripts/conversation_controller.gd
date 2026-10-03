@@ -1,6 +1,8 @@
 extends RefCounted
 ## Pair choreography and shared say/move/take/put sequencing; no rendering.
 
+const ScriptedEvents = preload("res://scripts/scripted_events.gd")
+const EventCatalog = preload("res://scripts/event_catalog.gd")
 var ghosts: Array
 var deck: Array
 var distance: float
@@ -17,10 +19,14 @@ var unavailable_count: int = 0
 var movers: Array = []
 var needs_alignment: bool = false
 var meeting_point := Vector2.ZERO
+var catalog: Dictionary
+var events: RefCounted
+var last_event: String = ""
 
 
-func _init(models: Array, cards: Array, conversation_distance: float, placements: Array = []) -> void:
+func _init(models: Array, cards: Array, conversation_distance: float, placements: Array = [], event_catalog: Dictionary = {}) -> void:
 	ghosts = models
+	catalog = event_catalog
 	deck = []
 	for item in placements:
 		if not item.tag.is_empty():
@@ -30,11 +36,21 @@ func _init(models: Array, cards: Array, conversation_distance: float, placements
 		for instruction in card.steps:
 			if instruction.type in ["move", "take", "put"] and not objects.has(instruction.tag):
 				available = false
+			if instruction.type == "event":
+				if not catalog.has(instruction.event) or instruction.event not in EventCatalog.IMPLEMENTED:
+					available = false
+				else:
+					var tag: String = catalog[instruction.event].required_tag
+					if not tag.is_empty() and not objects.has(tag):
+						available = false
+					if instruction.event == "game_device" and not objects.has(tag if not tag.is_empty() else "game_device"):
+						available = false
 		if available:
 			deck.append(card)
 		else:
 			unavailable_count += 1
 	distance = conversation_distance
+	events = ScriptedEvents.new(ghosts, objects, distance)
 	for ghost in ghosts:
 		ghost.conversation_available = not deck.is_empty()
 		ghost.partner = weakref(ghosts[1] if ghost == ghosts[0] else ghosts[0])
@@ -110,7 +126,7 @@ func advance_sequence() -> void:
 		ghost.talk_text = ""
 		ghost.action = "talk"
 	# A move is allowed to involve only one actor. Rejoin only before speaking.
-	if needs_alignment and (step_index >= steps.size() or steps[step_index].type == "say"):
+	if needs_alignment and (step_index >= steps.size() or steps[step_index].type in ["say", "event"]):
 		needs_alignment = false
 		deadline = 25.0
 		align_pair(meeting_point)
@@ -121,6 +137,12 @@ func advance_sequence() -> void:
 		return
 	var instruction: Dictionary = steps[step_index]
 	step_index += 1
+	if instruction.type == "event":
+		if events.start(instruction.event, catalog[instruction.event]):
+			phase = "event"
+		else:
+			cancel()
+		return
 	if instruction.type in ["move", "take", "put"]:
 		var item = objects[instruction.tag]
 		var actors: Array = [seeker, receiver] if instruction.actor == "both" else []
@@ -162,6 +184,22 @@ func step(delta: float) -> void:
 			if ghost.talk_request:
 				start(ghost)
 				break
+		return
+	if phase == "event":
+		var status: String = events.step(delta)
+		if status == "complete":
+			last_event = events.id
+			var terminal: bool = catalog[events.id].terminal
+			events.cancel()
+			if terminal:
+				completed_count += 1
+				cancel()
+			else:
+				needs_alignment = true
+				meeting_point = (ghosts[0].position + ghosts[1].position) * 0.5
+				advance_sequence()
+		elif status == "failed":
+			cancel()
 		return
 	if phase in ["seek", "wait_motion", "align", "face", "object_move"]:
 		deadline -= delta
@@ -212,6 +250,7 @@ func step(delta: float) -> void:
 
 
 func cancel() -> void:
+	events.cancel()
 	for ghost in ghosts:
 		ghost.conversation_controlled = false
 		ghost.conversation_available = not deck.is_empty()
@@ -236,4 +275,4 @@ func snapshot() -> Dictionary:
 	var actor_ids: Array = []
 	for ghost in movers:
 		actor_ids.append(ghost.id)
-	return {"phase": phase, "initiator": seeker.id if seeker != null else null, "step": step_index, "completed": completed_count, "movers": actor_ids}
+	return {"phase": phase, "initiator": seeker.id if seeker != null else null, "step": step_index, "completed": completed_count, "movers": actor_ids, "event": events.snapshot(), "last_event": last_event}

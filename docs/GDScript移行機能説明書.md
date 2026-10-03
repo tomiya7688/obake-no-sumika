@@ -1,6 +1,6 @@
 # Godot / GDScript移行: 個別移動・会話・タグ操作
 
-追跡: Issue #54。Python版は参照実装として残し、既存のエディターやデータを変更しない。現在の範囲は通常版の描画・個別移動とsay/move/take/putの会話。専用イベント等は未移植で、移行完了ではない。
+追跡: Issue #54。Python版は参照実装として残し、既存のエディターやデータを変更しない。現在の範囲は通常版の描画・個別移動、say/move/take/putの会話と水浴び・ゲーム機イベント。名前ホバーや配布等は未移植で、移行完了ではない。
 
 ## 責務
 
@@ -11,11 +11,15 @@
 | `godot/scripts/object_model.gd` | 配置物のタグ、初期位置、現在位置、表示状態 | 配置定義。NodeやTexture不要、JSONを書き換えない |
 | `godot/scripts/conversation_deck.gd` | 共有会話JSONの検証と対応カードの選別 | say/move/take/put手順、重み。JSONを書き換えない |
 | `godot/scripts/conversation_controller.gd` | 接近、回転待ち、横並び整列、発話とタグ操作の順序 | 2匹のモデル、配置物と対応カード。NodeやTexture不要 |
+| `godot/scripts/event_catalog.gd` | イベントID・終了属性・必要タグの検証 | 共有 `events.json` |
+| `godot/scripts/scripted_events.gd` | 水浴び・ゲーム機の時間順序、移動と終了時清掃 | 2匹と配置物。NodeやTexture不要 |
+| `godot/scripts/event_view.gd` | 発光のドット状の光線 | 可視かつ発光中の配置物と表示サイズ |
 | `godot/scripts/bubble_view.gd` | 日本語の吹き出しと幅に応じた改行 | モデルの発話文字列。行動状態を変更しない |
 | `godot/scripts/main.gd` | 描画、入力、ウィンドウ、固定deltaスモーク、ログ | 読込済みデータとモデル |
 | `godot/tests/test_runtime.gd` | GDScriptの実挙動テスト | 読込アダプターとモデル |
 | `godot/tests/test_conversations.gd` | 会話デッキと姿勢・中断・再開の検証 | デッキ、モデル、コントローラー、会話場面 |
 | `godot/tests/test_objects.gd` | タグ操作、到着待ち、再整列、表示状態・中断の検証 | 配置物、デッキ、モデル、シーン |
+| `godot/tests/test_events.gd` | イベントカタログ、姿勢、順序、逃走、清掃の検証 | カタログ、イベント、会話、描画 |
 | `tests/test_godot_runtime.py` | Godot実行テストをPythonのテスト入口に接続 | `GODOT_BIN` またはPATH上の `godot` |
 
 ```mermaid
@@ -50,7 +54,7 @@ flowchart LR
 
 `conversations.json` を直接読み、対応カードを `weight` に比例して抽選する。2回以上の発話も配列順に再生する。旧形式の `kadoka` / `maru` の文字列もsay手順に正規化する。重みは有限の1〜999、話者は `kadoka` / `maru`、発話は非空文字列。不正なカードで起動を止め、共有ファイルは修正しない。
 
-eventを含むカードは未対応のため**カード全体を除外**する。move/take/putに必要な配置タグが欠落するカードも全体を除外する。途中の台詞や取り出しだけを実行しない。起動ログに対応カード数、未移植除外数、タグ欠落除外数を出す。対応カードがゼロなら会話行動を選ばない。現在の共有デッキは23カードが対応、イベント2カードは除外される。
+カタログに存在するがハンドラーが未実装のeventを含むカードは**カード全体を除外**する。カタログにないIDは入力エラー。move/take/putやイベントに必要な配置タグが欠落するカードも全体を除外する。途中の台詞や取り出しだけを実行しない。起動ログに対応カード数、未移植除外数、タグ欠落除外数を出す。対応カードがゼロなら会話行動を選ばない。現在の共有デッキはイベント2件も含め25カードが対応する。
 
 ```mermaid
 stateDiagram-v2
@@ -87,7 +91,36 @@ stateDiagram-v2
 | put | 対象を非表示にする。現在位置と初期位置は保存 | 0.8秒の待機 |
 | say（move後） | 移動した指定者の到着位置を中心に再整列し、停止して向き合う。次のsayを消費せず待つ | 整列・振り返り完了と0.25秒の待機 |
 
-指定者以外はmove中その場で浮遊し、発話前の再整列で合流する。移動や回転中の吹き出しは消す。take/putは実行中の状態変更で、配置JSONやPNGへ書き戻さない。take後にオブジェクトがキャラクターを追従する機能はなく、Python版と同じく取り出した位置に置く。クリック中断・タイムアウトで移動拘束を解除するが、適用済みの取り出し・収納を巻き戻さない。終了時のゲーム機自動収納は専用イベントを移植する段階で扱う。
+指定者以外はmove中その場で浮遊し、発話前の再整列で合流する。移動や回転中の吹き出しは消す。take/putは実行中の状態変更で、配置JSONやPNGへ書き戻さない。take後にオブジェクトがキャラクターを追従する機能はなく、Python版と同じく取り出した位置に置く。クリック中断・タイムアウトで移動拘束を解除するが、通常のtake/putの適用済み変更は巻き戻さない。専用ゲーム機イベントが取り出した物だけは終了・中断時に非表示へ戻す。
+
+## 専用イベント
+
+`events.json` のschema_version、重複しないID、表示名、真偽値のterminal、任意のrequired_tagを検証する。terminal=trueの手順はカードの最後だけに許可する。実装済みハンドラーはwater_bath/game_device。既存エディターで保存した共有カードを直接使う。
+
+| イベント | 流れ | 姿勢と清掃 |
+| --- | --- | --- |
+| water_bath | 水場の左右へ移動 → 到着・振り返り完了 → 向き合って5秒停止 → 終了 | 会話距離を確保し同じYに並ぶ。浮遊だけ継続。水場タグがあれば配置位置、なければ部屋のwater_rest中心を使う |
+| game_device | 0.8秒待機 → まるが取り出し発光・「ピカーン」1.2秒 → まる「まぶしいのだーーー」2.4秒 → かどか「まぶしい」1.5秒 → 収納して左右の端へ逃走 → 終了 | 発話は重ならないよう順次再生。発話中は停止・向き合いを維持。逃走の基準速度175px/sに性格倍率。先に振り返って前方へ移動 |
+
+```mermaid
+stateDiagram-v2
+    [*] --> event: 会話のevent手順
+    event --> water_move: 水浴び
+    water_move --> water_face: 両者到着
+    water_face --> water_bath: 向き合う回転を完了
+    water_bath --> complete: 5秒停止
+    event --> device_wait: ゲーム機
+    device_wait --> device_flash: 取り出しと発光
+    device_flash --> device_maru: まるの反応
+    device_maru --> device_kadoka: かどかの反応
+    device_kadoka --> flee: 収納して逃走
+    flee --> complete: 両者が端へ到着
+    complete --> idle: 終了属性ならAI再開
+    complete --> align: 非終了属性なら次の手順前に再整列
+    event --> idle: クリック中断または移動タイムアウト
+```
+
+会話と同じく、回転中に発話しない。水場が端にある場合もペア中心をクランプして横間隔を維持する。waterタグの水面は床として2匹の背面へ描画し、顔を隠さない。移動段階は25秒で解除。イベント開始後のゲーム機は通常終了・クリック中断・タイムアウトの全経路で収納し、発光も消す。イベント外でtakeされた他の配置物には触れない。起動時に必要タグが欠落するカードは抽選不可にし、台詞だけの部分実行を防ぐ。イベントは乱数を追加消費せず、両者の通常AIの独立性を保つ。
 
 ## 読込と配布の境界
 
@@ -99,6 +132,6 @@ Godotのエクスポート/PCK単独配布は未対応。今はリポジトリ�
 
 ## 未移植
 
-名前ホバー、水浴び・ゲーム機イベント、粒子・影・ビネット、統合エディター連携、配布構成。システムに日本語フォントがない環境や配布時のフォント同梱は後続対応。
+名前ホバー、粒子・影・ビネット、統合エディター連携、配布構成。システムに日本語フォントがない環境や配布時のフォント同梱は後続対応。
 
-評価ログは10フレームごとに `frame`、`ghosts`（name/x/y/vx/vy/facing/action/turning/spin/target/talk）、`conversation`（phase/initiator/step/completed/movers）、`objects`（id/tag/x/y/visible）をJSONLに記録する。Python版の評価ログとの完全互換ではなく、専用イベント状態は後続段階で追加する。
+評価ログは10フレームごとに `frame`、`ghosts`（name/x/y/vx/vy/facing/action/turning/spin/target/talk）、`conversation`（phase/initiator/step/completed/movers/event/last_event）、`objects`（id/tag/x/y/visible/glowing）をJSONLに記録する。eventにはid/phase/timerを含む。Python版の評価ログとの完全互換ではない。

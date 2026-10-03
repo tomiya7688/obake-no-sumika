@@ -2,8 +2,9 @@ extends RefCounted
 ## Read the shared deck without rewriting or partially executing unsupported cards.
 
 const ObjectModel = preload("res://scripts/object_model.gd")
+const EventCatalog = preload("res://scripts/event_catalog.gd")
 
-static func parse(raw: Variant) -> Dictionary:
+static func parse(raw: Variant, catalog: Dictionary = {}) -> Dictionary:
 	var result := {"cards": [], "skipped": 0, "error": ""}
 	if not raw is Array:
 		result.error = "Conversation deck must be an array"
@@ -32,13 +33,26 @@ static func parse(raw: Variant) -> Dictionary:
 			return result
 		var steps: Array = []
 		var unsupported := false
-		for step in raw_steps:
+		for step_index in raw_steps.size():
+			var step: Variant = raw_steps[step_index]
 			if not step is Dictionary:
 				result.error = "Conversation step must be an object"
 				return result
 			var kind: Variant = step.get("type", "say")
 			if kind == "event":
-				unsupported = true
+				# Pure object/say callers without a catalog cannot enable an event.
+				if catalog.is_empty():
+					unsupported = true
+					continue
+				var event_id: Variant = step.get("event")
+				if not event_id is String or not catalog.has(event_id):
+					result.error = "Unknown event ID in conversation"
+					return result
+				if catalog[event_id].terminal and step_index != raw_steps.size() - 1:
+					result.error = "Terminal event must be the last conversation step"
+					return result
+				unsupported = unsupported or event_id not in EventCatalog.IMPLEMENTED
+				steps.append({"type": "event", "event": event_id})
 				continue
 			if kind in ["move", "take", "put"]:
 				if step.get("actor", "kadoka") not in ["kadoka", "maru", "both"] or not step.get("tag") is String or step.tag.strip_edges().is_empty():

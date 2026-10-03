@@ -53,8 +53,8 @@ func run_tests() -> void:
 		{"steps": [speech_steps[0], {"type": "event", "event": "game_device"}]},
 		{"steps": [speech_steps[0], {"type": "event", "event": "water_bath"}]},
 	])
-	check(filtered.error.is_empty() and filtered.cards.size() == 1 and filtered.skipped == 2, "Unsupported cards are excluded whole, not partially played")
-	check(not data.conversations.is_empty() and data.skipped_conversations == 2, "Existing ordinary conversations are available; both event cards are excluded")
+	check(filtered.error.is_empty() and filtered.cards.size() == 1 and filtered.skipped == 2, "Without a catalog, event cards are excluded whole rather than partially played")
+	check(data.conversations.size() == 25 and data.skipped_conversations == 0, "All shared conversations, including both implemented event cards, load")
 	var legacy := Deck.parse([{"kadoka": "  ここは\nおうち  ", "maru": "おうちなのだ！"}])
 	check(legacy.error.is_empty() and legacy.cards[0].steps[0].text == "ここは おうち", "Legacy say data and whitespace are normalized without splitting characters")
 	for bad in [

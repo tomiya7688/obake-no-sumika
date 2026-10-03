@@ -1,6 +1,6 @@
 # おばけの住処: GDScript移行版
 
-Godot 4の通常版ソースランタイム。個別移動、通常会話とタグ付きオブジェクト操作まで移植中で、専用イベント・エディターはまだ未移植。既存JSONとPNGをリポジトリの親から直接読むため、`godot/` 単体では起動できない。
+Godot 4の通常版ソースランタイム。個別移動、通常会話、タグ付きオブジェクト操作、水浴び・ゲーム機イベントを移植済み。名前ホバー・統合エディター・配布はまだ未移植。既存JSONとPNGをリポジトリの親から直接読むため、`godot/` 単体では起動できない。
 
 ## 起動
 
@@ -14,7 +14,7 @@ Windowsではリポジトリ直下の `run_godot.bat` に実行ファイルの�
 
 左クリックで集合、F11 / Alt+Enterで全画面切替、Escで終了。停止/前進/高速前進/進路変更/一周の移動宙返り/水場停止に加え、相手へ話しかける行動を実装している。会話時は横並びで向き合って止まり、既存JSONの台詞を吹き出しに順番に表示する。
 
-会話は `conversations.json` を共用し、重み付きで抽選する。sayとタグ付きmove/take/putを順番に実行する。移動中は台詞を出さず、次の発話前に横並びで向き合い直す。未移植のeventを含むカードや配置タグが欠落するカードは**全体を抽選から除外**する。会話中にクリックすると会話を中断して集合する。共有ファイルをGodot用に書き換える必要はない。
+会話は `conversations.json` を共用し、重み付きで抽選する。say、タグ付きmove/take/put、専用eventを順番に実行する。移動中は台詞を出さず、次の発話前に横並びで向き合い直す。カタログにある未実装イベントのカードや配置タグが欠落するカードは**全体を抽選から除外**する。カタログにないIDやterminalイベントの後に手順が続くカードは入力エラー。会話中にクリックすると会話を中断して集合する。共有ファイルをGodot用に書き換える必要はない。
 
 タグ操作は既存の会話エディターで編集できる。例えば次の会話はまるだけが拾い物へ移動し、取り出して話し、しまう。取り出し位置・表示状態は実行中だけ変化し、PNGや配置JSONは変更しない。`take` はその位置に置く操作で、持ったまま追従する機能ではない。中断時も実行済みの操作は巻き戻さない（しまう時はputを使う）。
 
@@ -28,7 +28,9 @@ Windowsではリポジトリ直下の `run_godot.bat` に実行ファイルの�
 ]}
 ```
 
-既存の水浴び・ゲーム機イベントカードはまだ除外対象。タグ操作だけでは発光や逃走を再生しない。
+`events.json` の既存water_bath/game_deviceを使う会話も実行する。水浴びは水場で横並びに向き合って5秒停止。ゲーム機はまるが取り出し→発光→2匹の反応を順番に表示→収納→左右の端へ高速で逃走する。イベント中も回転中には話さない。イベント終了・クリック中断・タイムアウトではゲーム機と光を画面から消す。通常のtakeで出した物は、これまで通りputまで残る。
+
+水浴びはタグ付き水場の配置位置を使い、水場配置がなければ `room.json` のwater_rest中心を使う。ゲーム機イベントはカタログのrequired_tagを必要とし、標準はgame_device。既存会話エディターのevent手順をそのまま編集できる。現在のデッキは25カードすべて対応する。これはエンジンGUIへのGodot起動統合や入力検証の完全互換を意味しない。
 
 ## 検証
 
@@ -37,6 +39,7 @@ $env:GODOT_BIN="C:\path\Godot_win64_console.exe"
 & $env:GODOT_BIN --headless --path godot --script res://tests/test_runtime.gd
 & $env:GODOT_BIN --headless --path godot --script res://tests/test_conversations.gd
 & $env:GODOT_BIN --headless --path godot --script res://tests/test_objects.gd
+& $env:GODOT_BIN --headless --path godot --script res://tests/test_events.gd
 & $env:GODOT_BIN --headless --path godot -- --test-frames 900 --seed 12345
 .\.venv\Scripts\python.exe -m unittest tests.test_godot_runtime -v
 .\.venv\Scripts\python.exe scripts/evaluate_project.py
@@ -46,7 +49,7 @@ $env:GODOT_BIN="C:\path\Godot_win64_console.exe"
 
 `--test-frames` は固定delta 1/60秒で終了する。Godotのエンジンオプションとゲーム側のオプションは `--` で分離する。描画を保存したい場合は非headlessで `--screenshot <PNGのパス>` を追加できる。`--evaluation-log <JSONLのパス>` で状態を保存できる。出力先の親フォルダーは先に作る。
 
-会話の描画チェックは非headlessで `--script res://tests/test_conversations.gd -- --screenshot <PNGのパス>`。タグ操作後の描画は `--script res://tests/test_objects.gd -- --screenshot <PNGのパス>`。100秒相当の通常AIは `--headless --fixed-fps 60 --path godot -- --test-frames 6000 --seed 12345 --evaluation-log <JSONLのパス>` で高速に確認できる。状態ログには発話、会話フェーズ、移動担当者、配置物の位置・表示状態も含まれる。
+会話の描画チェックは非headlessで `--script res://tests/test_conversations.gd -- --screenshot <PNGのパス>`。タグ操作後の描画は `--script res://tests/test_objects.gd -- --screenshot <PNGのパス>`。専用イベントは `--script res://tests/test_events.gd -- --screenshot-prefix <出力フォルダー/名前>` で水浴びと発光時の2枚を保存する。100秒相当の通常AIは `--headless --fixed-fps 60 --path godot -- --test-frames 6000 --seed 12345 --evaluation-log <JSONLのパス>` で高速に確認できる。状態ログには発話、会話フェーズ、イベント段階、移動担当者、配置物の位置・表示・発光状態も含まれる。
 
 構造と移行境界は [機能説明書](../docs/GDScript移行機能説明書.md)、次回の読込範囲は [Godotコンテキスト](../docs/context/godot.md)。
 

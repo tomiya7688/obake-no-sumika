@@ -5,11 +5,14 @@ const GhostModel = preload("res://scripts/ghost_model.gd")
 const ObjectModel = preload("res://scripts/object_model.gd")
 const ConversationController = preload("res://scripts/conversation_controller.gd")
 const BubbleView = preload("res://scripts/bubble_view.gd")
+const EventView = preload("res://scripts/event_view.gd")
 var room: Dictionary
 var ghosts: Array = []
 var views: Array[Sprite2D] = []
 var objects: Array = []
 var object_views: Array[Sprite2D] = []
+var object_sizes: Array = []
+var event_view := EventView.new()
 var world := Node2D.new()
 var frame_count: int = 0
 var test_frames: int = 0
@@ -45,14 +48,19 @@ func _ready() -> void:
 	var water := Rect2(raw_water[0], raw_water[1], raw_water[2], raw_water[3])
 	world.y_sort_enabled = true
 	add_child(world)
+	event_view.z_index = 80
+	add_child(event_view)
 	for item in data.objects:
 		var model := ObjectModel.new(item.definition)
 		var sprite := Sprite2D.new()
 		sprite.texture = ImageTexture.create_from_image(item.image)
 		sprite.scale = Vector2.ONE * float(item.definition.width) / item.image.get_width()
+		# The spring is a floor surface, not a wall that occludes bathing faces.
+		sprite.z_index = 0 if model.tag == "water" else 1
 		world.add_child(sprite)
 		objects.append(model)
 		object_views.append(sprite)
+		object_sizes.append(sprite.texture.get_size() * sprite.scale)
 	var base_seed := int(option("seed", str(Time.get_ticks_usec() ^ int(Time.get_unix_time_from_system()))))
 	for item in data.characters:
 		var image: Image = item.image
@@ -62,6 +70,7 @@ func _ready() -> void:
 		var model := GhostModel.new(item.definition, size, bounds, water, base_seed)
 		var sprite := Sprite2D.new()
 		sprite.texture = ImageTexture.create_from_image(image)
+		sprite.z_index = 1
 		world.add_child(sprite)
 		ghosts.append(model)
 		views.append(sprite)
@@ -69,7 +78,7 @@ func _ready() -> void:
 		bubble.z_index = 100
 		add_child(bubble)
 		bubbles.append(bubble)
-	conversations = ConversationController.new(ghosts, data.conversations, float(room.conversation_distance), objects)
+	conversations = ConversationController.new(ghosts, data.conversations, float(room.conversation_distance), objects, data.events)
 	print("CONVERSATION_DECK runnable=", conversations.deck.size(), " skipped=", data.skipped_conversations, " missing_tags=", conversations.unavailable_count)
 	test_frames = int(option("test-frames", "0"))
 	screenshot = option("screenshot")
@@ -84,6 +93,7 @@ func _ready() -> void:
 
 
 func refresh_views() -> void:
+	event_view.set_objects(objects, object_sizes)
 	for index in objects.size():
 		object_views[index].position = objects[index].position
 		object_views[index].visible = objects[index].visible
