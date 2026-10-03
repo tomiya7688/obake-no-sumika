@@ -3,6 +3,7 @@ extends RefCounted
 ## Full Python validation parity and exported/PCK layouts are later milestones.
 
 const ConversationDeck = preload("res://scripts/conversation_deck.gd")
+const ObjectModel = preload("res://scripts/object_model.gd")
 var root: String
 var error: String = ""
 
@@ -92,6 +93,32 @@ func vector_data(value: Variant, count: int) -> bool:
 	return true
 
 
+func validate_placements(value: Variant) -> bool:
+	if not value is Array:
+		error = "Placements must contain an objects array"
+		return false
+	var ids: Array = []
+	var tags: Array = []
+	for definition in value:
+		if not definition is Dictionary or not definition.get("id") is String or definition.id.strip_edges().is_empty() or definition.id in ids:
+			error = "Object IDs must be non-empty and unique"
+			return false
+		if not definition.get("name", definition.id) is String or not definition.get("tag", "") is String or not definition.get("visible", true) is bool:
+			error = "Invalid object name, tag or visibility"
+			return false
+		if not finite_number(definition.get("width")) or definition.width <= 0 or not finite_number(definition.get("x")) or not finite_number(definition.get("y")):
+			error = "Invalid object placement"
+			return false
+		var tag := ObjectModel.normalize_tag(definition.get("tag", ""))
+		if not tag.is_empty() and tag in tags:
+			error = "Object tags must be unique"
+			return false
+		ids.append(definition.id)
+		if not tag.is_empty():
+			tags.append(tag)
+	return true
+
+
 func load_project(project_root: String) -> Dictionary:
 	error = ""
 	root = project_root.replace("\\", "/").simplify_path().trim_suffix("/")
@@ -164,12 +191,10 @@ func load_project(project_root: String) -> Dictionary:
 		if image == null:
 			return {}
 		ghost_data.append({"definition": definition, "image": image})
-	if not placements.get("objects") is Array:
-		return fail("Placements must contain an objects array")
+	if not validate_placements(placements.get("objects")):
+		return {}
 	var object_data: Array = []
 	for definition in placements.objects:
-		if not definition is Dictionary or not finite_number(definition.get("width")) or definition.width <= 0 or not finite_number(definition.get("x")) or not finite_number(definition.get("y")):
-			return fail("Invalid object placement")
 		var image := read_image(definition.get("image"), false)
 		if image == null:
 			return {}

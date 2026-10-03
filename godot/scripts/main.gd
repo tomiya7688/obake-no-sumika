@@ -2,11 +2,14 @@ extends Node2D
 
 const ContentLoader = preload("res://scripts/content_loader.gd")
 const GhostModel = preload("res://scripts/ghost_model.gd")
+const ObjectModel = preload("res://scripts/object_model.gd")
 const ConversationController = preload("res://scripts/conversation_controller.gd")
 const BubbleView = preload("res://scripts/bubble_view.gd")
 var room: Dictionary
 var ghosts: Array = []
 var views: Array[Sprite2D] = []
+var objects: Array = []
+var object_views: Array[Sprite2D] = []
 var world := Node2D.new()
 var frame_count: int = 0
 var test_frames: int = 0
@@ -43,12 +46,13 @@ func _ready() -> void:
 	world.y_sort_enabled = true
 	add_child(world)
 	for item in data.objects:
+		var model := ObjectModel.new(item.definition)
 		var sprite := Sprite2D.new()
 		sprite.texture = ImageTexture.create_from_image(item.image)
 		sprite.scale = Vector2.ONE * float(item.definition.width) / item.image.get_width()
-		sprite.position = Vector2(item.definition.x, item.definition.y)
-		sprite.visible = item.definition.get("visible", true)
 		world.add_child(sprite)
+		objects.append(model)
+		object_views.append(sprite)
 	var base_seed := int(option("seed", str(Time.get_ticks_usec() ^ int(Time.get_unix_time_from_system()))))
 	for item in data.characters:
 		var image: Image = item.image
@@ -65,8 +69,8 @@ func _ready() -> void:
 		bubble.z_index = 100
 		add_child(bubble)
 		bubbles.append(bubble)
-	conversations = ConversationController.new(ghosts, data.conversations, float(room.conversation_distance))
-	print("CONVERSATION_DECK runnable=", data.conversations.size(), " skipped=", data.skipped_conversations)
+	conversations = ConversationController.new(ghosts, data.conversations, float(room.conversation_distance), objects)
+	print("CONVERSATION_DECK runnable=", conversations.deck.size(), " skipped=", data.skipped_conversations, " missing_tags=", conversations.unavailable_count)
 	test_frames = int(option("test-frames", "0"))
 	screenshot = option("screenshot")
 	var log_path := option("evaluation-log")
@@ -80,6 +84,9 @@ func _ready() -> void:
 
 
 func refresh_views() -> void:
+	for index in objects.size():
+		object_views[index].position = objects[index].position
+		object_views[index].visible = objects[index].visible
 	for index in ghosts.size():
 		var model = ghosts[index]
 		views[index].position = model.draw_position()
@@ -105,7 +112,10 @@ func _process(delta: float) -> void:
 		var snapshots: Array = []
 		for model in ghosts:
 			snapshots.append(model.snapshot())
-		evaluation.store_line(JSON.stringify({"frame": frame_count, "ghosts": snapshots, "conversation": conversations.snapshot()}))
+		var object_snapshots: Array = []
+		for item in objects:
+			object_snapshots.append(item.snapshot())
+		evaluation.store_line(JSON.stringify({"frame": frame_count, "ghosts": snapshots, "objects": object_snapshots, "conversation": conversations.snapshot()}))
 	if test_frames > 0 and frame_count >= test_frames:
 		set_process(false)
 		if not screenshot.is_empty() and DisplayServer.get_name() != "headless":

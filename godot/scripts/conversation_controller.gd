@@ -1,5 +1,5 @@
 extends RefCounted
-## Pair choreography and say-only sequencing; simulation code, not rendering.
+## Pair choreography and shared say/move/take/put sequencing; no rendering.
 
 var ghosts: Array
 var deck: Array
@@ -12,11 +12,28 @@ var step_index: int = 0
 var timer: float = 0.0
 var deadline: float = 0.0
 var completed_count: int = 0
+var objects: Dictionary = {}
+var unavailable_count: int = 0
+var movers: Array = []
+var needs_alignment: bool = false
+var meeting_point := Vector2.ZERO
 
 
-func _init(models: Array, cards: Array, conversation_distance: float) -> void:
+func _init(models: Array, cards: Array, conversation_distance: float, placements: Array = []) -> void:
 	ghosts = models
-	deck = cards
+	deck = []
+	for item in placements:
+		if not item.tag.is_empty():
+			objects[item.tag] = item
+	for card in cards:
+		var available := true
+		for instruction in card.steps:
+			if instruction.type in ["move", "take", "put"] and not objects.has(instruction.tag):
+				available = false
+		if available:
+			deck.append(card)
+		else:
+			unavailable_count += 1
 	distance = conversation_distance
 	for ghost in ghosts:
 		ghost.conversation_available = not deck.is_empty()
@@ -42,6 +59,8 @@ func start(initiator: Variant) -> bool:
 	receiver = ghosts[1] if seeker == ghosts[0] else ghosts[0]
 	steps = choose_card(seeker.rng).steps.duplicate(true)
 	step_index = 0
+	needs_alignment = false
+	movers = []
 	deadline = 25.0
 	phase = "seek"
 	for ghost in ghosts:
@@ -70,32 +89,70 @@ func motion_finished() -> bool:
 	return true
 
 
-func align_pair() -> void:
+func align_pair(center: Variant = null) -> void:
 	var left = ghosts[0] if ghosts[0].position.x <= ghosts[1].position.x else ghosts[1]
 	var right = ghosts[1] if left == ghosts[0] else ghosts[0]
 	var gap := maxf(distance, left.half_size.x + right.half_size.x + 36)
 	var x: float = receiver.position.x + (gap * 0.5 if receiver == left else -gap * 0.5)
+	if center != null:
+		x = center.x
 	x = clampf(x, left.bounds.position.x + gap * 0.5, right.bounds.end.x - gap * 0.5)
 	var y := clampf(receiver.position.y, maxf(left.bounds.position.y, right.bounds.position.y), minf(left.bounds.end.y, right.bounds.end.y))
+	if center != null:
+		y = clampf(center.y, maxf(left.bounds.position.y, right.bounds.position.y), minf(left.bounds.end.y, right.bounds.end.y))
 	left.go_to(Vector2(x - gap * 0.5, y), "talk_align", 60)
 	right.go_to(Vector2(x + gap * 0.5, y), "talk_align", 60)
 	phase = "align"
 
 
-func show_next_line() -> void:
+func advance_sequence() -> void:
 	for ghost in ghosts:
 		ghost.talk_text = ""
 		ghost.action = "talk"
+	# A move is allowed to involve only one actor. Rejoin only before speaking.
+	if needs_alignment and (step_index >= steps.size() or steps[step_index].type == "say"):
+		needs_alignment = false
+		deadline = 25.0
+		align_pair(meeting_point)
+		return
 	if step_index >= steps.size():
 		phase = "afterglow"
 		timer = 1.2
 		return
-	var line: Dictionary = steps[step_index]
+	var instruction: Dictionary = steps[step_index]
 	step_index += 1
+	if instruction.type in ["move", "take", "put"]:
+		var item = objects[instruction.tag]
+		var actors: Array = [seeker, receiver] if instruction.actor == "both" else []
+		if actors.is_empty():
+			for ghost in ghosts:
+				if ghost.id == instruction.actor:
+					actors.append(ghost)
+		for ghost in ghosts:
+			lock(ghost)
+			ghost.action = "sequence_wait"
+		if instruction.type == "move":
+			movers = actors
+			var destination: Vector2 = item.move_destination()
+			for index in actors.size():
+				var offset := (index * 2 - (actors.size() - 1)) * 54
+				actors[index].go_to(destination + Vector2(offset, -38), "sequence_move", 75)
+			needs_alignment = true
+			deadline = 25.0
+			phase = "object_move"
+		else:
+			if instruction.type == "take":
+				# As in Python, `both` takes out once using the initiator's side.
+				item.take_out(actors[0].position, actors[0].facing)
+			else:
+				item.put_away()
+			phase = "object_pause"
+			timer = 0.8
+		return
 	for ghost in ghosts:
-		if ghost.id == line.speaker:
-			ghost.talk_text = line.text
-	timer = clampf(1.3 + line.text.length() * 0.055, 1.5, 4.0)
+		if ghost.id == instruction.speaker:
+			ghost.talk_text = instruction.text
+	timer = clampf(1.3 + instruction.text.length() * 0.055, 1.5, 4.0)
 	phase = "talk"
 
 
@@ -106,7 +163,7 @@ func step(delta: float) -> void:
 				start(ghost)
 				break
 		return
-	if phase in ["seek", "wait_motion", "align", "face"]:
+	if phase in ["seek", "wait_motion", "align", "face", "object_move"]:
 		deadline -= delta
 		if deadline <= 0:
 			cancel()
@@ -133,14 +190,25 @@ func step(delta: float) -> void:
 			if motion_finished():
 				phase = "settle"
 				timer = 0.25
-		"settle", "talk", "afterglow":
+		"object_move":
+			var arrived := motion_finished()
+			for ghost in movers:
+				arrived = arrived and ghost.target == null
+			if arrived:
+				meeting_point = Vector2.ZERO
+				for ghost in movers:
+					meeting_point += ghost.position
+				meeting_point /= movers.size()
+				movers = []
+				advance_sequence()
+		"settle", "talk", "object_pause", "afterglow":
 			timer -= delta
 			if timer <= 0:
 				if phase == "afterglow":
 					completed_count += 1
 					cancel()
 				else:
-					show_next_line()
+					advance_sequence()
 
 
 func cancel() -> void:
@@ -158,9 +226,14 @@ func cancel() -> void:
 			ghost.action_timer = 1.2
 	phase = "idle"
 	steps = []
+	movers = []
+	needs_alignment = false
 	seeker = null
 	receiver = null
 
 
 func snapshot() -> Dictionary:
-	return {"phase": phase, "initiator": seeker.id if seeker != null else null, "step": step_index, "completed": completed_count}
+	var actor_ids: Array = []
+	for ghost in movers:
+		actor_ids.append(ghost.id)
+	return {"phase": phase, "initiator": seeker.id if seeker != null else null, "step": step_index, "completed": completed_count, "movers": actor_ids}

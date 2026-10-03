@@ -1,6 +1,7 @@
 extends RefCounted
 ## Read the shared deck without rewriting or partially executing unsupported cards.
 
+const ObjectModel = preload("res://scripts/object_model.gd")
 
 static func parse(raw: Variant) -> Dictionary:
 	var result := {"cards": [], "skipped": 0, "error": ""}
@@ -36,8 +37,14 @@ static func parse(raw: Variant) -> Dictionary:
 				result.error = "Conversation step must be an object"
 				return result
 			var kind: Variant = step.get("type", "say")
-			if kind in ["move", "take", "put", "event"]:
+			if kind == "event":
 				unsupported = true
+				continue
+			if kind in ["move", "take", "put"]:
+				if step.get("actor", "kadoka") not in ["kadoka", "maru", "both"] or not step.get("tag") is String or step.tag.strip_edges().is_empty():
+					result.error = "Object step requires a known actor and non-empty tag"
+					return result
+				steps.append({"type": kind, "actor": step.get("actor", "kadoka"), "tag": ObjectModel.normalize_tag(step.tag)})
 				continue
 			if kind != "say" or step.get("speaker", "kadoka") not in ["kadoka", "maru"] or not step.get("text") is String or step.text.strip_edges().is_empty():
 				result.error = "Invalid say step or unknown step type"

@@ -51,7 +51,7 @@ func run_tests() -> void:
 	var filtered := Deck.parse([
 		{"weight": 2, "steps": speech_steps},
 		{"steps": [speech_steps[0], {"type": "event", "event": "game_device"}]},
-		{"steps": [speech_steps[0], {"type": "move", "actor": "both", "tag": "water"}]},
+		{"steps": [speech_steps[0], {"type": "event", "event": "water_bath"}]},
 	])
 	check(filtered.error.is_empty() and filtered.cards.size() == 1 and filtered.skipped == 2, "Unsupported cards are excluded whole, not partially played")
 	check(not data.conversations.is_empty() and data.skipped_conversations == 2, "Existing ordinary conversations are available; both event cards are excluded")

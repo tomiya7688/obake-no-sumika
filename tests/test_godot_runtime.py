@@ -45,6 +45,11 @@ class GodotRuntimeTests(unittest.TestCase):
         self.assertIn("failures=0", output)
         self.assertIn("GODOT_CONVERSATION_TESTS", output)
 
+    def test_tagged_object_sequence_and_render_state(self) -> None:
+        output = self.run_godot("--script", "res://tests/test_objects.gd")
+        self.assertIn("failures=0", output)
+        self.assertIn("GODOT_OBJECT_TESTS", output)
+
 
 if __name__ == "__main__":
     unittest.main()
