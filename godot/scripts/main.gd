@@ -9,6 +9,10 @@ const EventView = preload("res://scripts/event_view.gd")
 const NameView = preload("res://scripts/name_view.gd")
 const ShadowView = preload("res://scripts/shadow_view.gd")
 const VignetteView = preload("res://scripts/vignette_view.gd")
+const MoteField = preload("res://scripts/mote_field.gd")
+const MoteView = preload("res://scripts/mote_view.gd")
+var motes: RefCounted
+var mote_view: Node2D
 var vignette: Sprite2D
 var room: Dictionary
 var ghosts: Array = []
@@ -82,6 +86,10 @@ func _ready() -> void:
 		object_views.append(sprite)
 		object_sizes.append(sprite.texture.get_size() * sprite.scale)
 	var base_seed := int(option("seed", str(Time.get_ticks_usec() ^ int(Time.get_unix_time_from_system()))))
+	motes = MoteField.new(room.motes, base_seed)
+	mote_view = MoteView.new(motes)
+	# Above the floor/water, below z=1 rocks/ghosts and all dialogue/UI.
+	add_child(mote_view)
 	for item in data.characters:
 		var image: Image = item.image
 		var height := int(item.definition.display_height)
@@ -116,6 +124,7 @@ func _ready() -> void:
 
 
 func refresh_views() -> void:
+	mote_view.queue_redraw()
 	event_view.set_objects(objects, object_sizes)
 	for index in objects.size():
 		object_views[index].position = objects[index].position
@@ -183,6 +192,7 @@ func _process(delta: float) -> void:
 	if ghosts.is_empty():
 		return
 	var fixed_delta := 1.0 / 60.0 if test_frames > 0 else minf(delta, 0.05)
+	motes.step(fixed_delta)
 	for model in ghosts:
 		model.step(fixed_delta)
 	conversations.step(fixed_delta)

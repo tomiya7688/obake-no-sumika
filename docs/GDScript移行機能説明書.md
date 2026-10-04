@@ -1,6 +1,6 @@
 # Godot / GDScript移行: 個別移動・会話・タグ操作
 
-追跡: Issue #54。Python版は参照実装として残し、既存のエディターやデータを変更しない。現在の範囲は通常版の描画・個別移動、say/move/take/putの会話と水浴び・ゲーム機イベント、名前ホバー、床の影、背景の周辺減光。配布等は未移植で、移行完了ではない。
+追跡: Issue #54。Python版は参照実装として残し、既存のエディターやデータを変更しない。現在の範囲は通常版の描画・個別移動、say/move/take/putの会話と水浴び・ゲーム機イベント、名前ホバー、床の影、背景の周辺減光、環境粒子。配布等は未移植で、移行完了ではない。
 
 ## 責務
 
@@ -18,6 +18,8 @@
 | `godot/scripts/name_view.gd` | ホバー中だけの日本語名札、画面内への配置 | キャラクターの表示名と描画矩形。入力を消費せず行動状態を変更しない |
 | `godot/scripts/shadow_view.gd` | 薄いドット状の影とモデル位置への追従 | 表示サイズ、現在位置。回転や浮遊揺れを継承せず、AIを変更しない |
 | `godot/scripts/vignette_view.gd` | 部屋の減光設定の純粋な検証、静的RGBAマスクと背景だけへの表示 | `room.json` の `background.vignette` と部屋寸法。AIを変更しない |
+| `godot/scripts/mote_field.gd` | 粒子設定の検証、独立した環境用乱数、上昇・揺れ・再出現 | `room.json` の `motes` と基準seed。Node/Texture不要、AI乱数を共有しない |
+| `godot/scripts/mote_view.gd` | 粒子の位置・色・半径・alphaを四角いドットへ描画 | MoteFieldだけ。入力・更新・乱数を扱わない |
 | `godot/scripts/main.gd` | 描画、入力、ウィンドウ、固定deltaスモーク、ログ | 読込済みデータとモデル |
 | `godot/tests/test_runtime.gd` | GDScriptの実挙動テスト | 読込アダプターとモデル |
 | `godot/tests/test_conversations.gd` | 会話デッキと姿勢・中断・再開の検証 | デッキ、モデル、コントローラー、会話場面 |
@@ -26,6 +28,7 @@
 | `godot/tests/test_hover.gd` | 回転・振り返り・重なり・画面端・入力変換・全画面の検証 | シーン、名前表示、注入したマウス/キー入力 |
 | `godot/tests/test_shadows.gd` | 影の画像、宙返り終了時の連続性、床と岩の描画順を検証 | モデル、影、実描画のピクセル比較 |
 | `godot/tests/test_vignette.gd` | 減光設定と画像、前景保護、画面サイズ・入力非干渉の検証 | 検証関数、読込アダプター、シーン、実描画のピクセル比較 |
+| `godot/tests/test_motes.gd` | 粒子設定と時間更新、再出現、乱数独立性、描画・入力の検証 | 粒子モデル、シーン、実描画のピクセル比較 |
 | `tests/test_godot_runtime.py` | Godot実行テストをPythonのテスト入口に接続 | `GODOT_BIN` またはPATH上の `godot` |
 
 ```mermaid
@@ -154,6 +157,18 @@ insetを0からmax_inset未満までstepずつ増やし、矩形 `(inset, floor(
 
 通常マスクの表示あり/なし、余白付きウィンドウ、全画面を保存して確認する。前景保護のピクセル比較はテスト内だけで濃いマスクを使用し、実際にマスクがある位置のおばけ・水面・吹き出し・名前を確認する。スクリーンショットのテクスチャは黒帯を含まないのでstretch変換を使い、黒帯を含むウィンドウのfinal変換とは区別する。全画面切替とクリックは入力注入で検証し、手動入力とは分けて扱う。
 
+## 環境粒子
+
+共有部屋の `motes` を直接使い、count、x/y/reset_yの範囲、top、speed_range、drift_speed/amount、radii、alpha_range、colorを検証する。countは0〜1000、半径候補は1〜100の整数値、alphaと色は0〜255の整数値。有限な座標・速度範囲は下端<上端、速度は非負、alpha範囲は等値も許可する。topは部屋の高さ以内、揺れの速度・幅は0〜100。不正型・欠落・非有限値・範囲外は読込時に拒否する。count=0は有効な無効化設定。
+
+MoteFieldはRefCountedの環境専用モデル。基準seedから `scenery/motes` の名前空間で専用RandomNumberGeneratorを作り、かどか・まる・会話の乱数を共有しない。設定を複製して保持する。開始時に位置・速度・位相・半径候補・alphaを抽選し、半径配列の重複を重みとして残す。Pythonとの乱数列一致は要求しない。
+
+mainのゲームdeltaで環境のelapsedを進め、`y -= speed*delta` と `x += sin(elapsed*drift_speed+phase)*drift_amount*delta` を適用する。topを越えた時だけx_range/reset_y_rangeへ位置を再抽選し、速度・位相・半径・alphaは維持する。範囲は開始・再出現の範囲で、横移動を強制クランプしない。通常の移動と描画は乱数を消費せず、0や負値・非有限deltaは状態を変えない。
+
+MoteViewはモデルの整数化した中心から半径分を引き、2倍半径の四角をalpha付きで描く。フレームごとの画像や粒子Node生成はしない。水面・床の影より前、岩とおばけのz=1より後ろ、UIより後ろに配置する。Python版では配置物の上に粒子を描くが、Godot版の岩は前景として粒子を隠す。顔や文字を隠さないことを実描画で確認する。全画面や黒帯付きウィンドウでも内部座標と同じstretchを使い、粒子をホバー対象や入力の受け手にはしない。
+
+ヘッドレスでは同じseed/deltaの再現性、100秒の再出現、描画更新の非干渉、無効化と設定検証を確認する。実描画では共有設定の開始時・4秒後・画面サイズ変更を保存し、固定の明るい粒子で水面と前景の重なりを比較する。保存画像は黒帯を含まないのでstretch変換でサンプルし、ウィンドウ入力はfinal変換を使う。実行中の粒子状態は共有JSONへ保存せず、既存AI評価ログにも追加しない。
+
 ## 読込と配布の境界
 
 ソース実行時は `godot/` の親を通常版のコンテンツルートとして読む。PNGやJSONをGodot専用コピーへ分岐させない。`--content-root` で別の通常版ルートを明示できる。
@@ -164,6 +179,6 @@ Godotのエクスポート/PCK単独配布は未対応。今はリポジトリ�
 
 ## 未移植
 
-粒子、統合エディター連携、配布構成。システムに日本語フォントがない環境や配布時のフォント同梱は後続対応。
+統合エディター連携、全部屋・キャラクター入力の完全な共有検証、Python/Godot評価ログ比較、配布構成。システムに日本語フォントがない環境や配布時のフォント同梱は後続対応。
 
 評価ログは10フレームごとに `frame`、`ghosts`（name/x/y/vx/vy/facing/action/turning/spin/target/talk）、`conversation`（phase/initiator/step/completed/movers/event/last_event）、`objects`（id/tag/x/y/visible/glowing）をJSONLに記録する。eventにはid/phase/timerを含む。Python版の評価ログとの完全互換ではない。

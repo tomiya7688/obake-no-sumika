@@ -1,6 +1,6 @@
 # おばけの住処: GDScript移行版
 
-Godot 4の通常版ソースランタイム。個別移動、通常会話、タグ付きオブジェクト操作、水浴び・ゲーム機イベント、名前ホバー、床の影、背景の周辺減光を移植済み。粒子、統合エディター・配布はまだ未移植。既存JSONとPNGをリポジトリの親から直接読むため、`godot/` 単体では起動できない。
+Godot 4の通常版ソースランタイム。個別移動、通常会話、タグ付きオブジェクト操作、水浴び・ゲーム機イベント、名前ホバー、床の影、背景の周辺減光、環境粒子を移植済み。統合エディター・完全な共有入力検証・配布は後続対応。既存JSONとPNGをリポジトリの親から直接読むため、`godot/` 単体では起動できない。
 
 ## 起動
 
@@ -36,6 +36,8 @@ Windowsではリポジトリ直下の `run_godot.bat` に実行ファイルの�
 
 背景の端には `room.json` の `background.vignette` に従った薄い角丸の減光をかける。中央は透明に保ち、おばけ・水面・配置物・吹き出し・名前には重ねない。`max_inset: 0` で無効にできる。色や寸法・alphaの不正値、設定の欠落は起動時にエラーにする。設定を変えた時はゲームを再起動する。
 
+住処には同じ部屋JSONの `motes` に従った小さな四角い粒子がゆっくり上昇し、少し左右に揺れる。上端を越えたら設定された下側範囲へ再出現する。数・色・透明度・半径候補・速度・範囲・揺れを編集でき、`count: 0` で無効化する。半径候補の重複は抽選の重みになる。環境用乱数は二匹や会話と独立している。水面より前、岩・おばけ・吹き出し・名前より後ろに描く。設定変更は再起動後に反映し、実行中にJSONへ書き戻さない。
+
 ## 検証
 
 ```powershell
@@ -47,6 +49,7 @@ $env:GODOT_BIN="C:\path\Godot_win64_console.exe"
 & $env:GODOT_BIN --headless --path godot --script res://tests/test_hover.gd
 & $env:GODOT_BIN --headless --path godot --script res://tests/test_shadows.gd
 & $env:GODOT_BIN --headless --path godot --script res://tests/test_vignette.gd
+& $env:GODOT_BIN --headless --path godot --script res://tests/test_motes.gd
 & $env:GODOT_BIN --headless --path godot -- --test-frames 900 --seed 12345
 .\.venv\Scripts\python.exe -m unittest tests.test_godot_runtime -v
 .\.venv\Scripts\python.exe scripts/evaluate_project.py
@@ -57,6 +60,8 @@ $env:GODOT_BIN="C:\path\Godot_win64_console.exe"
 影の実描画チェックは非headlessで `--script res://tests/test_shadows.gd -- --screenshot-prefix <出力フォルダー/名前>`。通常時、左右の宙返り、水面上の4枚を保存し、影の表示あり/なしの描画ピクセル比較で水面より前・岩より後ろの描画順も確認する。
 
 周辺減光は同様に `--script res://tests/test_vignette.gd -- --screenshot-prefix <出力フォルダー/名前>`。設定どおりの表示あり/なし・余白付きウィンドウ・全画面の4枚を保存する。描画順の比較にはテスト内だけで濃いマスクを使い、端の背景だけが変わり前景は変わらないことを確認する。画像のピクセル座標には [Viewportのstretch変換](https://docs.godotengine.org/en/stable/classes/class_viewport.html#class-viewport-method-get-stretch-transform) を使う。保存テクスチャは黒帯を含まないため、黒帯付きのウィンドウ座標で比較しない。
+
+粒子は `--script res://tests/test_motes.gd -- --screenshot-prefix <出力フォルダー/名前>`。共有設定の開始時・4秒後・余白付きウィンドウ・全画面を保存する。描画順のテストだけは明るい固定粒子を使い、水面上で見えることと前景を隠さないことをピクセル比較する。リサイズ時のマウス入力で名札がサンプル間に変わらないよう、描画前にテスト側のホバーを固定する。全画面・クリックの検証は入力注入であり、手動入力とは区別する。
 
 `--test-frames` は固定delta 1/60秒で終了する。Godotのエンジンオプションとゲーム側のオプションは `--` で分離する。描画を保存したい場合は非headlessで `--screenshot <PNGのパス>` を追加できる。`--evaluation-log <JSONLのパス>` で状態を保存できる。出力先の親フォルダーは先に作る。
 

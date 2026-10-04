@@ -6,6 +6,7 @@ const ConversationDeck = preload("res://scripts/conversation_deck.gd")
 const ObjectModel = preload("res://scripts/object_model.gd")
 const EventCatalog = preload("res://scripts/event_catalog.gd")
 const VignetteView = preload("res://scripts/vignette_view.gd")
+const MoteField = preload("res://scripts/mote_field.gd")
 var root: String
 var error: String = ""
 
@@ -152,6 +153,9 @@ func load_project(project_root: String) -> Dictionary:
 		return fail("Room size must be finite")
 	if size.width != 960 or size.height != 540:
 		return fail("First-stage room size must be 960x540")
+	var mote_error := MoteField.validate(room.get("motes"), int(size.height))
+	if not mote_error.is_empty():
+		return fail(mote_error)
 	if not vector_data(room.get("movement_bounds"), 4):
 		return fail("Invalid movement bounds")
 	var limits: Array = room.movement_bounds
