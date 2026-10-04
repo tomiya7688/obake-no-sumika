@@ -53,6 +53,12 @@ class ContextSelectionTests(unittest.TestCase):
         self.assertNotIn("game.py", result["related_files"])
         self.assertEqual(result["unmapped_files"], [])
 
+    def test_godot_change_selects_only_godot_context(self) -> None:
+        result = select_files(["godot/scripts/ghost_model.gd"], self.rules)
+        self.assertEqual(result["contexts"], ["docs/context/project.md", "docs/context/godot.md"])
+        self.assertEqual(result["tests"], ["tests/test_godot_runtime.py"])
+        self.assertEqual(result["unmapped_files"], [])
+
     def test_responsibility_references_exist(self) -> None:
         for rule in self.rules:
             for field in ("context", "related", "tests"):
@@ -60,6 +66,14 @@ class ContextSelectionTests(unittest.TestCase):
                 for path in paths:
                     with self.subTest(path=path):
                         self.assertTrue((ROOT / path).is_file())
+
+    def test_godot_runner_selects_bridge_contract_and_tests(self) -> None:
+        result = select_files(["engine/godot_runner.py", "tests/test_godot_runner.py"], self.rules)
+        self.assertIn("docs/context/godot.md", result["contexts"])
+        self.assertIn("docs/context/engine.md", result["contexts"])
+        self.assertIn("tests/test_godot_runner.py", result["tests"])
+        self.assertIn("tests/test_godot_runtime.py", result["tests"])
+        self.assertEqual(result["unmapped_files"], [])
 
     def test_json_cli_output_is_machine_readable(self) -> None:
         result = subprocess.run(
