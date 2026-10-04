@@ -17,3 +17,6 @@ NVIDIA Corporation/
 
 # Development evaluation output
 tmp/
+
+# Godot editor/import cache; source scripts and scenes stay tracked
+godot/.godot/

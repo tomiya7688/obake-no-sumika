@@ -3,6 +3,9 @@
   "rules": [
     {"paths": ["docs/context/*.md"], "context": "docs/context/project.md", "related": [], "tests": []},
     {"paths": ["spec/engine/*", "tests/test_portable_project_contract.py"], "context": "docs/context/portability.md", "related": ["spec/engine/project_manifest.md", "spec/engine/project_manifest_cases.json"], "tests": ["tests/test_portable_project_contract.py", "tests/test_engine_manifest.py"]},
+    {"paths": ["godot/*", "run_godot.bat", "tests/test_godot_runtime.py", "docs/GDScript移行機能説明書.md"], "context": "docs/context/godot.md", "related": ["godot/README.md", "docs/GDScript移行機能説明書.md"], "tests": ["tests/test_godot_runtime.py"]},
+    {"paths": ["engine/godot_runner.py", "tests/test_godot_runner.py"], "context": "docs/context/godot.md", "related": ["godot/README.md", "engine_app.py", "docs/GDScript移行機能説明書.md"], "tests": ["tests/test_godot_runner.py", "tests/test_godot_runtime.py"]},
+    {"paths": ["engine/godot_runner.py", "tests/test_godot_runner.py"], "context": "docs/context/engine.md", "related": ["engine_project.json"], "tests": ["tests/test_godot_runner.py"]},
     {"paths": ["tools/diff_summary/*", "tools/diff_summary/script/*", "tests/test_diff_summary.py"], "context": "docs/context/developer_tools.md", "related": ["tools/context/responsibilities.json"], "tests": ["tests/test_diff_summary.py"]},
     {"paths": ["tools/repo_sync/*", "tools/repo_sync/script/*", "tests/test_repo_sync.py"], "context": "docs/context/developer_tools.md", "related": ["tools/diff_summary/script/summarize.py"], "tests": ["tests/test_repo_sync.py"]},
     {"paths": ["game.py"], "context": "docs/context/game.md", "related": ["game_content.json"], "tests": ["tests/test_tagged_conversations.py"]},
@@ -18,7 +21,7 @@
     {"paths": ["character_editor.py"], "context": "docs/context/developer_tools.md", "related": ["engine/character_repository.py"], "tests": ["tests/test_character_repository.py"]},
     {"paths": ["conversation_editor.py"], "context": "docs/context/developer_tools.md", "related": ["engine/conversation_repository.py"], "tests": ["tests/test_tagged_conversations.py"]},
     {"paths": ["object_editor.py"], "context": "docs/context/developer_tools.md", "related": ["engine/pixel_object_repository.py"], "tests": ["tests/test_object_editor_tools.py"]},
-    {"paths": ["engine_app.py", "engine/main_window.py", "run_*.bat"], "context": "docs/context/developer_tools.md", "related": ["engine_project.json"], "tests": ["tests/test_main_window.py", "tests/test_engine_manifest.py"]},
+    {"paths": ["engine_app.py", "engine/main_window.py", "run_*.bat"], "context": "docs/context/developer_tools.md", "related": ["engine_project.json"], "tests": ["tests/test_main_window.py", "tests/test_engine_manifest.py", "tests/test_godot_runner.py"]},
     {"paths": ["scripts/evaluate_project.py", "tests/test_evaluate_project.py"], "context": "docs/context/developer_tools.md", "related": ["scripts/evaluate_project.py"], "tests": ["tests/test_evaluate_project.py"]},
     {"paths": ["tools/context/*", "tools/context/script/*", "tests/test_context_selection.py"], "context": "docs/context/developer_tools.md", "related": ["tools/context/responsibilities.json"], "tests": ["tests/test_context_selection.py"]},
     {"paths": ["docs/context/cli_commands.md"], "context": "docs/context/developer_tools.md", "related": ["engine_app.py"], "tests": ["tests/test_engine_manifest.py"]},
