@@ -5,6 +5,7 @@ extends RefCounted
 const ConversationDeck = preload("res://scripts/conversation_deck.gd")
 const ObjectModel = preload("res://scripts/object_model.gd")
 const EventCatalog = preload("res://scripts/event_catalog.gd")
+const VignetteView = preload("res://scripts/vignette_view.gd")
 var root: String
 var error: String = ""
 
@@ -160,6 +161,9 @@ func load_project(project_root: String) -> Dictionary:
 		return fail("Invalid water zone")
 	if not room.get("background") is Dictionary or not room.background.get("gradient") is Dictionary or not room.background.get("polygons") is Array:
 		return fail("Invalid background")
+	var vignette_error := VignetteView.validate(room.background.get("vignette"), Vector2i(size.width, size.height))
+	if not vignette_error.is_empty():
+		return fail(vignette_error)
 	var gradient: Dictionary = room.background.gradient
 	if not vector_data(gradient.get("top"), 3) or not vector_data(gradient.get("bottom"), 3) or not finite_number(gradient.get("step")) or gradient.step < 1:
 		return fail("Invalid background gradient")

@@ -1,6 +1,6 @@
 # おばけの住処: GDScript移行版
 
-Godot 4の通常版ソースランタイム。個別移動、通常会話、タグ付きオブジェクト操作、水浴び・ゲーム機イベント、名前ホバー、床の影を移植済み。粒子・ビネット、統合エディター・配布はまだ未移植。既存JSONとPNGをリポジトリの親から直接読むため、`godot/` 単体では起動できない。
+Godot 4の通常版ソースランタイム。個別移動、通常会話、タグ付きオブジェクト操作、水浴び・ゲーム機イベント、名前ホバー、床の影、背景の周辺減光を移植済み。粒子、統合エディター・配布はまだ未移植。既存JSONとPNGをリポジトリの親から直接読むため、`godot/` 単体では起動できない。
 
 ## 起動
 
@@ -34,6 +34,8 @@ Windowsではリポジトリ直下の `run_godot.bat` に実行ファイルの�
 
 おばけの下には薄いドット状の影を表示する。影は宙返りの移動軌道に追従し、終了時も滑らかに前進へつながる。細かな上下浮遊で影自体は揺れず、体の回転・振り返りにも影は変形しない。水面より前、岩やおばけより後ろの床レイヤーに描画する。
 
+背景の端には `room.json` の `background.vignette` に従った薄い角丸の減光をかける。中央は透明に保ち、おばけ・水面・配置物・吹き出し・名前には重ねない。`max_inset: 0` で無効にできる。色や寸法・alphaの不正値、設定の欠落は起動時にエラーにする。設定を変えた時はゲームを再起動する。
+
 ## 検証
 
 ```powershell
@@ -44,6 +46,7 @@ $env:GODOT_BIN="C:\path\Godot_win64_console.exe"
 & $env:GODOT_BIN --headless --path godot --script res://tests/test_events.gd
 & $env:GODOT_BIN --headless --path godot --script res://tests/test_hover.gd
 & $env:GODOT_BIN --headless --path godot --script res://tests/test_shadows.gd
+& $env:GODOT_BIN --headless --path godot --script res://tests/test_vignette.gd
 & $env:GODOT_BIN --headless --path godot -- --test-frames 900 --seed 12345
 .\.venv\Scripts\python.exe -m unittest tests.test_godot_runtime -v
 .\.venv\Scripts\python.exe scripts/evaluate_project.py
@@ -52,6 +55,8 @@ $env:GODOT_BIN="C:\path\Godot_win64_console.exe"
 環境変数未指定でPATHにもGodotがない場合、Python側のGodotテストは**skip**する。Pythonのテスト成功だけでGDScript検証済みとは扱わない。
 
 影の実描画チェックは非headlessで `--script res://tests/test_shadows.gd -- --screenshot-prefix <出力フォルダー/名前>`。通常時、左右の宙返り、水面上の4枚を保存し、影の表示あり/なしの描画ピクセル比較で水面より前・岩より後ろの描画順も確認する。
+
+周辺減光は同様に `--script res://tests/test_vignette.gd -- --screenshot-prefix <出力フォルダー/名前>`。設定どおりの表示あり/なし・余白付きウィンドウ・全画面の4枚を保存する。描画順の比較にはテスト内だけで濃いマスクを使い、端の背景だけが変わり前景は変わらないことを確認する。画像のピクセル座標には [Viewportのstretch変換](https://docs.godotengine.org/en/stable/classes/class_viewport.html#class-viewport-method-get-stretch-transform) を使う。保存テクスチャは黒帯を含まないため、黒帯付きのウィンドウ座標で比較しない。
 
 `--test-frames` は固定delta 1/60秒で終了する。Godotのエンジンオプションとゲーム側のオプションは `--` で分離する。描画を保存したい場合は非headlessで `--screenshot <PNGのパス>` を追加できる。`--evaluation-log <JSONLのパス>` で状態を保存できる。出力先の親フォルダーは先に作る。
 

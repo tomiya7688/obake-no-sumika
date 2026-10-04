@@ -65,6 +65,11 @@ class GodotRuntimeTests(unittest.TestCase):
         self.assertIn("failures=0", output)
         self.assertIn("GODOT_SHADOW_TESTS", output)
 
+    def test_background_vignette_and_layering(self) -> None:
+        output = self.run_godot("--script", "res://tests/test_vignette.gd")
+        self.assertIn("failures=0", output)
+        self.assertIn("GODOT_VIGNETTE_TESTS", output)
+
 
 if __name__ == "__main__":
     unittest.main()

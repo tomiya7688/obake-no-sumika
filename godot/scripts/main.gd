@@ -8,6 +8,8 @@ const BubbleView = preload("res://scripts/bubble_view.gd")
 const EventView = preload("res://scripts/event_view.gd")
 const NameView = preload("res://scripts/name_view.gd")
 const ShadowView = preload("res://scripts/shadow_view.gd")
+const VignetteView = preload("res://scripts/vignette_view.gd")
+var vignette: Sprite2D
 var room: Dictionary
 var ghosts: Array = []
 var views: Array[Sprite2D] = []
@@ -54,6 +56,9 @@ func _ready() -> void:
 	var bounds := Rect2(raw_bounds[0], raw_bounds[1], raw_bounds[2], raw_bounds[3])
 	var raw_water: Array = room.zones.water_rest
 	var water := Rect2(raw_water[0], raw_water[1], raw_water[2], raw_water[3])
+	# The mask is background-only: water, objects, ghosts and UI draw above it.
+	vignette = VignetteView.new(room.background.vignette, Vector2i(room.size.width, room.size.height))
+	add_child(vignette)
 	world.y_sort_enabled = true
 	add_child(world)
 	# Floor shadows draw after the z=0 spring, but below z=1 ghosts/rocks.

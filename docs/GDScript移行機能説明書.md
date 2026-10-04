@@ -1,6 +1,6 @@
 # Godot / GDScript移行: 個別移動・会話・タグ操作
 
-追跡: Issue #54。Python版は参照実装として残し、既存のエディターやデータを変更しない。現在の範囲は通常版の描画・個別移動、say/move/take/putの会話と水浴び・ゲーム機イベント、名前ホバー、床の影。配布等は未移植で、移行完了ではない。
+追跡: Issue #54。Python版は参照実装として残し、既存のエディターやデータを変更しない。現在の範囲は通常版の描画・個別移動、say/move/take/putの会話と水浴び・ゲーム機イベント、名前ホバー、床の影、背景の周辺減光。配布等は未移植で、移行完了ではない。
 
 ## 責務
 
@@ -17,6 +17,7 @@
 | `godot/scripts/bubble_view.gd` | 日本語の吹き出しと幅に応じた改行 | モデルの発話文字列。行動状態を変更しない |
 | `godot/scripts/name_view.gd` | ホバー中だけの日本語名札、画面内への配置 | キャラクターの表示名と描画矩形。入力を消費せず行動状態を変更しない |
 | `godot/scripts/shadow_view.gd` | 薄いドット状の影とモデル位置への追従 | 表示サイズ、現在位置。回転や浮遊揺れを継承せず、AIを変更しない |
+| `godot/scripts/vignette_view.gd` | 部屋の減光設定の純粋な検証、静的RGBAマスクと背景だけへの表示 | `room.json` の `background.vignette` と部屋寸法。AIを変更しない |
 | `godot/scripts/main.gd` | 描画、入力、ウィンドウ、固定deltaスモーク、ログ | 読込済みデータとモデル |
 | `godot/tests/test_runtime.gd` | GDScriptの実挙動テスト | 読込アダプターとモデル |
 | `godot/tests/test_conversations.gd` | 会話デッキと姿勢・中断・再開の検証 | デッキ、モデル、コントローラー、会話場面 |
@@ -24,6 +25,7 @@
 | `godot/tests/test_events.gd` | イベントカタログ、姿勢、順序、逃走、清掃の検証 | カタログ、イベント、会話、描画 |
 | `godot/tests/test_hover.gd` | 回転・振り返り・重なり・画面端・入力変換・全画面の検証 | シーン、名前表示、注入したマウス/キー入力 |
 | `godot/tests/test_shadows.gd` | 影の画像、宙返り終了時の連続性、床と岩の描画順を検証 | モデル、影、実描画のピクセル比較 |
+| `godot/tests/test_vignette.gd` | 減光設定と画像、前景保護、画面サイズ・入力非干渉の検証 | 検証関数、読込アダプター、シーン、実描画のピクセル比較 |
 | `tests/test_godot_runtime.py` | Godot実行テストをPythonのテスト入口に接続 | `GODOT_BIN` またはPATH上の `godot` |
 
 ```mermaid
@@ -142,6 +144,16 @@ stateDiagram-v2
 
 影はキャラクターSpriteの子ではなく、床専用の独立レイヤーに配置する。水面と同じz=0で水面より後に描き、z=1の岩とおばけより後ろにする。実描画の表示あり/なしのピクセル比較でこの順序を確認する。影は名前ホバーの対象にせず、乱数・行動・会話や共有データを変更しない。Python版の描画処理はこの移行作業では変更しない。
 
+## 背景の周辺減光
+
+`background.vignette` の色、max_inset、step、border_width、radius、alpha_start、alpha_divisor、min_alphaを直接使う。色は3つの0〜255の整数値、他の項目はPython側と同じ範囲の有限な整数値として検証し、欠落・文字列・真偽値・小数・非有限値・範囲外を拒否する。max_inset=0は減光なし。読込アダプターからこの純粋な検証を呼び、描画の前にエラーにする。既存の全部屋JSON検証との完全互換はまだ保証しない。
+
+insetを0からmax_inset未満までstepずつ増やし、矩形 `(inset, floor(inset/2), width-2*inset, height-inset)` に角丸の枠を描く。alphaは `max(min_alpha, alpha_start-floor(inset/alpha_divisor))`。重なりは前のalphaへ加算せず後の枠で上書きする。角丸半径は矩形へクランプし、内側の穴がなくなる太い枠にも対応する。角の境界はピクセル中心の走査で求めるため、pygameの丸みとの完全な画素一致は保証しない。
+
+マスクは起動時に一度だけ生成して内部部屋サイズへ固定し、nearestで描画する。背景グラデーション・ポリゴンの後、worldの水面・配置物・おばけ・影とUIの前に描画する。中央は透明。全画面や余白付きウィンドウでは背景と同じstretchを使い、別のウィンドウサイズ画像を生成しない。マスクは入力を消費せず、ホバー対象にもならない。AI乱数・会話・評価ログ・共有ファイル・Python版を変更しない。
+
+通常マスクの表示あり/なし、余白付きウィンドウ、全画面を保存して確認する。前景保護のピクセル比較はテスト内だけで濃いマスクを使用し、実際にマスクがある位置のおばけ・水面・吹き出し・名前を確認する。スクリーンショットのテクスチャは黒帯を含まないのでstretch変換を使い、黒帯を含むウィンドウのfinal変換とは区別する。全画面切替とクリックは入力注入で検証し、手動入力とは分けて扱う。
+
 ## 読込と配布の境界
 
 ソース実行時は `godot/` の親を通常版のコンテンツルートとして読む。PNGやJSONをGodot専用コピーへ分岐させない。`--content-root` で別の通常版ルートを明示できる。
@@ -152,6 +164,6 @@ Godotのエクスポート/PCK単独配布は未対応。今はリポジトリ�
 
 ## 未移植
 
-粒子・ビネット、統合エディター連携、配布構成。システムに日本語フォントがない環境や配布時のフォント同梱は後続対応。
+粒子、統合エディター連携、配布構成。システムに日本語フォントがない環境や配布時のフォント同梱は後続対応。
 
 評価ログは10フレームごとに `frame`、`ghosts`（name/x/y/vx/vy/facing/action/turning/spin/target/talk）、`conversation`（phase/initiator/step/completed/movers/event/last_event）、`objects`（id/tag/x/y/visible/glowing）をJSONLに記録する。eventにはid/phase/timerを含む。Python版の評価ログとの完全互換ではない。
