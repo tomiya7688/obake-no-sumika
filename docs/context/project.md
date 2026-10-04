@@ -13,7 +13,7 @@
 
 1. `git status --short --branch` で既存変更を確認する。
 2. `git fetch origin` でリモートを確認し、`work` を `git merge --ff-only origin/work` で更新する。
-3. `gh issue list --search "コンテキスト OR context"` を先に確認し、対象Issueを `gh issue view <番号>` で読む。
+3. [Issue優先度方針](../ワークフロー/Issue優先度.md)に従い、P0の緊急対応を確認する。通常作業では `gh issue list --search "コンテキスト OR context"` を先に読み、P1 → P2 → P3と依存関係から選んだ対象を `gh issue view <番号>` で読む。P4は着手前に再分類する。
 4. 上表で読む範囲を決め、対象文書の責務表に載るファイルだけを調べる。
    変更ファイルが分かっている場合は、プロジェクトのPythonで `tools/context/script/select_files.py game.py` を実行して候補を取得できる。JSON出力は `--json`。
 5. 変更後は対象テストと全体テストを実行し、必要な実行確認を行う。具体的な手順はワークフローに従う。
