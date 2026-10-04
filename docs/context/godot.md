@@ -17,5 +17,8 @@
 | 環境粒子 | `godot/scripts/mote_field.gd`, `godot/scripts/mote_view.gd`, `godot/scripts/main.gd`, `room.json` | `godot/tests/test_motes.gd`、再出現・乱数独立性・描画順と全画面 |
 | 描画・入力 | `godot/scripts/main.gd`, `godot/main.tscn`, `godot/project.godot` | 実描画スモーク |
 | 起動とテスト | `run_godot.bat`, `tests/test_godot_runtime.py` | Godot実体でヘッドレス検証 |
+| 統合CLIプレイテスト | `engine/godot_runner.py`, `engine_app.py` | `tests/test_godot_runner.py`、選択プロジェクトと不正データの実起動 |
 
-`.godot/` は生成キャッシュ。読む必要はなくGitにも含めない。会話はsay/move/take/put/eventを重み付きで実行する。移動完了を待ち、次の発話前に再整列する。既知だが未実装のevent、または必要タグの欠落があるカードは丸ごと抽選から外す。未知IDや終了イベント後の手順はエラー。ゲーム機イベントの終了・中断では取り出した物と光を消す。他の通常take済みオブジェクトは変更しない。名前ホバー・影・周辺減光・環境粒子はAIや会話を変更しない。影は宙返りを含むモデル位置に追従し、細かな浮遊や回転は継承しない。減光は一度だけ生成し背景だけにかける。粒子は共有部屋設定と独立した環境用乱数で上昇・横揺れ・再出現し、更新はmainのdeltaだけで進む。統合エディター、完全な入力検証互換、Python/Godot評価ログ比較・配布は後続対応。ランタイムの取り出し/収納はJSONへ保存しない。
+`engine_app.py --playtest-godot` から同じ共有データで起動できる。`--project` は通常版の `engine_project.json` を指定し、終了まで待機する。Godotの指定優先度は `--godot-bin`、`GODOT_BIN`、PATHのgodot/godot4。Godot 4のバージョンを確認し、出力と終了コードをそのまま返す。`--headless` は正の `--test-frames` を必須とする。詳しいコマンドは [CUIコマンドシート](cli_commands.md)。GUI側の起動連携・監視は未対応。
+
+`.godot/` は生成キャッシュ。読む必要はなくGitにも含めない。会話はsay/move/take/put/eventを重み付きで実行する。移動完了を待ち、次の発話前に再整列する。既知だが未実装のevent、または必要タグの欠落があるカードは丸ごと抽選から外す。未知IDや終了イベント後の手順はエラー。ゲーム機イベントの終了・中断では取り出した物と光を消す。他の通常take済みオブジェクトは変更しない。名前ホバー・影・周辺減光・環境粒子はAIや会話を変更しない。影は宙返りを含むモデル位置に追従し、細かな浮遊や回転は継承しない。減光は一度だけ生成し背景だけにかける。粒子は共有部屋設定と独立した環境用乱数で上昇・横揺れ・再出現し、更新はmainのdeltaだけで進む。GUI側の起動連携、完全な入力検証互換、Python/Godot評価ログ比較・配布は後続対応。ランタイムの取り出し/収納はJSONへ保存しない。

@@ -1,6 +1,6 @@
 # おばけの住処: GDScript移行版
 
-Godot 4の通常版ソースランタイム。個別移動、通常会話、タグ付きオブジェクト操作、水浴び・ゲーム機イベント、名前ホバー、床の影、背景の周辺減光、環境粒子を移植済み。統合エディター・完全な共有入力検証・配布は後続対応。既存JSONとPNGをリポジトリの親から直接読むため、`godot/` 単体では起動できない。
+Godot 4の通常版ソースランタイム。個別移動、通常会話、タグ付きオブジェクト操作、水浴び・ゲーム機イベント、名前ホバー、床の影、背景の周辺減光、環境粒子を移植済み。統合CLIでプレイテストできる。GUI側の起動連携・完全な共有入力検証・配布は後続対応。既存JSONとPNGをリポジトリの親から直接読むため、`godot/` 単体では起動できない。
 
 ## 起動
 
@@ -11,6 +11,16 @@ Windowsではリポジトリ直下の `run_godot.bat` に実行ファイルの�
 ```powershell
 .\run_godot.bat "C:\path\Godot_win64.exe"
 ```
+
+統合CLIからも、既存エディターで編集した共有データをそのままプレイテストできる。
+
+```powershell
+$env:GODOT_BIN="C:\path\Godot_win64_console.exe"
+.\.venv\Scripts\python.exe engine_app.py --playtest-godot
+.\.venv\Scripts\python.exe engine_app.py --playtest-godot --headless --test-frames 900 --seed 12345
+```
+
+`--project <通常版フォルダー/engine_project.json>` で編集対象を選ぶ。CLIは終了まで待ち、Godotの出力と終了コードを返す。実行ファイルは `--godot-bin`、`GODOT_BIN`、PATHのgodot/godot4の順。指定ミスやGodot 4以外はエラーにし、Pythonゲームへ切り替えない。`--headless` は正の `--test-frames` を必須とする。通常版のかどか・まる以外と別名のマニフェストは未対応。既存エンジンGUIの起動ボタンと監視はまだ変更していない。詳しくは [CUIコマンドシート](../docs/context/cli_commands.md)。
 
 左クリックで集合、F11 / Alt+Enterで全画面切替、Escで終了。おばけにマウスを重ねると、`characters.json` の表示名を下に小さく表示する。離れると消え、回転中・全画面・余白付きのウィンドウでも追従する。停止/前進/高速前進/進路変更/一周の移動宙返り/水場停止に加え、相手へ話しかける行動を実装している。会話時は横並びで向き合って止まり、既存JSONの台詞を吹き出しに順番に表示する。
 

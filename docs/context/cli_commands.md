@@ -35,6 +35,20 @@ $env:SDL_AUDIODRIVER="dummy"
 
 `--test-frames` で自動終了する。`--screenshot` は最後のフレームを保存するが、ダミー画面での確認は人間の実画面確認の代わりにならない。実際に遊ぶ時はダミー画面の環境変数を外す。
 
+## 統合CLIからGodot版をプレイテスト
+
+```powershell
+$env:GODOT_BIN="C:\path\Godot_win64_console.exe"
+.\.venv\Scripts\python.exe engine_app.py --playtest-godot
+.\.venv\Scripts\python.exe engine_app.py --playtest-godot --headless --test-frames 900 --seed 12345
+```
+
+`--project <通常版フォルダー/engine_project.json>` を加えると、そのプロジェクトで編集した共有JSON/PNGを読む。Pythonゲームを実行したりデータをGodot用にコピーしたりしない。専用のruntimeはこのリポジトリの `godot/` を使う。現在は通常版のかどか・まる用で、special版や汎用Starterは未対応。別名のマニフェストは同じフォルダーの別データへ黙って置換せず拒否する。
+
+実行ファイルは `--godot-bin <フルパス>` > `GODOT_BIN` > PATHのgodot/godot4。明示したパスが無効なら別の実行ファイルへ切り替えない。Godot 4のバージョン確認は10秒以内。CLIはゲーム終了まで待ち、標準出力/エラーと終了コードを引き継ぐ。不正データや起動失敗を成功表示にしない。
+
+`--test-frames` は正の整数で、固定delta 1/60秒の指定フレーム数で終了する。`--headless` は `--test-frames` 必須。`--seed` は符号付き64bit整数。これらのGodot用オプションを `--validate` やGUI起動などへ付けるとエラーにする。既存GUIの「ゲームを実行」はPython版のままで、GUIの子プロセス監視（Issue #32）は未対応。
+
 ## 対話UI（実画面が必要）
 
 ```powershell

@@ -30,6 +30,8 @@
 | `godot/tests/test_vignette.gd` | 減光設定と画像、前景保護、画面サイズ・入力非干渉の検証 | 検証関数、読込アダプター、シーン、実描画のピクセル比較 |
 | `godot/tests/test_motes.gd` | 粒子設定と時間更新、再出現、乱数独立性、描画・入力の検証 | 粒子モデル、シーン、実描画のピクセル比較 |
 | `tests/test_godot_runtime.py` | Godot実行テストをPythonのテスト入口に接続 | `GODOT_BIN` またはPATH上の `godot` |
+| `engine/godot_runner.py` | Godotの検出・バージョン確認と選択した通常版の同期プレイテスト | 共有マニフェスト、Godotソース。Tk・Pythonゲームには依存しない |
+| `tests/test_godot_runner.py` | CLIの選択・引数・失敗・終了コードの契約 | Godot不要のモック、実起動はGodotRuntimeTests |
 
 ```mermaid
 flowchart LR
@@ -177,8 +179,18 @@ MoteViewはモデルの整数化した中心から半径分を引き、2倍半�
 
 Godotのエクスポート/PCK単独配布は未対応。今はリポジトリのJSON/PNGが必要。起動コマンドとGodot実行ファイルの指定は [Godot版README](../godot/README.md) を参照。
 
+## 統合CLIのプレイテスト
+
+`engine_app.py --playtest-godot` から、既存エディターで保存した選択プロジェクトの共有JSON/PNGを直接読む。Pythonマニフェスト検証後、リポジトリのGodotソースを起動し、`--content-root` に選択したrootを渡す。選択と異なる部屋を暗黙に起動しないよう `engine_project.json` の名前を必須とし、special版はプロセス起動前に拒否する。汎用Starterのキャラクター構成はまだ未対応。
+
+`--godot-bin` > `GODOT_BIN` > PATHのgodot/godot4で検出する。明示した実行ファイルが存在しなければ失敗し、他の候補やPythonゲームにフォールバックしない。`--version` をUTF-8で捕捉して10秒以内にGodot 4と確認し、失敗・時間超過・他バージョンは起動しない。実行引数はshellを介さない配列。`--` の前はGodotのpath/headless/fixed-fps、後はcontent-root/test-frames/seedとする。
+
+CLIは同期実行でゲーム終了まで待機し、標準出力/標準エラーを引き継いで実際の終了コードを返す。構成/プロセス起動の例外はstderrへ表示して1で終了する。成功メッセージを先に出さない。headlessは正のフレーム数が必須、seedは符号付き64bit。フレーム指定時は60fpsの固定deltaで検証する。Godotオプションを別のengine_appモードへ指定した場合も黙って無視しない。
+
+共有データのコピー・書換えやゲームロジックの変更はない。モックで実行ファイル・引数・終了コードを確認し、実体で既定プロジェクト、空の会話デッキへ編集した別フォルダー、不正な粒子数の起動失敗を検証する。既存エンジンGUIのPython版起動、エディター、子プロセス監視は変更せず、GUI側のIssue #32を完了とは扱わない。
+
 ## 未移植
 
-統合エディター連携、全部屋・キャラクター入力の完全な共有検証、Python/Godot評価ログ比較、配布構成。システムに日本語フォントがない環境や配布時のフォント同梱は後続対応。
+GUI側のGodot起動連携・プロセス管理、全部屋・キャラクター入力の完全な共有検証、Python/Godot評価ログ比較、配布構成。システムに日本語フォントがない環境や配布時のフォント同梱は後続対応。
 
 評価ログは10フレームごとに `frame`、`ghosts`（name/x/y/vx/vy/facing/action/turning/spin/target/talk）、`conversation`（phase/initiator/step/completed/movers/event/last_event）、`objects`（id/tag/x/y/visible/glowing）をJSONLに記録する。eventにはid/phase/timerを含む。Python版の評価ログとの完全互換ではない。

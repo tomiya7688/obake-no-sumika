@@ -58,6 +58,14 @@ class ContextSelectionTests(unittest.TestCase):
                     with self.subTest(path=path):
                         self.assertTrue((ROOT / path).is_file())
 
+    def test_godot_runner_selects_bridge_contract_and_tests(self) -> None:
+        result = select_files(["engine/godot_runner.py", "tests/test_godot_runner.py"], self.rules)
+        self.assertIn("docs/context/godot.md", result["contexts"])
+        self.assertIn("docs/context/engine.md", result["contexts"])
+        self.assertIn("tests/test_godot_runner.py", result["tests"])
+        self.assertIn("tests/test_godot_runtime.py", result["tests"])
+        self.assertEqual(result["unmapped_files"], [])
+
     def test_json_cli_output_is_machine_readable(self) -> None:
         result = subprocess.run(
             [sys.executable, "tools/context/script/select_files.py", "--json", "room.json"],
