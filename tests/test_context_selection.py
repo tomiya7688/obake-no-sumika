@@ -46,6 +46,13 @@ class ContextSelectionTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 normalize_path(value)
 
+    def test_shared_contract_selects_portability_without_game_code(self) -> None:
+        result = select_files(["spec/engine/project_manifest_cases.json"], self.rules)
+        self.assertEqual(result["contexts"], ["docs/context/project.md", "docs/context/portability.md"])
+        self.assertEqual(result["tests"], ["tests/test_portable_project_contract.py", "tests/test_engine_manifest.py"])
+        self.assertNotIn("game.py", result["related_files"])
+        self.assertEqual(result["unmapped_files"], [])
+
     def test_responsibility_references_exist(self) -> None:
         for rule in self.rules:
             for field in ("context", "related", "tests"):
