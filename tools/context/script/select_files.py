@@ -26,7 +26,7 @@ def normalize_path(value: str) -> str:
 
 def load_mapping(path: Path = MAPPING_PATH) -> list[dict[str, object]]:
     payload = json.loads(path.read_text(encoding="utf-8"))
-    if payload.get("schema_version") != 1 or not isinstance(payload.get("rules"), list):
+    if not isinstance(payload, dict) or payload.get("schema_version") != 1 or not isinstance(payload.get("rules"), list):
         raise ValueError("unsupported responsibility table")
     rules = payload["rules"]
     for rule in rules:
