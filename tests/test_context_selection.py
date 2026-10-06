@@ -75,6 +75,15 @@ class ContextSelectionTests(unittest.TestCase):
         self.assertIn("tests/test_godot_runtime.py", result["tests"])
         self.assertEqual(result["unmapped_files"], [])
 
+    def test_launch_monitor_selects_its_tests_without_game_implementation(self) -> None:
+        result = select_files(["engine/process_launcher.py", "tests/test_main_window.py"], self.rules)
+        self.assertIn("docs/context/engine.md", result["contexts"])
+        self.assertIn("docs/context/developer_tools.md", result["contexts"])
+        self.assertIn("tests/test_process_launcher.py", result["tests"])
+        self.assertIn("tests/test_main_window.py", result["tests"])
+        self.assertNotIn("game.py", result["related_files"])
+        self.assertEqual(result["unmapped_files"], [])
+
     def test_json_cli_output_is_machine_readable(self) -> None:
         result = subprocess.run(
             [sys.executable, "tools/context/script/select_files.py", "--json", "room.json"],
