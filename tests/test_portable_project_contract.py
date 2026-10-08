@@ -5,18 +5,18 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-import shutil
 import stat
 import subprocess
 import tempfile
 import unittest
 
 from engine.manifest_loader import load_project_manifest
+from tests.godot_support import find_test_godot
 
 
 ROOT = Path(__file__).resolve().parents[1]
 CASES_PATH = ROOT / "spec" / "engine" / "project_manifest_cases.json"
-GODOT = os.environ.get("GODOT_BIN") or shutil.which("godot")
+GODOT = find_test_godot()
 
 
 def make_contract_fixture(root: Path, suite: dict, case: dict,

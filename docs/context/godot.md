@@ -18,7 +18,10 @@
 | 環境粒子 | `godot/scripts/mote_field.gd`, `godot/scripts/mote_view.gd`, `godot/scripts/main.gd`, `room.json` | `godot/tests/test_motes.gd`、再出現・乱数独立性・描画順と全画面 |
 | 描画・入力 | `godot/scripts/main.gd`, `godot/main.tscn`, `godot/project.godot` | 実描画スモーク |
 | 起動とテスト | `run_godot.bat`, `tests/test_godot_runtime.py` | Godot実体でヘッドレス検証 |
+| テスト用Godot検出・スキップ条件 | `tests/godot_support.py`, `engine/godot_runner.py` | `tests/test_godot_support.py`、実Godotでランタイムと共有契約テスト |
 | 統合CLIプレイテスト | `engine/godot_runner.py`, `engine_app.py` | `tests/test_godot_runner.py`、選択プロジェクトと不正データの実起動 |
+
+テストも起動側と同じ処理で `GODOT_BIN` → PATHの `godot` → `godot4` の順に検出する。未設定かつどちらも見つからない時だけ実Godotのテストをスキップする。空文字・存在しないファイル・ディレクトリを `GODOT_BIN` に設定した場合はエラーにし、PATHへのフォールバックやスキップで隠さない。検出とスキップ条件の回帰テストはGodotの実体なしでも実行できる。
 
 プロジェクト定義はPythonと同じ共有22ケースで受理・正規化・拒否を検証する。名前、入口ファイル、エディター、外部/インラインcontentを描画前に検証し、上書きされる外部パスも不正なら拒否する。相対パスの内部 `..` は正規化できるが、絶対パスとリンクはGodot側では引き続き拒否する。定義の読込APIは別名ファイルも読める一方、ゲーム/統合CLIの入口名はまだ `engine_project.json` 固定。各コンテンツの完全な検証互換は後続範囲。
 
