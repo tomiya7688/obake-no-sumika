@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import json
 from pathlib import Path
 import shutil
@@ -11,9 +10,11 @@ import sys
 import tempfile
 import unittest
 
+from tests.godot_support import find_test_godot
+
 
 ROOT = Path(__file__).resolve().parents[1]
-GODOT = os.environ.get("GODOT_BIN") or shutil.which("godot")
+GODOT = find_test_godot()
 
 
 @unittest.skipUnless(GODOT, "Godot runtime unavailable; set GODOT_BIN")
@@ -43,7 +44,7 @@ class GodotRuntimeTests(unittest.TestCase):
 
     def run_godot(self, *arguments: str) -> str:
         result = subprocess.run(
-            [GODOT, "--headless", "--path", str(ROOT / "godot"), *arguments],
+            [str(GODOT), "--headless", "--path", str(ROOT / "godot"), *arguments],
             cwd=ROOT,
             capture_output=True,
             text=True,

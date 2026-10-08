@@ -7,6 +7,7 @@
     {"paths": ["godot/*", "run_godot.bat", "tests/test_godot_runtime.py", "docs/GDScript移行機能説明書.md"], "context": "docs/context/godot.md", "related": ["godot/README.md", "docs/GDScript移行機能説明書.md"], "tests": ["tests/test_godot_runtime.py"]},
     {"paths": ["engine/godot_runner.py", "tests/test_godot_runner.py"], "context": "docs/context/godot.md", "related": ["godot/README.md", "engine_app.py", "docs/GDScript移行機能説明書.md"], "tests": ["tests/test_godot_runner.py", "tests/test_godot_runtime.py"]},
     {"paths": ["engine/godot_runner.py", "tests/test_godot_runner.py"], "context": "docs/context/engine.md", "related": ["engine_project.json"], "tests": ["tests/test_godot_runner.py"]},
+    {"paths": ["tests/godot_support.py", "tests/test_godot_support.py"], "context": "docs/context/godot.md", "related": ["engine/godot_runner.py"], "tests": ["tests/test_godot_support.py", "tests/test_godot_runtime.py", "tests/test_portable_project_contract.py"]},
     {"paths": ["tools/diff_summary/*", "tools/diff_summary/script/*", "tests/test_diff_summary.py"], "context": "docs/context/developer_tools.md", "related": ["tools/context/responsibilities.json"], "tests": ["tests/test_diff_summary.py"]},
     {"paths": ["tools/repo_sync/*", "tools/repo_sync/script/*", "tests/test_repo_sync.py"], "context": "docs/context/developer_tools.md", "related": ["tools/diff_summary/script/summarize.py"], "tests": ["tests/test_repo_sync.py"]},
     {"paths": ["game.py"], "context": "docs/context/game.md", "related": ["game_content.json"], "tests": ["tests/test_tagged_conversations.py"]},

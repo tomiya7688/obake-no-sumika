@@ -104,6 +104,15 @@ class ContextSelectionTests(unittest.TestCase):
         )
         self.assertEqual(json.loads(result.stdout)["tests"], ["tests/test_room_repository.py"])
 
+    def test_godot_test_discovery_selects_both_consumers_without_game_code(self) -> None:
+        result = select_files(["tests/godot_support.py", "tests/test_godot_support.py"], self.rules)
+        self.assertEqual(result["contexts"], ["docs/context/project.md", "docs/context/godot.md"])
+        self.assertIn("engine/godot_runner.py", result["related_files"])
+        self.assertEqual(result["tests"], ["tests/test_godot_support.py", "tests/test_godot_runtime.py",
+                                          "tests/test_portable_project_contract.py"])
+        self.assertNotIn("game.py", result["related_files"])
+        self.assertEqual(result["unmapped_files"], [])
+
     def test_audit_scope_does_not_make_other_rules_look_unused(self) -> None:
         rule = {"paths": ["engine/*.py", "game.py", "stale.py"],
                 "context": "docs/context/project.md", "related": [], "tests": []}
