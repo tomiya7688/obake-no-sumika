@@ -148,10 +148,12 @@ class EngineManifestTests(unittest.TestCase):
         launcher = ProcessLauncher(manifest)
         with patch("engine.process_launcher.subprocess.Popen") as popen:
             launcher.launch_editor("character")
-        popen.assert_called_once_with(
-            [sys.executable, str(PROJECT_DIR / "character_editor.py")],
-            cwd=PROJECT_DIR,
-        )
+        expected_python = Path(sys.executable)
+        if expected_python.name.lower() == "pythonw.exe":
+            expected_python = expected_python.with_name("python.exe")
+        self.assertEqual(popen.call_args.args[0], [str(expected_python), str(PROJECT_DIR / "character_editor.py")])
+        self.assertEqual(popen.call_args.kwargs["cwd"], PROJECT_DIR)
+        self.assertEqual(popen.call_args.kwargs["stderr"], subprocess.STDOUT)
 
     def test_unknown_editor_id_is_rejected(self):
         manifest = load_project_manifest(PROJECT_DIR / "engine_project.json")

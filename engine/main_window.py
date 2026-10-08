@@ -5,7 +5,7 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, simpledialog, ttk
 
 from .manifest_loader import load_project_manifest
-from .process_launcher import ProcessLauncher
+from .process_launcher import LaunchedProcess, ProcessLauncher
 from .project_creator import ProjectCreator
 from .project_manifest import ProjectManifest
 
@@ -25,6 +25,8 @@ class MainWindow:
         self.launcher = launcher
         self.project_creator = project_creator or ProjectCreator()
         self.status = tk.StringVar(value="準備できました")
+        self._launch_poll_ids: set[str] = set()
+        self.root.bind("<Destroy>", self._cancel_launch_polls, add="+")
         self._build()
 
     def _build(self) -> None:
@@ -69,12 +71,57 @@ class MainWindow:
 
     def _run(self, label: str, action) -> None:
         try:
-            action()
+            launched = action()
         except OSError as exc:
             messagebox.showerror("起動できません", f"{label}を起動できませんでした。\n{exc}")
             self.status.set(f"{label}の起動に失敗しました")
             return
-        self.status.set(f"{label}を起動しました")
+        # Popen success is not proof that imports/validation/startup succeeded.
+        # Keep the GUI responsive and monitor the child's actual exit status.
+        target = f"{label}（{self.manifest.name}）"
+        self.status.set(f"{target}の起動を確認しています")
+        self._schedule_launch_poll(target, launched, announced=False)
+
+    def _schedule_launch_poll(
+        self, label: str, launched: LaunchedProcess, *, announced: bool
+    ) -> None:
+        def check() -> None:
+            self._launch_poll_ids.discard(callback_id)
+            self._poll_launch(label, launched, announced=announced)
+
+        callback_id = self.root.after(150, check)
+        self._launch_poll_ids.add(callback_id)
+
+    def _poll_launch(self, label: str, launched: LaunchedProcess, *, announced: bool) -> None:
+        exit_code = launched.poll()
+        if exit_code is None:
+            if not announced:
+                self.status.set(f"{label}を実行中です")
+            self._schedule_launch_poll(label, launched, announced=True)
+            return
+        if exit_code == 0:
+            self.status.set(f"{label}が終了しました")
+            return
+        self.status.set(f"{label}が異常終了しました（終了コード: {exit_code}）")
+        try:
+            detail = launched.log_tail().strip() or "ログ出力はありません。"
+        except OSError as exc:
+            detail = f"ログを読み取れませんでした: {exc}"
+        messagebox.showerror(
+            "実行に失敗しました",
+            f"{label}が異常終了しました。\n終了コード: {exit_code}\n"
+            f"ログ: {launched.log_path}\n\n{detail}",
+            parent=self.root,
+        )
+
+    def _cancel_launch_polls(self, event) -> None:
+        if event.widget is not self.root:
+            return
+        for callback_id in self._launch_poll_ids:
+            self.root.after_cancel(callback_id)
+        self._launch_poll_ids.clear()
+        # Preserve the previous behavior: closing the engine does not kill
+        # independently running games/editors; their logs remain on disk.
 
     def open_project(self, manifest_path: Path) -> None:
         manifest = load_project_manifest(manifest_path)

@@ -31,6 +31,7 @@
 ## エンジンでできること
 
 - 現在の `engine_project.json` を読み込み、ゲームと各エディターを起動できる。
+- 起動後の子プロセスを監視し、異常終了時は終了コード・例外のログ末尾・保存先を表示する。ログは選択プロジェクトの `tmp/launch_logs/` に残る。
 - 新規プロジェクトを作成できる。
 - 別の `engine_project.json` を選択して、開いているプロジェクトを切り替えられる。
 - 通常版は `project_type: "standard"`、special版は `project_type: "obakeno_sumika_special"` として分離されている。
