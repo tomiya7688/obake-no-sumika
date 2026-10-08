@@ -3,6 +3,7 @@
   "rules": [
     {"paths": ["docs/context/*.md"], "context": "docs/context/project.md", "related": [], "tests": []},
     {"paths": ["spec/engine/*", "tests/test_portable_project_contract.py"], "context": "docs/context/portability.md", "related": ["spec/engine/project_manifest.md", "spec/engine/project_manifest_cases.json"], "tests": ["tests/test_portable_project_contract.py", "tests/test_engine_manifest.py"]},
+    {"paths": ["godot/scripts/project_manifest.gd", "godot/scripts/content_loader.gd", "godot/tests/test_project_manifest.gd"], "context": "docs/context/portability.md", "related": ["spec/engine/project_manifest.md", "spec/engine/project_manifest_cases.json"], "tests": ["tests/test_portable_project_contract.py"]},
     {"paths": ["godot/*", "run_godot.bat", "tests/test_godot_runtime.py", "docs/GDScript移行機能説明書.md"], "context": "docs/context/godot.md", "related": ["godot/README.md", "docs/GDScript移行機能説明書.md"], "tests": ["tests/test_godot_runtime.py"]},
     {"paths": ["engine/godot_runner.py", "tests/test_godot_runner.py"], "context": "docs/context/godot.md", "related": ["godot/README.md", "engine_app.py", "docs/GDScript移行機能説明書.md"], "tests": ["tests/test_godot_runner.py", "tests/test_godot_runtime.py"]},
     {"paths": ["engine/godot_runner.py", "tests/test_godot_runner.py"], "context": "docs/context/engine.md", "related": ["engine_project.json"], "tests": ["tests/test_godot_runner.py"]},

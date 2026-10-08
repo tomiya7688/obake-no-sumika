@@ -62,10 +62,13 @@ $env:GODOT_BIN="C:\path\Godot_win64_console.exe"
 & $env:GODOT_BIN --headless --path godot --script res://tests/test_motes.gd
 & $env:GODOT_BIN --headless --path godot -- --test-frames 900 --seed 12345
 .\.venv\Scripts\python.exe -m unittest tests.test_godot_runtime -v
+.\.venv\Scripts\python.exe -m unittest tests.test_portable_project_contract -v
 .\.venv\Scripts\python.exe scripts/evaluate_project.py
 ```
 
 環境変数未指定でPATHにもGodotがない場合、Python側のGodotテストは**skip**する。Pythonのテスト成功だけでGDScript検証済みとは扱わない。
+
+プロジェクト定義はPythonと同じ共有22ケースで検証する。ゲームは名前、入口ファイル、エディター定義、外部/インラインcontentを描画前に検証し、不正な参照はインラインで上書きされる場合も拒否する。相対パスの内部 `..` は正規化するが、絶対パスとリンクは引き続き拒否する。これは部屋やキャラクターを含む完全な入力互換ではない。詳細は [共有契約](../spec/engine/project_manifest.md)。
 
 影の実描画チェックは非headlessで `--script res://tests/test_shadows.gd -- --screenshot-prefix <出力フォルダー/名前>`。通常時、左右の宙返り、水面上の4枚を保存し、影の表示あり/なしの描画ピクセル比較で水面より前・岩より後ろの描画順も確認する。
 

@@ -6,6 +6,7 @@
 
 | 対象 | 責務 | 依存先 |
 | --- | --- | --- |
+| `godot/scripts/project_manifest.gd` | プロジェクト定義の共有検証と相対パス正規化 | `spec/engine/project_manifest.md` と共有22ケース。Node/Texture不要 |
 | `godot/scripts/content_loader.gd` | 共有JSONとPNGの読込、初期段階の入力検証 | 通常版の `engine_project.json` / `game_content.json` |
 | `godot/scripts/ghost_model.gd` | 乱数、行動選択、移動、旋回、宙返り、クリック目標 | キャラクター定義、表示サイズ、移動範囲、水場。NodeやTexture不要 |
 | `godot/scripts/object_model.gd` | 配置物のタグ、初期位置、現在位置、表示状態 | 配置定義。NodeやTexture不要、JSONを書き換えない |
@@ -22,6 +23,7 @@
 | `godot/scripts/mote_view.gd` | 粒子の位置・色・半径・alphaを四角いドットへ描画 | MoteFieldだけ。入力・更新・乱数を扱わない |
 | `godot/scripts/main.gd` | 描画、入力、ウィンドウ、固定deltaスモーク、ログ | 読込済みデータとモデル |
 | `godot/tests/test_runtime.gd` | GDScriptの実挙動テスト | 読込アダプターとモデル |
+| `godot/tests/test_project_manifest.gd`, `tests/test_portable_project_contract.py` | 実GodotとPythonを同じ定義ケース・期待値で比較 | 読込結果のUTF-8レポート、独立した一時ツリー、パス境界 |
 | `godot/tests/test_conversations.gd` | 会話デッキと姿勢・中断・再開の検証 | デッキ、モデル、コントローラー、会話場面 |
 | `godot/tests/test_objects.gd` | タグ操作、到着待ち、再整列、表示状態・中断の検証 | 配置物、デッキ、モデル、シーン |
 | `godot/tests/test_events.gd` | イベントカタログ、姿勢、順序、逃走、清掃の検証 | カタログ、イベント、会話、描画 |
@@ -175,7 +177,11 @@ MoteViewはモデルの整数化した中心から半径分を引き、2倍半�
 
 ソース実行時は `godot/` の親を通常版のコンテンツルートとして読む。PNGやJSONをGodot専用コピーへ分岐させない。`--content-root` で別の通常版ルートを明示できる。
 
-読込アダプターはプロジェクト相対パスだけを許可する。ルート外参照、絶対パス、リンク経由、欠落画像を拒否し、エラーで終了する。Python版のすべての許容入力・エラー条件との一致はまだ対象外。special版は拒否する。Godotの `entrypoint` は `main.tscn` であり、Pythonマニフェストの `game.py` を実行しない。
+`project_manifest.gd` は定義ファイルの絶対パスを受け、親フォルダーをルートとして読込結果を正規化する。名前・project_type・入口・エディター・外部/インラインcontentを検証する。外部定義内もプロジェクトルートから解決し、両contentを検証してからインラインで上書きする。未知のproject_typeは定義の読込では保持し、通常版ランタイムでstandard以外を拒否する。PNGを読む前にこの共通検証を通し、失敗時に部分的な結果を返さない。
+
+共有22ケースをPython/Godotの同じテスト入口で比較する。内部 `..` はルートから逸脱しない場合に正規化でき、ディレクトリcontentやルート `.` も保持する。定義APIは別名ファイルを読めるが、ゲームと統合CLIは `engine_project.json` 固定のまま。エディター定義のscriptやentrypointはファイルの存在だけを検証し、実行しない。
+
+読込アダプターはJSONの各パスフィールドにプロジェクト相対パスだけを許可する。ルート外参照、絶対フィールドパス、リンク経由、欠落画像を拒否し、エラーで終了する。リンクは `..` を正規化する前にも拒否する。絶対パス・リンク・非文字列の互換変換や、部屋/キャラクターを含むPythonの全検証条件との一致はまだ対象外。Godotの起動シーンは `main.tscn` であり、Pythonマニフェストの `game.py` を実行しない。読込で共有JSONを書き換えない。
 
 Godotのエクスポート/PCK単独配布は未対応。今はリポジトリのJSON/PNGが必要。起動コマンドとGodot実行ファイルの指定は [Godot版README](../godot/README.md) を参照。
 
@@ -187,7 +193,7 @@ Godotのエクスポート/PCK単独配布は未対応。今はリポジトリ�
 
 CLIは同期実行でゲーム終了まで待機し、標準出力/標準エラーを引き継いで実際の終了コードを返す。構成/プロセス起動の例外はstderrへ表示して1で終了する。成功メッセージを先に出さない。headlessは正のフレーム数が必須、seedは符号付き64bit。フレーム指定時は60fpsの固定deltaで検証する。Godotオプションを別のengine_appモードへ指定した場合も黙って無視しない。
 
-共有データのコピー・書換えやゲームロジックの変更はない。モックで実行ファイル・引数・終了コードを確認し、実体で既定プロジェクト、空の会話デッキへ編集した別フォルダー、不正な粒子数の起動失敗を検証する。既存エンジンGUIのPython版起動、エディター、子プロセス監視は変更せず、GUI側のIssue #32を完了とは扱わない。
+共有データのコピー・書換えやゲームロジックの変更はない。モックで実行ファイル・引数・終了コードを確認し、実体で既定プロジェクト、空の会話デッキへ編集した別フォルダー、不正な粒子数の起動失敗を検証する。既存エンジンGUIのPython版起動、エディター、子プロセス監視はこの移行では変更しない。
 
 ## 未移植
 

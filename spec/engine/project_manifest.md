@@ -1,6 +1,6 @@
 # プロジェクト定義の共有契約 v1
 
-対象はプロジェクト定義の読込だけ。Python / Godot / Unityで共有する入力・正規化結果・拒否条件をここから確認できる。起動方法、各コンテンツの意味検証、ゲームの挙動は対象外。Godot / Unityの実装や検証済みランタイムを提供する文書ではない。
+対象はプロジェクト定義の読込だけ。Python / Godot / Unityで共有する入力・正規化結果・拒否条件をここから確認できる。起動方法、各コンテンツの意味検証、ゲームの挙動は対象外。実装別アダプターの検証範囲は末尾に記し、未実装のUnityまで互換性を保証しない。
 
 ## 入力
 
@@ -47,10 +47,14 @@ UTF-8 JSONのオブジェクトを読む。プロジェクトルートは、指�
 - `manifest` をルートの `engine_project.json` に保存し、読込を呼ぶ。ルートの外に `outside.entry` も作り、外部参照を拒否できることを確認する。
 - `expected.status` が `accepted` なら `expected.result` と正規化結果全体を比較する。`rejected` なら読込失敗を確認する。
 
-Python版のアダプターは `tests/test_portable_project_contract.py`。GUI、pygame、実際のゲーム画像、外部サービスは不要。
+Python/Godot版のテスト入口は `tests/test_portable_project_contract.py`。GUI、pygame、実際のゲーム画像、外部サービスは不要。同じ独立ファイルツリーと期待値で22ケースを比較し、Godot側は `godot/tests/test_project_manifest.gd` が実際の `godot/scripts/project_manifest.gd` を呼ぶ。テストの結果はUTF-8 JSONで受け取り、Windowsのコンソール文字コードに依存せず日本語とパスを比較する。
 
 ```powershell
 .\.venv\Scripts\python.exe -m unittest tests.test_portable_project_contract -v
 ```
+
+Godotを比較する場合は `GODOT_BIN` にGodot 4のコンソール実行ファイルを指定する。未指定かつPATHにもGodotがない場合はGodotテストだけskipする。Godotアダプターの `load_manifest` には定義ファイルの絶対パスを渡す。これは読込対象を選ぶAPIであり、JSONの各パスフィールドは引き続き相対パスだけを許可する。
+
+Godot版の互換範囲はこの共有ケースで表す。未知のproject_typeは読込結果に保持するが、通常版ゲームは別途standard以外を拒否する。環境依存の絶対フィールドパス、シンボリックリンク・ジャンクション、非文字列メタデータの暗黙変換はPythonと同じ受理範囲とは扱わない。Godot側はリンクを内部参照も含め拒否し、`linked/../file` を正規化する前にも確認する。Windowsジャンクションは独立テストで確認し、シンボリックリンクは作成権限がない環境では該当テストをskipする。テストハーネスの結果レポート以外、プロジェクト内ファイルの変更がないことも確認する。
 
 形式を変える時は文書・ケース・各実装のアダプターを一緒に更新する。ケース追加だけで未実装言語の互換性を保証したと扱わない。

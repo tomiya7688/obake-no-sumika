@@ -67,6 +67,16 @@ class ContextSelectionTests(unittest.TestCase):
                     with self.subTest(path=path):
                         self.assertTrue((ROOT / path).is_file())
 
+    def test_godot_manifest_selects_shared_oracle_and_runtime_tests(self) -> None:
+        result = select_files(["godot/scripts/project_manifest.gd", "godot/scripts/content_loader.gd"], self.rules)
+        self.assertIn("docs/context/portability.md", result["contexts"])
+        self.assertIn("docs/context/godot.md", result["contexts"])
+        self.assertIn("spec/engine/project_manifest_cases.json", result["related_files"])
+        self.assertIn("tests/test_portable_project_contract.py", result["tests"])
+        self.assertIn("tests/test_godot_runtime.py", result["tests"])
+        self.assertNotIn("game.py", result["related_files"])
+        self.assertEqual(result["unmapped_files"], [])
+
     def test_godot_runner_selects_bridge_contract_and_tests(self) -> None:
         result = select_files(["engine/godot_runner.py", "tests/test_godot_runner.py"], self.rules)
         self.assertIn("docs/context/godot.md", result["contexts"])

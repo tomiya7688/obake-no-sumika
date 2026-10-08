@@ -7,6 +7,7 @@ const ObjectModel = preload("res://scripts/object_model.gd")
 const EventCatalog = preload("res://scripts/event_catalog.gd")
 const VignetteView = preload("res://scripts/vignette_view.gd")
 const MoteField = preload("res://scripts/mote_field.gd")
+const ProjectManifest = preload("res://scripts/project_manifest.gd")
 var root: String
 var error: String = ""
 
@@ -124,23 +125,22 @@ func validate_placements(value: Variant) -> bool:
 
 func load_project(project_root: String) -> Dictionary:
 	error = ""
-	root = project_root.replace("\\", "/").simplify_path().trim_suffix("/")
-	var manifest := read_json("engine_project.json")
-	if not error.is_empty():
-		return {}
-	if manifest.get("schema_version") != 1 or manifest.get("project_type", "standard") != "standard":
+	root = ""
+	var project_directory := DirAccess.open(project_root)
+	if project_directory == null:
+		return fail("Cannot open project root: " + project_root)
+	# Preserve relative --content-root inputs while the definition API takes
+	# an absolute filename. Directory resolution follows Godot's path rules.
+	root = ProjectSettings.globalize_path(project_directory.get_current_dir()).replace("\\", "/").simplify_path()
+	if root != "/" and not root.ends_with(":/"):
+		root = root.trim_suffix("/")
+	var reader := ProjectManifest.new()
+	var manifest := reader.load_manifest(root.path_join("engine_project.json"))
+	if not reader.error.is_empty():
+		return fail(reader.error)
+	if manifest.project_type != "standard":
 		return fail("This first-stage runtime supports standard schema v1 projects only")
-	var content: Dictionary = {}
-	if manifest.get("content_manifest") != null:
-		var external := read_json(manifest.content_manifest)
-		if not error.is_empty():
-			return {}
-		if external.get("schema_version") != 1 or not external.get("content", {}) is Dictionary:
-			return fail("Invalid external content manifest")
-		content.merge(external.get("content", {}), true)
-	if not manifest.get("content", {}) is Dictionary:
-		return fail("Inline content must be an object")
-	content.merge(manifest.get("content", {}), true)
+	var content: Dictionary = manifest.content
 	var room := read_json(content.get("room"))
 	var characters := read_json(content.get("characters"))
 	var placements := read_json(content.get("placements"))

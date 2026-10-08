@@ -4,7 +4,8 @@
 
 | 変更領域 | 読むファイル | 検証 |
 | --- | --- | --- |
-| JSON・PNGの読込 | `godot/scripts/content_loader.gd` と対象のJSON | `godot/tests/test_runtime.gd` |
+| プロジェクト定義の共有検証 | `godot/scripts/project_manifest.gd`, `spec/engine/project_manifest.md`, `spec/engine/project_manifest_cases.json` | `tests/test_portable_project_contract.py` → `godot/tests/test_project_manifest.gd` |
+| JSON・PNGの読込 | `godot/scripts/content_loader.gd` と対象のJSON | `godot/tests/test_runtime.gd`, `tests/test_godot_runtime.py` |
 | 行動と移動 | `godot/scripts/ghost_model.gd`, `characters.json`, `room.json` | 同上 |
 | 会話データと整列・発話 | `godot/scripts/conversation_deck.gd`, `godot/scripts/conversation_controller.gd`, `conversations.json` | `godot/tests/test_conversations.gd` |
 | タグ付き配置物と会話内操作 | `godot/scripts/object_model.gd`, `godot/scripts/conversation_controller.gd`, `godot/scripts/main.gd`, `placed_objects.json` | `godot/tests/test_objects.gd` |
@@ -18,6 +19,8 @@
 | 描画・入力 | `godot/scripts/main.gd`, `godot/main.tscn`, `godot/project.godot` | 実描画スモーク |
 | 起動とテスト | `run_godot.bat`, `tests/test_godot_runtime.py` | Godot実体でヘッドレス検証 |
 | 統合CLIプレイテスト | `engine/godot_runner.py`, `engine_app.py` | `tests/test_godot_runner.py`、選択プロジェクトと不正データの実起動 |
+
+プロジェクト定義はPythonと同じ共有22ケースで受理・正規化・拒否を検証する。名前、入口ファイル、エディター、外部/インラインcontentを描画前に検証し、上書きされる外部パスも不正なら拒否する。相対パスの内部 `..` は正規化できるが、絶対パスとリンクはGodot側では引き続き拒否する。定義の読込APIは別名ファイルも読める一方、ゲーム/統合CLIの入口名はまだ `engine_project.json` 固定。各コンテンツの完全な検証互換は後続範囲。
 
 `engine_app.py --playtest-godot` から同じ共有データで起動できる。`--project` は通常版の `engine_project.json` を指定し、終了まで待機する。Godotの指定優先度は `--godot-bin`、`GODOT_BIN`、PATHのgodot/godot4。Godot 4のバージョンを確認し、出力と終了コードをそのまま返す。`--headless` は正の `--test-frames` を必須とする。詳しいコマンドは [CUIコマンドシート](cli_commands.md)。GUI側の起動連携・監視は未対応。
 
