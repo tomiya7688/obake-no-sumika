@@ -66,6 +66,11 @@ class GodotRuntimeTests(unittest.TestCase):
         output = self.run_godot("--", "--test-frames", "180", "--seed", "12345")
         self.assertIn("GODOT_SMOKE_OK frames=180 ghosts=2", output)
 
+    def test_source_game_accepts_relative_content_root(self) -> None:
+        # Godot's relative resource paths start at godot/, not the shell cwd.
+        output = self.run_godot("--", "--content-root", "..", "--test-frames", "1", "--seed", "12345")
+        self.assertIn("GODOT_SMOKE_OK frames=1 ghosts=2", output)
+
     def test_conversation_choreography_and_deck(self) -> None:
         output = self.run_godot("--script", "res://tests/test_conversations.gd")
         self.assertIn("failures=0", output)
@@ -134,6 +139,38 @@ class GodotRuntimeTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertIn("Invalid motes.count", result.stdout + result.stderr)
             self.assertNotIn("GODOT_SMOKE_OK", result.stdout + result.stderr)
+
+    def test_direct_godot_rejects_manifest_errors_before_content_loading(self) -> None:
+        # Bypass Python validation so this proves the runtime uses its adapter.
+        mutations = [
+            ({"name": " "}, "Project name is required"),
+            ({"entrypoint": "missing.py"}, "Project path does not exist"),
+            ({"editors": [{"id": "x", "label": "x", "script": "assets"}]}, "must be a file"),
+            ({"content_manifest": "broken-content.json", "content": {"room": "room.json"}},
+             "Path escapes the project root"),
+        ]
+        for mutation, expected_error in mutations:
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                path = self.source_fixture(root)
+                manifest = json.loads(path.read_text(encoding="utf-8"))
+                manifest.update(mutation)
+                path.write_text(json.dumps(manifest), encoding="utf-8")
+                (root / "broken-content.json").write_text(json.dumps({"schema_version": 1,
+                     "content": {"room": "../outside.json"}}), encoding="utf-8")
+                before = path.read_bytes()
+                result = subprocess.run(
+                    [str(GODOT), "--headless", "--path", str(ROOT / "godot"), "--",
+                     "--content-root", str(root), "--test-frames", "1"],
+                    cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30,
+                )
+                output = result.stdout + result.stderr
+                self.assertNotEqual(result.returncode, 0, output)
+                self.assertIn(expected_error, output)
+                self.assertNotIn("CONVERSATION_DECK", output)
+                self.assertNotIn("GODOT_SMOKE_OK", output)
+                self.assertNotIn("SCRIPT ERROR:", output)
+                self.assertEqual(path.read_bytes(), before)
 
 
 if __name__ == "__main__":
