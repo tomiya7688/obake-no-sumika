@@ -178,5 +178,60 @@ class GodotRuntimeTests(unittest.TestCase):
                 self.assertEqual(path.read_bytes(), before)
 
 
+    def run_source_project(self, root: Path) -> subprocess.CompletedProcess:
+        return subprocess.run(
+            [str(GODOT), "--headless", "--path", str(ROOT / "godot"), "--",
+             "--content-root", str(root), "--test-frames", "1", "--seed", "12345"],
+            cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30,
+        )
+
+    def test_direct_godot_validates_all_characters_before_images(self) -> None:
+        mutations = [
+            (0, {"display_name": " "}, "Character id and display_name are required"),
+            (0, {"start_position": [961, 200]}, "start x"),
+            (1, {"bubble_y_offset": 201}, "bubble_y_offset"),
+            (1, {"behavior_weights": {"stop": 1, " stop ": 2}}, "action names must be unique"),
+            (1, {"id": "unknown"}, "Expected distinct kadoka and maru IDs"),
+        ]
+        for index, mutation, error in mutations:
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                self.source_fixture(root)
+                path = root / "characters.json"
+                data = json.loads(path.read_text(encoding="utf-8"))
+                # A missing first PNG must not hide an invalid second character.
+                data["characters"][0]["image"] = "missing-image.png"
+                data["characters"][index].update(mutation)
+                path.write_text(json.dumps(data), encoding="utf-8")
+                before = {path.name: path.read_bytes() for path in root.glob("*.json")}
+                result = self.run_source_project(root)
+                output = result.stdout + result.stderr
+                self.assertNotEqual(result.returncode, 0, output)
+                self.assertIn(error, output)
+                self.assertNotIn("Missing content", output)
+                self.assertNotIn("SCRIPT ERROR:", output)
+                self.assertNotIn("GODOT_SMOKE_OK", output)
+                self.assertEqual({path.name: path.read_bytes() for path in root.glob("*.json")}, before)
+
+    def test_direct_godot_uses_normalized_character_data_without_writing(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.source_fixture(root)
+            path = root / "characters.json"
+            data = json.loads(path.read_text(encoding="utf-8"))
+            data["characters"][0].update({"id": " kadoka ", "display_name": " かどか ",
+                                          "native_facing": 0, "start_position": [320.9, 340.9]})
+            data["characters"][0].pop("bubble_y_offset")
+            path.write_text(json.dumps(data), encoding="utf-8")
+            before = path.read_bytes()
+            result = self.run_source_project(root)
+            output = result.stdout + result.stderr
+            self.assertEqual(result.returncode, 0, output)
+            self.assertIn("GODOT_SMOKE_OK frames=1 ghosts=2", output)
+            self.assertNotIn("SCRIPT ERROR:", output)
+            self.assertNotIn("\nERROR:", output)
+            self.assertEqual(path.read_bytes(), before)
+
+
 if __name__ == "__main__":
     unittest.main()

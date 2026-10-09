@@ -7,6 +7,7 @@
 | 対象 | 責務 | 依存先 |
 | --- | --- | --- |
 | `godot/scripts/project_manifest.gd` | プロジェクト定義の共有検証と相対パス正規化 | `spec/engine/project_manifest.md` と共有22ケース。Node/Texture不要 |
+| `godot/scripts/character_schema.gd` | キャラクターの基本条件を検証し、名前・数値・行動重みを正規化 | `spec/character/characters.md` と共有42ケース。画像/Node/RNG不要 |
 | `godot/scripts/content_loader.gd` | 共有JSONとPNGの読込、初期段階の入力検証 | 通常版の `engine_project.json` / `game_content.json` |
 | `godot/scripts/ghost_model.gd` | 乱数、行動選択、移動、旋回、宙返り、クリック目標 | キャラクター定義、表示サイズ、移動範囲、水場。NodeやTexture不要 |
 | `godot/scripts/object_model.gd` | 配置物のタグ、初期位置、現在位置、表示状態 | 配置定義。NodeやTexture不要、JSONを書き換えない |
@@ -24,6 +25,7 @@
 | `godot/scripts/main.gd` | 描画、入力、ウィンドウ、固定deltaスモーク、ログ | 読込済みデータとモデル |
 | `godot/tests/test_runtime.gd` | GDScriptの実挙動テスト | 読込アダプターとモデル |
 | `godot/tests/test_project_manifest.gd`, `tests/test_portable_project_contract.py` | 実GodotとPythonを同じ定義ケース・期待値で比較 | 読込結果のUTF-8レポート、独立した一時ツリー、パス境界 |
+| `godot/tests/test_character_schema.gd`, `tests/test_portable_character_contract.py` | キャラクターの基本条件の受理・拒否・正規化を共有ケースで比較 | 画像処理前の基本検証、UTF-8レポート、読込専用 |
 | `godot/tests/test_conversations.gd` | 会話デッキと姿勢・中断・再開の検証 | デッキ、モデル、コントローラー、会話場面 |
 | `godot/tests/test_objects.gd` | タグ操作、到着待ち、再整列、表示状態・中断の検証 | 配置物、デッキ、モデル、シーン |
 | `godot/tests/test_events.gd` | イベントカタログ、姿勢、順序、逃走、清掃の検証 | カタログ、イベント、会話、描画 |
@@ -174,6 +176,10 @@ MoteViewはモデルの整数化した中心から半径分を引き、2倍半�
 ヘッドレスでは同じseed/deltaの再現性、100秒の再出現、描画更新の非干渉、無効化と設定検証を確認する。実描画では共有設定の開始時・4秒後・画面サイズ変更を保存し、固定の明るい粒子で水面と前景の重なりを比較する。保存画像は黒帯を含まないのでstretch変換でサンプルし、ウィンドウ入力はfinal変換を使う。実行中の粒子状態は共有JSONへ保存せず、既存AI評価ログにも追加しない。
 
 ## 読込と配布の境界
+
+キャラクターは `character_schema.gd` の基本検証を全件へ適用してから画像を読む。開始位置の部屋内範囲、名前・IDの非空と正規化後の重複、吹き出し位置や数値・行動重みを検証する。整数化と既定値をPythonに合わせ、向き0は1に正規化する。元のJSON/Dictionaryは変更せず、途中の不正値で部分結果を返さない。正規化済み定義を既存のモデル・描画へ渡す。通常版の2匹制約は基本検証とは別に、画像を読む前に確認する。
+
+共有42ケースは [キャラクター基本契約](../spec/character/characters.md) を正とする。Pythonの数値文字列・非文字列メタデータ等の互換変換や画像パス検証の完全一致は未対応。Godot側だけの巨大数・非有限値拒否と読込エラー後の再利用も実体で確認する。全入力互換を完了したとは扱わない。
 
 ソース実行時は `godot/` の親を通常版のコンテンツルートとして読む。PNGやJSONをGodot専用コピーへ分岐させない。`--content-root` で別の通常版ルートを明示できる。
 

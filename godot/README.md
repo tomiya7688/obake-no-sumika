@@ -63,10 +63,13 @@ $env:GODOT_BIN="C:\path\Godot_win64_console.exe"
 & $env:GODOT_BIN --headless --path godot -- --test-frames 900 --seed 12345
 .\.venv\Scripts\python.exe -m unittest tests.test_godot_runtime -v
 .\.venv\Scripts\python.exe -m unittest tests.test_portable_project_contract -v
+.\.venv\Scripts\python.exe -m unittest tests.test_portable_character_contract -v
 .\.venv\Scripts\python.exe scripts/evaluate_project.py
 ```
 
 環境変数未指定でPATHにもGodotがない場合、Python側のGodotテストは**skip**する。Pythonのテスト成功だけでGDScript検証済みとは扱わない。
+
+キャラクターの基本条件は [42ケース](../spec/character/characters_cases.json) をPythonと共有する。空の名前、部屋外の開始位置、不正な身長・向き・吹き出し位置・行動重みはPNGを読む前に拒否する。正規化済みの名前・数値・既定値で起動し、元のJSONは変更しない。数値文字列・非文字列メタデータ等の変換や全画像パス互換はまだ対象外。詳細は [基本読込契約](../spec/character/characters.md)。
 
 プロジェクト定義はPythonと同じ共有22ケースで検証する。ゲームは名前、入口ファイル、エディター定義、外部/インラインcontentを描画前に検証し、不正な参照はインラインで上書きされる場合も拒否する。相対パスの内部 `..` は正規化するが、絶対パスとリンクは引き続き拒否する。これは部屋やキャラクターを含む完全な入力互換ではない。詳細は [共有契約](../spec/engine/project_manifest.md)。
 

@@ -8,6 +8,7 @@ const EventCatalog = preload("res://scripts/event_catalog.gd")
 const VignetteView = preload("res://scripts/vignette_view.gd")
 const MoteField = preload("res://scripts/mote_field.gd")
 const ProjectManifest = preload("res://scripts/project_manifest.gd")
+const CharacterSchema = preload("res://scripts/character_schema.gd")
 var root: String
 var error: String = ""
 
@@ -177,25 +178,19 @@ func load_project(project_root: String) -> Dictionary:
 		for point in polygon.points:
 			if not vector_data(point, 2):
 				return fail("Invalid polygon point")
-	if characters.get("schema_version") != 1 or not characters.get("characters") is Array or characters.characters.size() != 2:
+	var character_reader := CharacterSchema.new()
+	var definitions := character_reader.parse(characters, Vector2i(size.width, size.height))
+	if not character_reader.error.is_empty():
+		return fail(character_reader.error)
+	if definitions.size() != 2:
 		return fail("First-stage runtime requires two characters")
 	var ghost_data: Array = []
 	var ids: Array = []
-	for definition in characters.characters:
-		if not definition is Dictionary or not definition.get("id") is String or not definition.get("display_name") is String:
-			return fail("Invalid character metadata")
+	for definition in definitions:
 		if definition.id not in ["kadoka", "maru"] or definition.id in ids:
 			return fail("Expected distinct kadoka and maru IDs")
 		ids.append(definition.id)
-		if not vector_data(definition.get("start_position"), 2) or not finite_number(definition.get("display_height")) or definition.display_height < 16 or definition.display_height > 256:
-			return fail("Invalid character position or height")
-		if not finite_number(definition.get("personality")) or definition.personality < 0.25 or definition.personality > 3 or not finite_number(definition.get("native_facing")) or absf(float(definition.native_facing)) != 1.0:
-			return fail("Invalid personality or native facing")
-		if not definition.get("behavior_weights", {}) is Dictionary:
-			return fail("Invalid behavior weights")
-		for weight in definition.get("behavior_weights", {}).values():
-			if not finite_number(weight) or weight < 0 or weight > 100:
-				return fail("Behavior weights must be finite and between 0 and 100")
+	for definition in definitions:
 		var image := read_image(definition.get("image"), true)
 		if image == null:
 			return {}
