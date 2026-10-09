@@ -5,15 +5,21 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import runpy
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import call, patch
+
+ROOT = Path(__file__).resolve().parents[1]
+if __name__ == "__main__" and not __package__:
+    # Direct file execution starts in tests/, not at the repository root.
+    sys.path.insert(0, str(ROOT))
 
 from engine import godot_runner
 from tests.godot_support import find_test_godot
 
 
-ROOT = Path(__file__).resolve().parents[1]
 CONSUMERS = (
     ("tests/test_godot_runtime.py", "GodotRuntimeTests"),
     ("tests/test_portable_project_contract.py", "GodotManifestContractTests"),
@@ -82,6 +88,47 @@ class GodotSupportTests(unittest.TestCase):
                         with self.subTest(path=path), self.assertRaises(error):
                             runpy.run_path(str(ROOT / path))
                     which.assert_not_called()
+
+    def run_direct_entry(self, path: str, env: dict[str, str]) -> subprocess.CompletedProcess:
+        # -I ignores PYTHONPATH and the script directory. An unrelated cwd
+        # prevents this test runner's own imports from hiding an entry regression.
+        arguments = [sys.executable, "-I", str(ROOT / path), "-q"]
+        if path == "tests/test_godot_support.py":
+            # Do not recursively launch this subprocess regression test.
+            arguments.append("GodotSupportTests.test_godot_is_preferred_to_godot4")
+        return subprocess.run(
+            arguments, cwd=self.executable.parent, env=env, capture_output=True,
+            text=True, encoding="utf-8", errors="replace", timeout=30,
+        )
+
+    def test_direct_entries_skip_without_godot_from_unrelated_cwd(self) -> None:
+        env = os.environ.copy()
+        env.pop("GODOT_BIN", None)
+        env.pop("PYTHONPATH", None)
+        env["PATH"] = ""
+        for path in [item[0] for item in CONSUMERS] + ["tests/test_godot_support.py"]:
+            with self.subTest(path=path):
+                result = self.run_direct_entry(path, env)
+                output = result.stdout + result.stderr
+                self.assertEqual(result.returncode, 0, output)
+                self.assertIn("Ran ", output)
+                self.assertIn("OK", output)
+                self.assertNotIn("Traceback", output)
+                if path != "tests/test_godot_support.py":
+                    self.assertIn("skipped=", output)
+
+    def test_direct_consumers_report_invalid_godot_configuration(self) -> None:
+        env = os.environ.copy()
+        env.pop("PYTHONPATH", None)
+        env["PATH"] = ""
+        env["GODOT_BIN"] = str(self.executable.parent / "missing.exe")
+        for path, _ in CONSUMERS:
+            with self.subTest(path=path):
+                result = self.run_direct_entry(path, env)
+                output = result.stdout + result.stderr
+                self.assertNotEqual(result.returncode, 0, output)
+                self.assertIn("Godot executable does not exist", output)
+                self.assertNotIn("ModuleNotFoundError", output)
 
 
 if __name__ == "__main__":
