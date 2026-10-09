@@ -23,6 +23,8 @@
 
 テストも起動側と同じ処理で `GODOT_BIN` → PATHの `godot` → `godot4` の順に検出する。未設定かつどちらも見つからない時だけ実Godotのテストをスキップする。空文字・存在しないファイル・ディレクトリを `GODOT_BIN` に設定した場合はエラーにし、PATHへのフォールバックやスキップで隠さない。検出とスキップ条件の回帰テストはGodotの実体なしでも実行できる。
 
+`tests/test_godot_runtime.py`、`tests/test_portable_project_contract.py`、`tests/test_godot_support.py` は、`python tests/<ファイル>.py` の直接起動と `python -m unittest` / discoverの両方を使える。直接起動時だけファイル位置からリポジトリを参照し、カレントディレクトリや `PYTHONPATH` に依存しない。隔離したPython子プロセスを別カレントから起動し、Godot不在時のスキップと不正な設定のエラーを回帰検証する。
+
 プロジェクト定義はPythonと同じ共有22ケースで受理・正規化・拒否を検証する。名前、入口ファイル、エディター、外部/インラインcontentを描画前に検証し、上書きされる外部パスも不正なら拒否する。相対パスの内部 `..` は正規化できるが、絶対パスとリンクはGodot側では引き続き拒否する。定義の読込APIは別名ファイルも読める一方、ゲーム/統合CLIの入口名はまだ `engine_project.json` 固定。各コンテンツの完全な検証互換は後続範囲。
 
 `engine_app.py --playtest-godot` から同じ共有データで起動できる。`--project` は通常版の `engine_project.json` を指定し、終了まで待機する。Godotの指定優先度は `--godot-bin`、`GODOT_BIN`、PATHのgodot/godot4。Godot 4のバージョンを確認し、出力と終了コードをそのまま返す。`--headless` は正の `--test-frames` を必須とする。詳しいコマンドは [CUIコマンドシート](cli_commands.md)。GUI側の起動連携・監視は未対応。

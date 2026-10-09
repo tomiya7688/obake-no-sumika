@@ -10,10 +10,14 @@ import sys
 import tempfile
 import unittest
 
+ROOT = Path(__file__).resolve().parents[1]
+if __name__ == "__main__" and not __package__:
+    # Direct file execution starts in tests/, not at the repository root.
+    sys.path.insert(0, str(ROOT))
+
 from tests.godot_support import find_test_godot
 
 
-ROOT = Path(__file__).resolve().parents[1]
 GODOT = find_test_godot()
 
 
