@@ -109,7 +109,18 @@ class ContextSelectionTests(unittest.TestCase):
         self.assertEqual(result["contexts"], ["docs/context/project.md", "docs/context/godot.md"])
         self.assertIn("engine/godot_runner.py", result["related_files"])
         self.assertEqual(result["tests"], ["tests/test_godot_support.py", "tests/test_godot_runtime.py",
-                                          "tests/test_portable_project_contract.py"])
+                                          "tests/test_portable_project_contract.py", "tests/test_portable_character_contract.py"])
+        self.assertNotIn("game.py", result["related_files"])
+        self.assertEqual(result["unmapped_files"], [])
+
+    def test_character_contract_selects_shared_cases_and_godot_tests(self) -> None:
+        result = select_files(["godot/scripts/character_schema.gd", "spec/character/characters_cases.json"], self.rules)
+        self.assertIn("docs/context/portability.md", result["contexts"])
+        self.assertIn("docs/context/godot.md", result["contexts"])
+        self.assertIn("spec/character/characters.md", result["related_files"])
+        self.assertIn("tests/test_portable_character_contract.py", result["tests"])
+        self.assertIn("tests/test_character_repository.py", result["tests"])
+        self.assertIn("tests/test_godot_runtime.py", result["tests"])
         self.assertNotIn("game.py", result["related_files"])
         self.assertEqual(result["unmapped_files"], [])
 
