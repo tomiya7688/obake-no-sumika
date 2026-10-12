@@ -7,6 +7,7 @@
 | 対象 | 責務 | 依存先 |
 | --- | --- | --- |
 | `godot/scripts/project_manifest.gd` | プロジェクト定義の共有検証と相対パス正規化 | `spec/engine/project_manifest.md` と共有22ケース。Node/Texture不要 |
+| `godot/scripts/room_geometry.gd` | 部屋のサイズ・fps・移動/水場矩形・会話距離の基本検証 | `spec/map/room_geometry.md` と共有49ケース。画像/Node/RNG不要 |
 | `godot/scripts/character_schema.gd` | キャラクターの基本条件を検証し、名前・数値・行動重みを正規化 | `spec/character/characters.md` と共有42ケース。画像/Node/RNG不要 |
 | `godot/scripts/content_loader.gd` | 共有JSONとPNGの読込、初期段階の入力検証 | 通常版の `engine_project.json` / `game_content.json` |
 | `godot/scripts/ghost_model.gd` | 乱数、行動選択、移動、旋回、宙返り、クリック目標 | キャラクター定義、表示サイズ、移動範囲、水場。NodeやTexture不要 |
@@ -26,6 +27,7 @@
 | `godot/tests/test_runtime.gd` | GDScriptの実挙動テスト | 読込アダプターとモデル |
 | `godot/tests/test_project_manifest.gd`, `tests/test_portable_project_contract.py` | 実GodotとPythonを同じ定義ケース・期待値で比較 | 読込結果のUTF-8レポート、独立した一時ツリー、パス境界 |
 | `godot/tests/test_character_schema.gd`, `tests/test_portable_character_contract.py` | キャラクターの基本条件の受理・拒否・正規化を共有ケースで比較 | 画像処理前の基本検証、UTF-8レポート、読込専用 |
+| `godot/tests/test_room_geometry.gd`, `tests/test_portable_room_contract.py` | 部屋の基本幾何の受理・拒否と非破壊読込を共有ケースで比較 | 深い複製、数値表記の互換境界、UTF-8レポート |
 | `godot/tests/test_conversations.gd` | 会話デッキと姿勢・中断・再開の検証 | デッキ、モデル、コントローラー、会話場面 |
 | `godot/tests/test_objects.gd` | タグ操作、到着待ち、再整列、表示状態・中断の検証 | 配置物、デッキ、モデル、シーン |
 | `godot/tests/test_events.gd` | イベントカタログ、姿勢、順序、逃走、清掃の検証 | カタログ、イベント、会話、描画 |
@@ -176,6 +178,10 @@ MoteViewはモデルの整数化した中心から半径分を引き、2倍半�
 ヘッドレスでは同じseed/deltaの再現性、100秒の再出現、描画更新の非干渉、無効化と設定検証を確認する。実描画では共有設定の開始時・4秒後・画面サイズ変更を保存し、固定の明るい粒子で水面と前景の重なりを比較する。保存画像は黒帯を含まないのでstretch変換でサンプルし、ウィンドウ入力はfinal変換を使う。実行中の粒子状態は共有JSONへ保存せず、既存AI評価ログにも追加しない。
 
 ## 読込と配布の境界
+
+部屋の基本幾何は `room_geometry.gd` で画像読込前に検証する。16:9のサイズ、fps、移動/水場矩形、会話距離を共有49ケースで比較する。矩形は整数値で正の幅/高さ、部屋内の範囲とし、巨大数・小数部・真偽値・非有限値を拒否する。元の部屋JSONを変更せず、未検証の設定・追加フィールドも深く複製して保持する。失敗時は部分結果を返さず、次の読込でエラーをリセットする。
+
+基本検証は複数の16:9寸法と会話距離1〜部屋幅を扱えるが、通常版ランタイムは960x540・距離80〜300の制約を画像読込前に確認する。fpsの実行時反映・任意寸法の描画/AIは今回移植しない。Godot JSONは整数トークンと整数値の小数表記を区別できないためPythonと完全な型互換とは扱わない。詳細と未対応の背景/粒子等は [部屋幾何契約](../spec/map/room_geometry.md) に記す。
 
 キャラクターは `character_schema.gd` の基本検証を全件へ適用してから画像を読む。開始位置の部屋内範囲、名前・IDの非空と正規化後の重複、吹き出し位置や数値・行動重みを検証する。整数化と既定値をPythonに合わせ、向き0は1に正規化する。元のJSON/Dictionaryは変更せず、途中の不正値で部分結果を返さない。正規化済み定義を既存のモデル・描画へ渡す。通常版の2匹制約は基本検証とは別に、画像を読む前に確認する。
 

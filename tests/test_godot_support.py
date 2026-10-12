@@ -24,6 +24,7 @@ CONSUMERS = (
     ("tests/test_godot_runtime.py", "GodotRuntimeTests"),
     ("tests/test_portable_project_contract.py", "GodotManifestContractTests"),
     ("tests/test_portable_character_contract.py", "GodotCharacterContractTests"),
+    ("tests/test_portable_room_contract.py", "GodotRoomContractTests"),
 )
 
 

@@ -64,10 +64,13 @@ $env:GODOT_BIN="C:\path\Godot_win64_console.exe"
 .\.venv\Scripts\python.exe -m unittest tests.test_godot_runtime -v
 .\.venv\Scripts\python.exe -m unittest tests.test_portable_project_contract -v
 .\.venv\Scripts\python.exe -m unittest tests.test_portable_character_contract -v
+.\.venv\Scripts\python.exe -m unittest tests.test_portable_room_contract -v
 .\.venv\Scripts\python.exe scripts/evaluate_project.py
 ```
 
 環境変数未指定でPATHにもGodotがない場合、Python側のGodotテストは**skip**する。Pythonのテスト成功だけでGDScript検証済みとは扱わない。
+
+部屋の基本幾何は [49ケース](../spec/map/room_geometry_cases.json) をPythonと共有する。部屋外や幅/高さ0の水場、小数の矩形、不正なサイズ・fps・会話距離は画像読込前に拒否する。部屋データを書き換えず、ランタイムは引き続き960x540・距離80〜300。Godot JSONの整数表記の境界、fps反映や背景/粒子の未対応範囲は [幾何契約](../spec/map/room_geometry.md) を参照。
 
 キャラクターの基本条件は [42ケース](../spec/character/characters_cases.json) をPythonと共有する。空の名前、部屋外の開始位置、不正な身長・向き・吹き出し位置・行動重みはPNGを読む前に拒否する。正規化済みの名前・数値・既定値で起動し、元のJSONは変更しない。数値文字列・非文字列メタデータ等の変換や全画像パス互換はまだ対象外。詳細は [基本読込契約](../spec/character/characters.md)。
 
