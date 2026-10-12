@@ -9,6 +9,7 @@ const VignetteView = preload("res://scripts/vignette_view.gd")
 const MoteField = preload("res://scripts/mote_field.gd")
 const ProjectManifest = preload("res://scripts/project_manifest.gd")
 const CharacterSchema = preload("res://scripts/character_schema.gd")
+const RoomGeometry = preload("res://scripts/room_geometry.gd")
 var root: String
 var error: String = ""
 
@@ -147,23 +148,18 @@ func load_project(project_root: String) -> Dictionary:
 	var placements := read_json(content.get("placements"))
 	if not error.is_empty():
 		return {}
-	if room.get("schema_version") != 1 or not room.get("size") is Dictionary:
-		return fail("Invalid room schema")
+	var room_reader := RoomGeometry.new()
+	room = room_reader.parse(room)
+	if not room_reader.error.is_empty():
+		return fail(room_reader.error)
 	var size: Dictionary = room.size
-	if not finite_number(size.get("width")) or not finite_number(size.get("height")):
-		return fail("Room size must be finite")
 	if size.width != 960 or size.height != 540:
 		return fail("First-stage room size must be 960x540")
+	if room.conversation_distance < 80 or room.conversation_distance > 300:
+		return fail("Conversation distance must be between 80 and 300")
 	var mote_error := MoteField.validate(room.get("motes"), int(size.height))
 	if not mote_error.is_empty():
 		return fail(mote_error)
-	if not vector_data(room.get("movement_bounds"), 4):
-		return fail("Invalid movement bounds")
-	var limits: Array = room.movement_bounds
-	if limits[0] < 0 or limits[1] < 0 or limits[2] <= 0 or limits[3] <= 0 or limits[0] + limits[2] > 960 or limits[1] + limits[3] > 540:
-		return fail("Movement bounds must stay inside the room")
-	if not room.get("zones") is Dictionary or not vector_data(room.zones.get("water_rest"), 4):
-		return fail("Invalid water zone")
 	if not room.get("background") is Dictionary or not room.background.get("gradient") is Dictionary or not room.background.get("polygons") is Array:
 		return fail("Invalid background")
 	var vignette_error := VignetteView.validate(room.background.get("vignette"), Vector2i(size.width, size.height))
@@ -213,6 +209,4 @@ func load_project(project_root: String) -> Dictionary:
 	var deck := ConversationDeck.parse(raw_deck, catalog.events)
 	if not deck.error.is_empty():
 		return fail(deck.error)
-	if not finite_number(room.get("conversation_distance")) or room.conversation_distance < 80 or room.conversation_distance > 300:
-		return fail("Conversation distance must be between 80 and 300")
 	return {"room": room, "characters": ghost_data, "objects": object_data, "conversations": deck.cards, "events": catalog.events, "skipped_conversations": deck.skipped}

@@ -104,12 +104,13 @@ class ContextSelectionTests(unittest.TestCase):
         )
         self.assertEqual(json.loads(result.stdout)["tests"], ["tests/test_room_repository.py"])
 
-    def test_godot_test_discovery_selects_both_consumers_without_game_code(self) -> None:
+    def test_godot_test_discovery_selects_all_consumers_without_game_code(self) -> None:
         result = select_files(["tests/godot_support.py", "tests/test_godot_support.py"], self.rules)
         self.assertEqual(result["contexts"], ["docs/context/project.md", "docs/context/godot.md"])
         self.assertIn("engine/godot_runner.py", result["related_files"])
         self.assertEqual(result["tests"], ["tests/test_godot_support.py", "tests/test_godot_runtime.py",
-                                          "tests/test_portable_project_contract.py", "tests/test_portable_character_contract.py"])
+                                          "tests/test_portable_project_contract.py", "tests/test_portable_character_contract.py",
+                                          "tests/test_portable_room_contract.py"])
         self.assertNotIn("game.py", result["related_files"])
         self.assertEqual(result["unmapped_files"], [])
 
@@ -120,6 +121,17 @@ class ContextSelectionTests(unittest.TestCase):
         self.assertIn("spec/character/characters.md", result["related_files"])
         self.assertIn("tests/test_portable_character_contract.py", result["tests"])
         self.assertIn("tests/test_character_repository.py", result["tests"])
+        self.assertIn("tests/test_godot_runtime.py", result["tests"])
+        self.assertNotIn("game.py", result["related_files"])
+        self.assertEqual(result["unmapped_files"], [])
+
+    def test_room_contract_selects_shared_cases_and_godot_tests(self) -> None:
+        result = select_files(["godot/scripts/room_geometry.gd", "spec/map/room_geometry_cases.json"], self.rules)
+        self.assertIn("docs/context/portability.md", result["contexts"])
+        self.assertIn("docs/context/godot.md", result["contexts"])
+        self.assertIn("spec/map/room_geometry.md", result["related_files"])
+        self.assertIn("tests/test_portable_room_contract.py", result["tests"])
+        self.assertIn("tests/test_room_repository.py", result["tests"])
         self.assertIn("tests/test_godot_runtime.py", result["tests"])
         self.assertNotIn("game.py", result["related_files"])
         self.assertEqual(result["unmapped_files"], [])

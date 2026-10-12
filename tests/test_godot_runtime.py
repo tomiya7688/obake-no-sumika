@@ -213,6 +213,58 @@ class GodotRuntimeTests(unittest.TestCase):
                 self.assertNotIn("GODOT_SMOKE_OK", output)
                 self.assertEqual({path.name: path.read_bytes() for path in root.glob("*.json")}, before)
 
+    def test_direct_godot_validates_room_geometry_before_images(self) -> None:
+        mutations = [
+            ({"zones": {"water_rest": [950, 500, 20, 20]}}, "zones.water_rest must stay inside"),
+            ({"zones": {"water_rest": [335, 348, 0, 168]}}, "zones.water_rest width"),
+            ({"movement_bounds": [74.5, 80, 812, 446]}, "movement_bounds x"),
+            ({"fps": 0}, "fps"),
+            ({"conversation_distance": 961}, "conversation_distance"),
+            # Basic geometry accepts these; the current runtime still restricts them.
+            ({"conversation_distance": 400}, "Conversation distance must be between 80 and 300"),
+            ({"size": {"width": 1280, "height": 720}}, "First-stage room size must be 960x540"),
+        ]
+        for mutation, error in mutations:
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                self.source_fixture(root)
+                path = root / "room.json"
+                data = json.loads(path.read_text(encoding="utf-8"))
+                data.update(mutation)
+                path.write_text(json.dumps(data), encoding="utf-8")
+                characters = root / "characters.json"
+                data = json.loads(characters.read_text(encoding="utf-8"))
+                data["characters"][0]["image"] = "missing-image.png"
+                characters.write_text(json.dumps(data), encoding="utf-8")
+                before = {path.name: path.read_bytes() for path in root.glob("*.json")}
+                result = self.run_source_project(root)
+                output = result.stdout + result.stderr
+                self.assertNotEqual(result.returncode, 0, output)
+                self.assertIn(error, output)
+                self.assertNotIn("Missing content", output)
+                self.assertNotIn("SCRIPT ERROR:", output)
+                self.assertNotIn("GODOT_SMOKE_OK", output)
+                self.assertEqual({path.name: path.read_bytes() for path in root.glob("*.json")}, before)
+
+    def test_direct_godot_reads_edited_room_geometry_without_writing(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.source_fixture(root)
+            path = root / "room.json"
+            data = json.loads(path.read_text(encoding="utf-8"))
+            data.update({"movement_bounds": [80, 100, 780, 390],
+                         "zones": {"water_rest": [400, 250, 140, 140]},
+                         "conversation_distance": 200, "fps": 144})
+            path.write_text(json.dumps(data), encoding="utf-8")
+            before = {path.name: path.read_bytes() for path in root.glob("*.json")}
+            result = self.run_source_project(root)
+            output = result.stdout + result.stderr
+            self.assertEqual(result.returncode, 0, output)
+            self.assertIn("GODOT_SMOKE_OK frames=1 ghosts=2", output)
+            self.assertNotIn("SCRIPT ERROR:", output)
+            self.assertNotIn("\nERROR:", output)
+            self.assertEqual({path.name: path.read_bytes() for path in root.glob("*.json")}, before)
+
     def test_direct_godot_uses_normalized_character_data_without_writing(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

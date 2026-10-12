@@ -4,6 +4,7 @@
 
 | 変更領域 | 読むファイル | 検証 |
 | --- | --- | --- |
+| 部屋の基本幾何検証 | `godot/scripts/room_geometry.gd`, `spec/map/room_geometry.md`, `spec/map/room_geometry_cases.json` | `tests/test_portable_room_contract.py` → `godot/tests/test_room_geometry.gd` |
 | プロジェクト定義の共有検証 | `godot/scripts/project_manifest.gd`, `spec/engine/project_manifest.md`, `spec/engine/project_manifest_cases.json` | `tests/test_portable_project_contract.py` → `godot/tests/test_project_manifest.gd` |
 | キャラクターの基本共有検証 | `godot/scripts/character_schema.gd`, `spec/character/characters.md`, `spec/character/characters_cases.json` | `tests/test_portable_character_contract.py` → `godot/tests/test_character_schema.gd` |
 | JSON・PNGの読込 | `godot/scripts/content_loader.gd` と対象のJSON | `godot/tests/test_runtime.gd`, `tests/test_godot_runtime.py` |
@@ -24,9 +25,11 @@
 
 キャラクターの基本条件はPythonと同じ42ケースで検証する。全件の名前・ID・開始位置・身長・性格・向き・吹き出し位置・行動重みを検証・正規化してからPNGを読む。開始位置は整数化後に部屋内であることを必須とし、空の名前や正規化後の重複を拒否する。既定値と数値の0方向への整数化はPythonに合わせる。数値文字列・非文字列メタデータ等の互換変換、全画像パス互換は後続範囲。基本検証は任意IDを扱えるが、ゲームは引き続きかどか・まるの2匹のみ。詳細は [基本読込契約](../../spec/character/characters.md)。
 
+部屋の基本幾何はPythonと同じ49ケースで検証する。サイズ・fps・移動/水場矩形・会話距離を画像読込前に確認し、矩形は正の幅/高さで部屋内であることを必須とする。入力を変更せず深い複製を返す。基本検証は16:9の複数寸法と距離1〜部屋幅を扱うが、ランタイムは960x540・距離80〜300のまま。fpsの実行時反映や背景/粒子等の全入力互換は未対応。Godot JSONで整数値の小数表記を区別できない境界は [幾何契約](../../spec/map/room_geometry.md) と専用テストに明記する。
+
 テストも起動側と同じ処理で `GODOT_BIN` → PATHの `godot` → `godot4` の順に検出する。未設定かつどちらも見つからない時だけ実Godotのテストをスキップする。空文字・存在しないファイル・ディレクトリを `GODOT_BIN` に設定した場合はエラーにし、PATHへのフォールバックやスキップで隠さない。検出とスキップ条件の回帰テストはGodotの実体なしでも実行できる。
 
-`tests/test_godot_runtime.py`、`tests/test_portable_project_contract.py`、`tests/test_portable_character_contract.py`、`tests/test_godot_support.py` は、`python tests/<ファイル>.py` の直接起動と `python -m unittest` / discoverの両方を使える。直接起動時だけファイル位置からリポジトリを参照し、カレントディレクトリや `PYTHONPATH` に依存しない。隔離したPython子プロセスを別カレントから起動し、Godot不在時のスキップと不正な設定のエラーを回帰検証する。
+`tests/test_godot_runtime.py`、`tests/test_portable_project_contract.py`、`tests/test_portable_character_contract.py`、`tests/test_portable_room_contract.py`、`tests/test_godot_support.py` は、`python tests/<ファイル>.py` の直接起動と `python -m unittest` / discoverの両方を使える。直接起動時だけファイル位置からリポジトリを参照し、カレントディレクトリや `PYTHONPATH` に依存しない。隔離したPython子プロセスを別カレントから起動し、Godot不在時のスキップと不正な設定のエラーを回帰検証する。
 
 プロジェクト定義はPythonと同じ共有22ケースで受理・正規化・拒否を検証する。名前、入口ファイル、エディター、外部/インラインcontentを描画前に検証し、上書きされる外部パスも不正なら拒否する。相対パスの内部 `..` は正規化できるが、絶対パスとリンクはGodot側では引き続き拒否する。定義の読込APIは別名ファイルも読める一方、ゲーム/統合CLIの入口名はまだ `engine_project.json` 固定。各コンテンツの完全な検証互換は後続範囲。
 
