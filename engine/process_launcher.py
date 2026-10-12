@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from concurrent.futures import Future
 import os
 from pathlib import Path
 import subprocess
@@ -8,7 +9,7 @@ import sys
 import tempfile
 
 from .project_manifest import ProjectManifest
-from .godot_runner import prepare_godot_invocation
+from .godot_runner import GodotInvocation, prepare_godot_invocation, prepare_godot_invocation_async
 
 
 @dataclass(frozen=True)
@@ -55,6 +56,25 @@ class ProcessLauncher:
             headless=headless, test_frames=test_frames, seed=seed,
             expected_manifest=self.manifest,
         )
+        return self.launch_prepared_godot(invocation)
+
+    def prepare_godot_async(
+        self, *, executable: Path | None = None, headless: bool = False,
+        test_frames: int | None = None, seed: int | None = None,
+    ) -> Future[GodotInvocation]:
+        """Return preparation status; the caller must explicitly start the game."""
+        return prepare_godot_invocation_async(
+            self.manifest.root / "engine_project.json", executable=executable,
+            headless=headless, test_frames=test_frames, seed=seed,
+            expected_manifest=self.manifest,
+        )
+
+    def launch_prepared_godot(self, invocation: GodotInvocation) -> LaunchedProcess:
+        """Start a trusted invocation from the shared preparer for this selection."""
+        if not isinstance(invocation, GodotInvocation):
+            raise TypeError("Expected a prepared GodotInvocation")
+        if self.manifest.project_type != "standard" or invocation.manifest != self.manifest:
+            raise ValueError("Prepared Godot selection changed; prepare the project again")
         return self._launch_command(list(invocation.command), "godot")
 
     def _launch(self, script: Path) -> LaunchedProcess:

@@ -59,7 +59,7 @@ $env:GODOT_BIN="C:\path\Godot_win64_console.exe"
 
 `--test-frames` は正の整数で、固定delta 1/60秒の指定フレーム数で終了する。`--headless` は `--test-frames` 必須。`--seed` は符号付き64bit整数。これらのGodot用オプションを `--validate` やGUI起動などへ付けるとエラーにする。既存GUIの「ゲームを実行」はPython版で、Python子プロセスの監視は実装済み。GUIでのGodot選択・起動への接続は未対応。
 
-子プロセスと永続ログが必要な開発者は `ProcessLauncher.launch_godot()` を使う。CLIと起動準備を共有し、`poll()` / `log_tail()` で終了コードとログを取得できる。事前準備は同期（バージョンprobeのみ10秒上限）、ゲーム完了は待たない。GUIボタンではなくAPIなので、例と未対応範囲は [Godot起動API](../GDScript移行機能説明書.md#godotの子プロセス起動api) を読む。
+子プロセスと永続ログが必要な開発者は `ProcessLauncher.launch_godot()` を使う。事前準備は同期（probeのみ10秒上限）、ゲーム完了は待たず、`poll()` / `log_tail()` で終了コードとログを取得できる。重い準備を分離するAPIは `prepare_godot_async()` → Future → `launch_prepared_godot()`。準備結果を明示的に起動へ渡すまでゲームは始まらない。GUIボタン/ポーリングへの接続はまだなので、例とキャンセル・時間差の境界は [Godot起動API](../GDScript移行機能説明書.md#godotの子プロセス起動api) を読む。
 
 ## 対話UI（実画面が必要）
 

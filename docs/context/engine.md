@@ -17,4 +17,4 @@
 
 `engine_app.py --playtest-godot` は終了まで待つCLI専用の入口。Python版のゲーム・エディター起動と混ぜず、共有JSON/PNGの意味検証と実行はGodotへ任せる。Godot側の未対応範囲は [godot.md](godot.md) を参照。既存GUIはPython版の子プロセスを150ms間隔で監視し、異常終了時に終了コード・ログ末尾・保存先を表示する。
 
-`ProcessLauncher.launch_godot()` はCLIと同じ準備処理を経て `LaunchedProcess` を返すAPI。`poll()` と `log_tail()` でGodotの終了状態と永続ログを取得できる。選択定義が現在の `engine_project.json` と違う時は再読込を要求し、別プロジェクトへ黙って切り替えない。事前準備は同期、バージョン確認だけ10秒制限付き、ゲーム実行は終了を待たない。GUIでのGodot選択・準備の非ブロッキング化・監視への接続はまだ未実装。
+`ProcessLauncher.launch_godot()` はCLIと同じ準備処理を経て `LaunchedProcess` を返す同期準備API。ゲーム実行は終了を待たず、`poll()` と `log_tail()` で終了状態と永続ログを取得できる。選択定義が現在の `engine_project.json` と違う時は再読込を要求する。バックグラウンド準備は `prepare_godot_async()`、完成後の明示起動は `launch_prepared_godot()`。Futureだけではゲームを起動せず、選択変更時は古い結果を破棄できる。GUIのGodot選択・Futureポーリング・既存監視への接続は未実装。詳細は [Godot起動API](../GDScript移行機能説明書.md#godotの子プロセス起動api)。

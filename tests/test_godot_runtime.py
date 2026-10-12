@@ -41,6 +41,43 @@ class GodotRuntimeTests(unittest.TestCase):
             finally:
                 self.cleanup_launched(child)
 
+    def test_async_preparation_then_explicit_launch_with_real_godot(self) -> None:
+        for invalid_image in (False, True):
+            with self.subTest(invalid_image=invalid_image), tempfile.TemporaryDirectory(prefix="Godot async 日本語 ") as directory:
+                root = Path(directory)
+                manifest = self.source_fixture(root)
+                (root / "conversations.json").write_text("[]\n", encoding="utf-8")
+                if invalid_image:
+                    path = root / "characters.json"
+                    data = json.loads(path.read_text(encoding="utf-8"))
+                    data["characters"][0]["image"] = "見つからない画像.png"
+                    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+                before = {path.name: path.read_bytes() for path in root.glob("*.json")}
+                launcher = ProcessLauncher(load_project_manifest(manifest))
+                future = launcher.prepare_godot_async(executable=GODOT, headless=True, test_frames=180, seed=12345)
+                # Tests may wait; the GUI must instead poll done() on its main thread.
+                invocation = future.result(timeout=20)
+                self.assertTrue(future.done())
+                self.assertFalse(launcher.log_dir.exists())
+                self.assertEqual({path.name: path.read_bytes() for path in root.glob("*.json")}, before)
+                child = launcher.launch_prepared_godot(invocation)
+                try:
+                    code = child.process.wait(timeout=30)
+                    output = child.log_tail()
+                    if invalid_image:
+                        self.assertNotEqual(code, 0)
+                        self.assertIn("Missing content: 見つからない画像.png", output)
+                        self.assertNotIn("GODOT_SMOKE_OK", output)
+                    else:
+                        self.assertEqual(code, 0, output)
+                        self.assertIn("CONVERSATION_DECK runnable=0", output)
+                        self.assertIn("GODOT_SMOKE_OK frames=180 ghosts=2", output)
+                    self.assertNotIn("SCRIPT ERROR:", output)
+                    self.assertNotIn("Python gameplay must not run", output)
+                    self.assertEqual({path.name: path.read_bytes() for path in root.glob("*.json")}, before)
+                finally:
+                    self.cleanup_launched(child)
+
     def test_process_launcher_records_real_godot_success(self) -> None:
         with tempfile.TemporaryDirectory(prefix="Godot launch 日本語 ") as directory:
             root = Path(directory)

@@ -103,6 +103,7 @@ class ContextSelectionTests(unittest.TestCase):
         self.assertIn("tests/test_godot_runner.py", result["tests"])
         self.assertIn("tests/test_godot_runtime.py", result["tests"])
         self.assertIn("tests/test_process_launcher.py", result["tests"])
+        self.assertIn("tests/test_godot_preparation.py", result["tests"])
         self.assertNotIn("game.py", result["related_files"])
         self.assertEqual(result["unmapped_files"], [])
 
@@ -111,6 +112,17 @@ class ContextSelectionTests(unittest.TestCase):
         self.assertEqual(result["contexts"], ["docs/context/project.md", "docs/context/engine.md"])
         self.assertEqual(result["related_files"], [])
         self.assertEqual(result["tests"], [])
+        self.assertEqual(result["unmapped_files"], [])
+
+    def test_background_preparation_selects_worker_and_launch_tests(self) -> None:
+        result = select_files(["tests/test_godot_preparation.py"], self.rules)
+        self.assertIn("docs/context/godot.md", result["contexts"])
+        self.assertIn("docs/context/engine.md", result["contexts"])
+        self.assertIn("engine/godot_runner.py", result["related_files"])
+        self.assertIn("tests/test_godot_preparation.py", result["tests"])
+        self.assertIn("tests/test_godot_process_launcher.py", result["tests"])
+        self.assertIn("tests/test_godot_runtime.py", result["tests"])
+        self.assertNotIn("game.py", result["related_files"])
         self.assertEqual(result["unmapped_files"], [])
 
     def test_json_cli_output_is_machine_readable(self) -> None:

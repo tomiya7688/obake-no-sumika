@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import os
+import copy
+from concurrent.futures import Future
 from dataclasses import dataclass
 from pathlib import Path
 import re
 import shutil
 import subprocess
+from threading import Thread
 
 from .manifest_loader import load_project_manifest
 from .project_manifest import ProjectManifest
@@ -102,6 +105,45 @@ def prepare_godot_invocation(
     if seed is not None:
         command.extend(["--seed", str(seed)])
     return GodotInvocation(tuple(command), manifest)
+
+
+def prepare_godot_invocation_async(
+    project_path: Path,
+    *,
+    executable: Path | None = None,
+    headless: bool = False,
+    test_frames: int | None = None,
+    seed: int | None = None,
+    expected_manifest: ProjectManifest | None = None,
+) -> Future[GodotInvocation]:
+    """Prepare on a daemon worker; never start gameplay or access GUI widgets."""
+    # Capture relative paths and mutable selection data before another project
+    # or working directory can be selected. Files are read by the worker.
+    project_path = project_path.absolute()
+    executable = executable.absolute() if executable is not None else None
+    selection = copy.deepcopy(expected_manifest)
+    future: Future[GodotInvocation] = Future()
+
+    def prepare() -> None:
+        if not future.set_running_or_notify_cancel():
+            return
+        try:
+            invocation = prepare_godot_invocation(
+                project_path, executable=executable, headless=headless,
+                test_frames=test_frames, seed=seed, expected_manifest=selection,
+            )
+        except BaseException as exc:
+            # Match Future executors: failures belong to the requesting caller,
+            # including unexpected worker exits, instead of leaving it pending.
+            future.set_exception(exc)
+        else:
+            future.set_result(invocation)
+
+    try:
+        Thread(target=prepare, name="godot-preparation", daemon=True).start()
+    except Exception as exc:
+        future.set_exception(exc)
+    return future
 
 
 def run_godot(

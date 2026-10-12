@@ -24,6 +24,7 @@
 | テスト用Godot検出・スキップ条件 | `tests/godot_support.py`, `engine/godot_runner.py` | `tests/test_godot_support.py`、実Godotでランタイムと共有契約テスト |
 | 統合CLIプレイテスト | `engine/godot_runner.py`, `engine_app.py` | `tests/test_godot_runner.py`、選択プロジェクトと不正データの実起動 |
 | 子プロセス起動と永続ログ | `engine/process_launcher.py`, `engine/godot_runner.py` | `tests/test_godot_process_launcher.py`、`tests/test_godot_runtime.py` の実Godot正常/異常終了 |
+| バックグラウンド準備と明示起動 | 同上。`prepare_godot_async()` → Future → `launch_prepared_godot()` | `tests/test_godot_preparation.py`、実Godotの2段階起動 |
 
 キャラクターの基本条件はPythonと同じ42ケースで検証する。全件の名前・ID・開始位置・身長・性格・向き・吹き出し位置・行動重みを検証・正規化してからPNGを読む。開始位置は整数化後に部屋内であることを必須とし、空の名前や正規化後の重複を拒否する。既定値と数値の0方向への整数化はPythonに合わせる。数値文字列・非文字列メタデータ等の互換変換、全画像パス互換は後続範囲。基本検証は任意IDを扱えるが、ゲームは引き続きかどか・まるの2匹のみ。詳細は [基本読込契約](../../spec/character/characters.md)。
 
@@ -39,6 +40,6 @@
 
 `engine_app.py --playtest-godot` から同じ共有データで起動できる。`--project` は通常版の `engine_project.json` を指定し、終了まで待機する。Godotの指定優先度は `--godot-bin`、`GODOT_BIN`、PATHのgodot/godot4。Godot 4のバージョンを確認し、出力と終了コードをそのまま返す。`--headless` は正の `--test-frames` を必須とする。詳しいコマンドは [CUIコマンドシート](cli_commands.md)。GUI側の起動連携・監視は未対応。
 
-`ProcessLauncher.launch_godot()` でも同じ準備・引数を使い、ゲーム終了を待たず子プロセスとUTF-8ログを返す。specialや現在の定義と異なる選択、不正設定、バージョンprobe失敗はゲーム起動前に拒否する。`poll()` がNoneでもゲームの初期化成功とは扱わない。準備は同期（probeのみ10秒上限）で、GUIの操作追加やworker化は後続。詳しいAPI例は [機能説明書](../GDScript移行機能説明書.md#godotの子プロセス起動api)。
+`ProcessLauncher.launch_godot()` は同期準備（probeのみ10秒上限）後、ゲーム終了を待たず子プロセスとUTF-8ログを返す。`prepare_godot_async()` は同じ準備をdaemon workerで実行してFutureを返し、ゲームは自動起動しない。main threadでdoneを確認した後、結果を1回だけ `launch_prepared_godot()` へ渡す。失敗はFutureから取得し、未開始だけキャンセル可能。実行中の準備は止められないが結果を捨ててもゲームは始まらない。選択変更後の別launcherへの引渡しは拒否する。GUIの操作・ポーリング接続は未実装。API戻り値やpoll=Noneを初期化成功とは扱わない。例と共有ファイルの時間差は [機能説明書](../GDScript移行機能説明書.md#godotの子プロセス起動api) を読む。
 
 `.godot/` は生成キャッシュ。読む必要はなくGitにも含めない。会話はsay/move/take/put/eventを重み付きで実行する。移動完了を待ち、次の発話前に再整列する。既知だが未実装のevent、または必要タグの欠落があるカードは丸ごと抽選から外す。未知IDや終了イベント後の手順はエラー。ゲーム機イベントの終了・中断では取り出した物と光を消す。他の通常take済みオブジェクトは変更しない。名前ホバー・影・周辺減光・環境粒子はAIや会話を変更しない。影は宙返りを含むモデル位置に追従し、細かな浮遊や回転は継承しない。減光は一度だけ生成し背景だけにかける。粒子は共有部屋設定と独立した環境用乱数で上昇・横揺れ・再出現し、更新はmainのdeltaだけで進む。GUI側の起動連携、完全な入力検証互換、Python/Godot評価ログ比較・配布は後続対応。ランタイムの取り出し/収納はJSONへ保存しない。
