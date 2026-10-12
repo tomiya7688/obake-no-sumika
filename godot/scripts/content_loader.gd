@@ -10,6 +10,7 @@ const MoteField = preload("res://scripts/mote_field.gd")
 const ProjectManifest = preload("res://scripts/project_manifest.gd")
 const CharacterSchema = preload("res://scripts/character_schema.gd")
 const RoomGeometry = preload("res://scripts/room_geometry.gd")
+const BackgroundPalette = preload("res://scripts/background_palette.gd")
 var root: String
 var error: String = ""
 
@@ -160,16 +161,16 @@ func load_project(project_root: String) -> Dictionary:
 	var mote_error := MoteField.validate(room.get("motes"), int(size.height))
 	if not mote_error.is_empty():
 		return fail(mote_error)
-	if not room.get("background") is Dictionary or not room.background.get("gradient") is Dictionary or not room.background.get("polygons") is Array:
-		return fail("Invalid background")
+	var palette_reader := BackgroundPalette.new()
+	var background := palette_reader.parse(room.get("background"), int(size.height))
+	if not palette_reader.error.is_empty():
+		return fail(palette_reader.error)
+	room.background = background
 	var vignette_error := VignetteView.validate(room.background.get("vignette"), Vector2i(size.width, size.height))
 	if not vignette_error.is_empty():
 		return fail(vignette_error)
-	var gradient: Dictionary = room.background.gradient
-	if not vector_data(gradient.get("top"), 3) or not vector_data(gradient.get("bottom"), 3) or not finite_number(gradient.get("step")) or gradient.step < 1:
-		return fail("Invalid background gradient")
 	for polygon in room.background.polygons:
-		if not polygon is Dictionary or not vector_data(polygon.get("color"), 3) or not polygon.get("points") is Array or polygon.points.size() < 3:
+		if not polygon.get("points") is Array or polygon.points.size() < 3:
 			return fail("Invalid background polygon")
 		for point in polygon.points:
 			if not vector_data(point, 2):

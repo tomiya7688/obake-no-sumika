@@ -65,10 +65,13 @@ $env:GODOT_BIN="C:\path\Godot_win64_console.exe"
 .\.venv\Scripts\python.exe -m unittest tests.test_portable_project_contract -v
 .\.venv\Scripts\python.exe -m unittest tests.test_portable_character_contract -v
 .\.venv\Scripts\python.exe -m unittest tests.test_portable_room_contract -v
+.\.venv\Scripts\python.exe -m unittest tests.test_portable_palette_contract -v
 .\.venv\Scripts\python.exe scripts/evaluate_project.py
 ```
 
 環境変数未指定でPATHにもGodotがない場合、Python側のGodotテストは**skip**する。Pythonのテスト成功だけでGDScript検証済みとは扱わない。
+
+背景色・グラデーションstepは [39ケース](../spec/map/background_palette_cases.json) をPythonと共有する。RGBの範囲外値・小数部のある値や不正なstepを画像読込前に拒否し、背景データを書き換えない。ポリゴン座標の完全互換・画素一致はこの単位の検証外。数値表記と必要なfixtureは [パレット契約](../spec/map/background_palette.md) を参照。
 
 部屋の基本幾何は [49ケース](../spec/map/room_geometry_cases.json) をPythonと共有する。部屋外や幅/高さ0の水場、小数の矩形、不正なサイズ・fps・会話距離は画像読込前に拒否する。部屋データを書き換えず、ランタイムは引き続き960x540・距離80〜300。Godot JSONの整数表記の境界、fps反映や背景/粒子の未対応範囲は [幾何契約](../spec/map/room_geometry.md) を参照。
 
