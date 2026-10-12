@@ -8,6 +8,7 @@
 | --- | --- | --- |
 | `godot/scripts/project_manifest.gd` | プロジェクト定義の共有検証と相対パス正規化 | `spec/engine/project_manifest.md` と共有22ケース。Node/Texture不要 |
 | `godot/scripts/room_geometry.gd` | 部屋のサイズ・fps・移動/水場矩形・会話距離の基本検証 | `spec/map/room_geometry.md` と共有49ケース。画像/Node/RNG不要 |
+| `godot/scripts/background_palette.gd` | 背景RGBとグラデーション間隔の検証・非破壊正規化 | `spec/map/background_palette.md` と共有39ケース。描画/RNG不要 |
 | `godot/scripts/character_schema.gd` | キャラクターの基本条件を検証し、名前・数値・行動重みを正規化 | `spec/character/characters.md` と共有42ケース。画像/Node/RNG不要 |
 | `godot/scripts/content_loader.gd` | 共有JSONとPNGの読込、初期段階の入力検証 | 通常版の `engine_project.json` / `game_content.json` |
 | `godot/scripts/ghost_model.gd` | 乱数、行動選択、移動、旋回、宙返り、クリック目標 | キャラクター定義、表示サイズ、移動範囲、水場。NodeやTexture不要 |
@@ -28,6 +29,7 @@
 | `godot/tests/test_project_manifest.gd`, `tests/test_portable_project_contract.py` | 実GodotとPythonを同じ定義ケース・期待値で比較 | 読込結果のUTF-8レポート、独立した一時ツリー、パス境界 |
 | `godot/tests/test_character_schema.gd`, `tests/test_portable_character_contract.py` | キャラクターの基本条件の受理・拒否・正規化を共有ケースで比較 | 画像処理前の基本検証、UTF-8レポート、読込専用 |
 | `godot/tests/test_room_geometry.gd`, `tests/test_portable_room_contract.py` | 部屋の基本幾何の受理・拒否と非破壊読込を共有ケースで比較 | 深い複製、数値表記の互換境界、UTF-8レポート |
+| `godot/tests/test_background_palette.gd`, `tests/test_portable_palette_contract.py` | パレットの受理・拒否・正規化をPythonと共有ケースで比較 | 非有限値、深い複製、部屋高さとstep、UTF-8レポート |
 | `godot/tests/test_conversations.gd` | 会話デッキと姿勢・中断・再開の検証 | デッキ、モデル、コントローラー、会話場面 |
 | `godot/tests/test_objects.gd` | タグ操作、到着待ち、再整列、表示状態・中断の検証 | 配置物、デッキ、モデル、シーン |
 | `godot/tests/test_events.gd` | イベントカタログ、姿勢、順序、逃走、清掃の検証 | カタログ、イベント、会話、描画 |
@@ -178,6 +180,10 @@ MoteViewはモデルの整数化した中心から半径分を引き、2倍半�
 ヘッドレスでは同じseed/deltaの再現性、100秒の再出現、描画更新の非干渉、無効化と設定検証を確認する。実描画では共有設定の開始時・4秒後・画面サイズ変更を保存し、固定の明るい粒子で水面と前景の重なりを比較する。保存画像は黒帯を含まないのでstretch変換でサンプルし、ウィンドウ入力はfinal変換を使う。実行中の粒子状態は共有JSONへ保存せず、既存AI評価ログにも追加しない。
 
 ## 読込と配布の境界
+
+背景色と描画間隔は `background_palette.gd` で画像読込前に検証する。グラデーション上/下と全ポリゴンのRGBは0〜255の整数値、stepは1〜部屋高さの整数値とし、小数部・真偽値・文字列・非有限値・範囲外を拒否する。成功時は背景全体を深く複製し、対象値だけ正規化する。ポリゴン座標や減光等の未知/未検証設定は保持し、後続の従来検証へ渡す。
+
+Pythonと共有39ケースで比較し、整数値の小数表記の違いは別テストで明示する。ポリゴン座標の完全な整数/大数互換・減光/粒子を含む全入力や描画の画素一致は未完了。JSON/PNGや描画処理を変更したとは扱わない。fixtureと起動検証は [背景パレット契約](../spec/map/background_palette.md) を参照。
 
 部屋の基本幾何は `room_geometry.gd` で画像読込前に検証する。16:9のサイズ、fps、移動/水場矩形、会話距離を共有49ケースで比較する。矩形は整数値で正の幅/高さ、部屋内の範囲とし、巨大数・小数部・真偽値・非有限値を拒否する。元の部屋JSONを変更せず、未検証の設定・追加フィールドも深く複製して保持する。失敗時は部分結果を返さず、次の読込でエラーをリセットする。
 

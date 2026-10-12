@@ -246,6 +246,57 @@ class GodotRuntimeTests(unittest.TestCase):
                 self.assertNotIn("GODOT_SMOKE_OK", output)
                 self.assertEqual({path.name: path.read_bytes() for path in root.glob("*.json")}, before)
 
+    def test_direct_godot_validates_palette_before_images(self) -> None:
+        mutations = [
+            ("top", [-1, 10, 20], "background.gradient.top"),
+            ("bottom", [15, 256, 30], "background.gradient.bottom"),
+            ("step", 541, "background.gradient.step"),
+            ("step", 8.5, "background.gradient.step"),
+            ("polygon", [5, 7, 256], "background.polygons[0].color"),
+        ]
+        for field, value, error in mutations:
+            with self.subTest(field=field, value=value), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                self.source_fixture(root)
+                path = root / "room.json"
+                data = json.loads(path.read_text(encoding="utf-8"))
+                if field == "polygon":
+                    data["background"]["polygons"][0]["color"] = value
+                else:
+                    data["background"]["gradient"][field] = value
+                path.write_text(json.dumps(data), encoding="utf-8")
+                characters = root / "characters.json"
+                data = json.loads(characters.read_text(encoding="utf-8"))
+                data["characters"][0]["image"] = "missing-image.png"
+                characters.write_text(json.dumps(data), encoding="utf-8")
+                before = {path.name: path.read_bytes() for path in root.glob("*.json")}
+                result = self.run_source_project(root)
+                output = result.stdout + result.stderr
+                self.assertNotEqual(result.returncode, 0, output)
+                self.assertIn(error, output)
+                self.assertNotIn("Missing content", output)
+                self.assertNotIn("SCRIPT ERROR:", output)
+                self.assertNotIn("GODOT_SMOKE_OK", output)
+                self.assertEqual({path.name: path.read_bytes() for path in root.glob("*.json")}, before)
+
+    def test_direct_godot_accepts_edited_palette_without_writing(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.source_fixture(root)
+            path = root / "room.json"
+            data = json.loads(path.read_text(encoding="utf-8"))
+            data["background"]["gradient"] = {"top": [0, 0, 0], "bottom": [25, 30, 40], "step": 540}
+            data["background"]["polygons"][0]["color"] = [0, 0, 255]
+            path.write_text(json.dumps(data), encoding="utf-8")
+            before = {path.name: path.read_bytes() for path in root.glob("*.json")}
+            result = self.run_source_project(root)
+            output = result.stdout + result.stderr
+            self.assertEqual(result.returncode, 0, output)
+            self.assertIn("GODOT_SMOKE_OK frames=1 ghosts=2", output)
+            self.assertNotIn("SCRIPT ERROR:", output)
+            self.assertNotIn("\nERROR:", output)
+            self.assertEqual({path.name: path.read_bytes() for path in root.glob("*.json")}, before)
+
     def test_direct_godot_reads_edited_room_geometry_without_writing(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
