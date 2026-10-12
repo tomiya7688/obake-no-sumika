@@ -16,6 +16,8 @@ if __name__ == "__main__" and not __package__:
     sys.path.insert(0, str(ROOT))
 
 from tests.godot_support import find_test_godot
+from engine.manifest_loader import load_project_manifest
+from engine.process_launcher import ProcessLauncher
 
 
 GODOT = find_test_godot()
@@ -23,6 +25,66 @@ GODOT = find_test_godot()
 
 @unittest.skipUnless(GODOT, "Godot runtime unavailable; set GODOT_BIN")
 class GodotRuntimeTests(unittest.TestCase):
+    def cleanup_launched(self, child) -> None:
+        # Terminate only the child started by this test, never other Godot instances.
+        if child.poll() is None:
+            child.process.terminate()
+        child.process.wait(timeout=10)
+
+    def test_process_launcher_returns_while_real_godot_is_running(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            launcher = ProcessLauncher(load_project_manifest(ROOT / "engine_project.json"), log_dir=Path(directory))
+            child = launcher.launch_godot(executable=GODOT, headless=True, test_frames=60_000, seed=12345)
+            try:
+                self.assertIsNone(child.poll())
+                self.assertTrue(child.log_path.is_file())
+            finally:
+                self.cleanup_launched(child)
+
+    def test_process_launcher_records_real_godot_success(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="Godot launch 日本語 ") as directory:
+            root = Path(directory)
+            manifest = self.source_fixture(root)
+            (root / "conversations.json").write_text("[]\n", encoding="utf-8")
+            before = {path.name: path.read_bytes() for path in root.glob("*.json")}
+            child = ProcessLauncher(load_project_manifest(manifest)).launch_godot(
+                executable=GODOT, headless=True, test_frames=180, seed=12345,
+            )
+            try:
+                self.assertEqual(child.process.wait(timeout=60), 0, child.log_tail())
+                self.assertEqual(child.poll(), 0)
+                output = child.log_tail()
+                self.assertIn("CONVERSATION_DECK runnable=0", output)
+                self.assertIn("GODOT_SMOKE_OK frames=180 ghosts=2", output)
+                self.assertNotIn("Python gameplay must not run", output)
+                self.assertNotIn("SCRIPT ERROR:", output)
+                self.assertEqual({path.name: path.read_bytes() for path in root.glob("*.json")}, before)
+            finally:
+                self.cleanup_launched(child)
+
+    def test_process_launcher_records_real_godot_failure_in_utf8(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="Godot failure 日本語 ") as directory:
+            root = Path(directory)
+            manifest = self.source_fixture(root)
+            path = root / "characters.json"
+            data = json.loads(path.read_text(encoding="utf-8"))
+            data["characters"][0]["image"] = "見つからない画像.png"
+            path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+            before = {path.name: path.read_bytes() for path in root.glob("*.json")}
+            child = ProcessLauncher(load_project_manifest(manifest)).launch_godot(
+                executable=GODOT, headless=True, test_frames=180, seed=12345,
+            )
+            try:
+                self.assertNotEqual(child.process.wait(timeout=30), 0)
+                self.assertIsNotNone(child.poll())
+                output = child.log_tail()
+                self.assertIn("Missing content: 見つからない画像.png", output)
+                self.assertNotIn("GODOT_SMOKE_OK", output)
+                self.assertNotIn("SCRIPT ERROR:", output)
+                self.assertEqual({path.name: path.read_bytes() for path in root.glob("*.json")}, before)
+            finally:
+                self.cleanup_launched(child)
+
     def engine_playtest(self, manifest: Path) -> subprocess.CompletedProcess:
         return subprocess.run(
             [sys.executable, str(ROOT / "engine_app.py"), "--project", str(manifest),

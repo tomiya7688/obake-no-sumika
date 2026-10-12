@@ -71,6 +71,7 @@ class GodotRunnerTests(unittest.TestCase):
         run.assert_called_once_with(
             [str(self.executable), "--version"], capture_output=True, text=True,
             encoding="utf-8", errors="replace", timeout=10, check=False,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
         )
 
     def test_failed_or_unsupported_probe_never_starts_game(self) -> None:
@@ -114,6 +115,25 @@ class GodotRunnerTests(unittest.TestCase):
             [str(self.executable.resolve()), "--path", str(ROOT / "godot"), "--", "--content-root", str(ROOT)],
             cwd=ROOT, check=False,
         )
+
+    def test_preparation_does_not_start_game_and_returns_tuple_arguments(self) -> None:
+        with patch.object(godot_runner, "verify_godot") as verify, \
+                patch.object(godot_runner.subprocess, "run") as run:
+            invocation = godot_runner.prepare_godot_invocation(MANIFEST, executable=self.executable)
+        verify.assert_called_once_with(self.executable.resolve())
+        run.assert_not_called()
+        self.assertIsInstance(invocation.command, tuple)
+        self.assertEqual(invocation.manifest.root, ROOT)
+        self.assertEqual(invocation.command[-2:], ("--content-root", str(ROOT)))
+
+    def test_synchronous_runner_uses_shared_preparation(self) -> None:
+        invocation = godot_runner.GodotInvocation(("godot", "--", "--content-root", str(ROOT)),
+                                                godot_runner.load_project_manifest(MANIFEST))
+        with patch.object(godot_runner, "prepare_godot_invocation", return_value=invocation) as prepare, \
+                patch.object(godot_runner.subprocess, "run", return_value=subprocess.CompletedProcess([], 7)) as run:
+            self.assertEqual(godot_runner.run_godot(MANIFEST, executable=self.executable, test_frames=60), 7)
+        prepare.assert_called_once_with(MANIFEST, executable=self.executable, headless=False, test_frames=60, seed=None)
+        run.assert_called_once_with(list(invocation.command), cwd=ROOT, check=False)
 
     def test_invalid_simulation_options_stop_before_process_start(self) -> None:
         for options in ({"headless": True}, {"test_frames": 0}, {"test_frames": -1},
