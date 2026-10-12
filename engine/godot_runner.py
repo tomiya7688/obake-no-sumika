@@ -1,17 +1,27 @@
-"""Synchronous source-playtest bridge; Python gameplay and Tk are not imported."""
+"""Shared source-playtest preparation; Python gameplay and Tk are not imported."""
 
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 from pathlib import Path
 import re
 import shutil
 import subprocess
 
 from .manifest_loader import load_project_manifest
+from .project_manifest import ProjectManifest
 
 
 RUNTIME_ROOT = Path(__file__).resolve().parents[1] / "godot"
+
+
+@dataclass(frozen=True)
+class GodotInvocation:
+    """Validated immutable arguments and the selected project's current definition."""
+
+    command: tuple[str, ...]
+    manifest: ProjectManifest
 
 
 def resolve_godot(executable: Path | None = None) -> Path:
@@ -42,6 +52,7 @@ def verify_godot(executable: Path) -> None:
             errors="replace",
             timeout=10,
             check=False,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
         )
     except subprocess.TimeoutExpired as exc:
         raise RuntimeError("Godot version check timed out after 10 seconds") from exc
@@ -51,21 +62,24 @@ def verify_godot(executable: Path) -> None:
         raise RuntimeError(f"Godot 4 version check failed (exit={probe.returncode}): {detail}")
 
 
-def run_godot(
+def prepare_godot_invocation(
     project_path: Path,
     *,
     executable: Path | None = None,
     headless: bool = False,
     test_frames: int | None = None,
     seed: int | None = None,
-) -> int:
-    """Run until the game exits, inheriting output and returning its exit code."""
+    expected_manifest: ProjectManifest | None = None,
+) -> GodotInvocation:
+    """Validate synchronously (probe <=10s), without starting the gameplay process."""
     project_path = project_path.resolve()
     if project_path.name != "engine_project.json":
         raise ValueError("Godot playtests require an engine_project.json manifest")
     manifest = load_project_manifest(project_path)
     if manifest.project_type != "standard":
         raise ValueError("Godot playtests currently support standard projects only")
+    if expected_manifest is not None and expected_manifest != manifest:
+        raise ValueError("Selected project differs from engine_project.json; reload the project")
     if test_frames is not None and (type(test_frames) is not int or test_frames <= 0):
         raise ValueError("--test-frames must be a positive integer")
     if headless and test_frames is None:
@@ -87,4 +101,19 @@ def run_godot(
         command.extend(["--test-frames", str(test_frames)])
     if seed is not None:
         command.extend(["--seed", str(seed)])
-    return subprocess.run(command, cwd=manifest.root, check=False).returncode
+    return GodotInvocation(tuple(command), manifest)
+
+
+def run_godot(
+    project_path: Path,
+    *,
+    executable: Path | None = None,
+    headless: bool = False,
+    test_frames: int | None = None,
+    seed: int | None = None,
+) -> int:
+    """Run until the game exits, inheriting output and returning its exit code."""
+    invocation = prepare_godot_invocation(
+        project_path, executable=executable, headless=headless, test_frames=test_frames, seed=seed,
+    )
+    return subprocess.run(list(invocation.command), cwd=invocation.manifest.root, check=False).returncode

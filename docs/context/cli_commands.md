@@ -57,7 +57,9 @@ $env:GODOT_BIN="C:\path\Godot_win64_console.exe"
 
 実行ファイルは `--godot-bin <フルパス>` > `GODOT_BIN` > PATHのgodot/godot4。明示したパスが無効なら別の実行ファイルへ切り替えない。Godot 4のバージョン確認は10秒以内。CLIはゲーム終了まで待ち、標準出力/エラーと終了コードを引き継ぐ。不正データや起動失敗を成功表示にしない。
 
-`--test-frames` は正の整数で、固定delta 1/60秒の指定フレーム数で終了する。`--headless` は `--test-frames` 必須。`--seed` は符号付き64bit整数。これらのGodot用オプションを `--validate` やGUI起動などへ付けるとエラーにする。既存GUIの「ゲームを実行」はPython版のままで、GUIの子プロセス監視（Issue #32）は未対応。
+`--test-frames` は正の整数で、固定delta 1/60秒の指定フレーム数で終了する。`--headless` は `--test-frames` 必須。`--seed` は符号付き64bit整数。これらのGodot用オプションを `--validate` やGUI起動などへ付けるとエラーにする。既存GUIの「ゲームを実行」はPython版で、Python子プロセスの監視は実装済み。GUIでのGodot選択・起動への接続は未対応。
+
+子プロセスと永続ログが必要な開発者は `ProcessLauncher.launch_godot()` を使う。CLIと起動準備を共有し、`poll()` / `log_tail()` で終了コードとログを取得できる。事前準備は同期（バージョンprobeのみ10秒上限）、ゲーム完了は待たない。GUIボタンではなくAPIなので、例と未対応範囲は [Godot起動API](../GDScript移行機能説明書.md#godotの子プロセス起動api) を読む。
 
 ## 対話UI（実画面が必要）
 
