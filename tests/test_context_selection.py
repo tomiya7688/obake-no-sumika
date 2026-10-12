@@ -156,6 +156,7 @@ class ContextSelectionTests(unittest.TestCase):
         self.assertEqual(result["tests"], ["tests/test_godot_support.py", "tests/test_godot_runtime.py",
                                           "tests/test_portable_project_contract.py", "tests/test_portable_character_contract.py",
                                           "tests/test_portable_room_contract.py", "tests/test_portable_palette_contract.py",
+                                          "tests/test_portable_polygon_contract.py",
                                           "tests/test_godot_main_window.py"])
         self.assertNotIn("game.py", result["related_files"])
         self.assertEqual(result["unmapped_files"], [])
@@ -207,6 +208,19 @@ class ContextSelectionTests(unittest.TestCase):
         self.assertEqual(report["unmatched_patterns"], ["stale.py"])
         unscoped = audit_mapping(ROOT, ["game.py", "unknown.py"], [rule])
         self.assertEqual(unscoped["unmapped_files"], ["unknown.py"])
+
+    def test_polygon_contract_selects_geometry_and_fixture_without_palette_specs(self) -> None:
+        result = select_files(["godot/scripts/polygon_geometry.gd", "spec/map/polygon_geometry_cases.json"], self.rules)
+        self.assertIn("docs/context/portability.md", result["contexts"])
+        self.assertIn("docs/context/godot.md", result["contexts"])
+        self.assertIn("spec/map/polygon_geometry.md", result["related_files"])
+        self.assertIn("spec/map/room_geometry_cases.json", result["related_files"])
+        self.assertIn("tests/test_portable_polygon_contract.py", result["tests"])
+        self.assertIn("tests/test_godot_runtime.py", result["tests"])
+        self.assertNotIn("spec/map/background_palette.md", result["related_files"])
+        self.assertNotIn("spec/map/room_geometry.md", result["related_files"])
+        self.assertNotIn("game.py", result["related_files"])
+        self.assertEqual(result["unmapped_files"], [])
 
     def test_audit_reports_missing_and_escaping_references(self) -> None:
         rule = {"paths": ["game.py"], "context": "missing.md",

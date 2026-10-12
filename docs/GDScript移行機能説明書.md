@@ -9,6 +9,7 @@
 | `godot/scripts/project_manifest.gd` | プロジェクト定義の共有検証と相対パス正規化 | `spec/engine/project_manifest.md` と共有22ケース。Node/Texture不要 |
 | `godot/scripts/room_geometry.gd` | 部屋のサイズ・fps・移動/水場矩形・会話距離の基本検証 | `spec/map/room_geometry.md` と共有49ケース。画像/Node/RNG不要 |
 | `godot/scripts/background_palette.gd` | 背景RGBとグラデーション間隔の検証・非破壊正規化 | `spec/map/background_palette.md` と共有39ケース。描画/RNG不要 |
+| `godot/scripts/polygon_geometry.gd` | 背景ポリゴンの点の形とXY整数座標、非破壊正規化 | `spec/map/polygon_geometry.md` と共有35ケース。色/描画/RNG不要 |
 | `godot/scripts/character_schema.gd` | キャラクターの基本条件を検証し、名前・数値・行動重みを正規化 | `spec/character/characters.md` と共有42ケース。画像/Node/RNG不要 |
 | `godot/scripts/content_loader.gd` | 共有JSONとPNGの読込、初期段階の入力検証 | 通常版の `engine_project.json` / `game_content.json` |
 | `godot/scripts/ghost_model.gd` | 乱数、行動選択、移動、旋回、宙返り、クリック目標 | キャラクター定義、表示サイズ、移動範囲、水場。NodeやTexture不要 |
@@ -30,6 +31,7 @@
 | `godot/tests/test_character_schema.gd`, `tests/test_portable_character_contract.py` | キャラクターの基本条件の受理・拒否・正規化を共有ケースで比較 | 画像処理前の基本検証、UTF-8レポート、読込専用 |
 | `godot/tests/test_room_geometry.gd`, `tests/test_portable_room_contract.py` | 部屋の基本幾何の受理・拒否と非破壊読込を共有ケースで比較 | 深い複製、数値表記の互換境界、UTF-8レポート |
 | `godot/tests/test_background_palette.gd`, `tests/test_portable_palette_contract.py` | パレットの受理・拒否・正規化をPythonと共有ケースで比較 | 非有限値、深い複製、部屋高さとstep、UTF-8レポート |
+| `godot/tests/test_polygon_geometry.gd`, `tests/test_portable_polygon_contract.py` | 点の形・整数座標の受理/拒否・正規化をPythonと比較 | 精度/型境界、深い複製、UTF-8レポート |
 | `godot/tests/test_conversations.gd` | 会話デッキと姿勢・中断・再開の検証 | デッキ、モデル、コントローラー、会話場面 |
 | `godot/tests/test_objects.gd` | タグ操作、到着待ち、再整列、表示状態・中断の検証 | 配置物、デッキ、モデル、シーン |
 | `godot/tests/test_events.gd` | イベントカタログ、姿勢、順序、逃走、清掃の検証 | カタログ、イベント、会話、描画 |
@@ -205,6 +207,8 @@ Pythonと共有39ケースで比較し、整数値の小数表記の違いは別
 読込アダプターはJSONの各パスフィールドにプロジェクト相対パスだけを許可する。ルート外参照、絶対フィールドパス、リンク経由、欠落画像を拒否し、エラーで終了する。リンクは `..` を正規化する前にも拒否する。絶対パス・リンク・非文字列の互換変換や、部屋/キャラクターを含むPythonの全検証条件との一致はまだ対象外。Godotの起動シーンは `main.tscn` であり、Pythonマニフェストの `game.py` を実行しない。読込で共有JSONを書き換えない。
 
 Godotのエクスポート/PCK単独配布は未対応。今はリポジトリのJSON/PNGが必要。起動コマンドとGodot実行ファイルの指定は [Godot版README](../godot/README.md) を参照。
+
+背景ポリゴン座標は [基本契約](../spec/map/polygon_geometry.md) の35ケースでPythonと比較する。3点以上・各点のXY整数値を全層で画像読込前に確認する。Godotの共有範囲は絶対値2^53-1以下、整数値の小数表記やPythonの任意精度整数との差は専用テストで明記する。画面外・負座標、重複/共線は許可し、形の描画可能性や画素一致は保証しない。読込でJSONを変更せず、失敗後の再利用も確認する。
 
 ## 統合CLIのプレイテスト
 
