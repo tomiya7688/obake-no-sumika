@@ -18,7 +18,7 @@ Pythonの `RoomRepository.load()` とGodotの `BackgroundPalette.parse()` を同
 
 成功時は背景Dictionary全体を深く複製し、RGBとstepを整数値に正規化する。追加設定・ポリゴン座標・vignetteは保持するが、この処理で検証したとは扱わない。返却値の変更が入力へ影響しないことも確認する。
 
-ContentLoaderはこれを画像読込前に呼ぶ。ポリゴン座標の配列形状・有限数、および減光の従来検証は別途続ける。通常版JSON/PNGと描画処理は変更しない。
+ContentLoaderはこれを画像読込前に呼ぶ。ポリゴン座標の配列形状・有限な整数値は [別の契約](polygon_geometry.md) で、その後に検証する。減光の検証も別処理。通常版JSON/PNGと描画処理は変更しない。
 
 ## ケースの編集と実行
 

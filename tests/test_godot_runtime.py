@@ -396,6 +396,54 @@ class GodotRuntimeTests(unittest.TestCase):
             self.assertNotIn("\nERROR:", output)
             self.assertEqual({path.name: path.read_bytes() for path in root.glob("*.json")}, before)
 
+    def test_direct_godot_validates_all_polygons_before_images(self) -> None:
+        invalid_layers = (
+            [{"color": [5, 7, 14], "points": [[0.5, 0], [50, 0], [0, 50]]}],
+            [{"color": [5, 7, 14], "points": [[0, 0], [50, 0], [0, 50]]},
+             {"color": [1, 2, 3], "points": [[0, 0], [50, 0], [0, False]]}],
+            [{"color": [5, 7, 14], "points": [[2**53, 0], [50, 0], [0, 50]]}],
+            [{"color": [5, 7, 14], "points": [[0, 0], [50, 0]]}],
+            [{"color": [5, 7, 14]}],
+        )
+        for polygons in invalid_layers:
+            with self.subTest(polygons=polygons), tempfile.TemporaryDirectory(prefix="polygon load 日本語 ") as directory:
+                root = Path(directory)
+                self.source_fixture(root)
+                room_path, character_path = root / "room.json", root / "characters.json"
+                room = json.loads(room_path.read_text(encoding="utf-8"))
+                room["background"]["polygons"] = polygons
+                room_path.write_text(json.dumps(room), encoding="utf-8")
+                characters = json.loads(character_path.read_text(encoding="utf-8"))
+                characters["characters"][0]["image"] = "見つからない画像.png"
+                character_path.write_text(json.dumps(characters), encoding="utf-8")
+                before = {path.name: path.read_bytes() for path in root.glob("*.json")}
+                result = self.run_source_project(root)
+                output = result.stdout + result.stderr
+                self.assertNotEqual(result.returncode, 0, output)
+                self.assertIn("background.polygons", output)
+                self.assertNotIn("Missing content: 見つからない画像.png", output)
+                self.assertNotIn("GODOT_SMOKE_OK", output)
+                self.assertNotIn("SCRIPT ERROR:", output)
+                self.assertEqual({path.name: path.read_bytes() for path in root.glob("*.json")}, before)
+
+    def test_direct_godot_accepts_edited_polygon_coordinates_without_writing(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="polygon edited 日本語 ") as directory:
+            root = Path(directory)
+            self.source_fixture(root)
+            path = root / "room.json"
+            room = json.loads(path.read_text(encoding="utf-8"))
+            room["background"]["polygons"] = [{"color": [5, 7, 14], "points": [[-10.0, 0], [200, 0], [80, 90]],
+                                                   "extra": {"values": ["残す"]}}]
+            path.write_text(json.dumps(room, ensure_ascii=False), encoding="utf-8")
+            before = {path.name: path.read_bytes() for path in root.glob("*.json")}
+            result = self.run_source_project(root)
+            output = result.stdout + result.stderr
+            self.assertEqual(result.returncode, 0, output)
+            self.assertIn("GODOT_SMOKE_OK frames=1 ghosts=2", output)
+            self.assertNotIn("SCRIPT ERROR:", output)
+            self.assertNotIn("\nERROR:", output)
+            self.assertEqual({path.name: path.read_bytes() for path in root.glob("*.json")}, before)
+
     def test_direct_godot_reads_edited_room_geometry_without_writing(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
