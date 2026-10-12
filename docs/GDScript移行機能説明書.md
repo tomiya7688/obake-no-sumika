@@ -40,6 +40,7 @@
 | `tests/test_godot_runtime.py` | Godot実行テストをPythonのテスト入口に接続 | `GODOT_BIN` またはPATH上の `godot` |
 | `engine/godot_runner.py` | Godotの共通起動準備、検出・バージョン確認とCLI同期プレイテスト | 共有マニフェスト、Godotソース。Tk・Pythonゲームには依存しない |
 | `engine/process_launcher.py`, `tests/test_godot_process_launcher.py` | 準備済みGodotの子プロセス起動、終了コードと永続UTF-8ログ | 共通起動準備、既存LaunchedProcess。GUI操作は後続 |
+| `tests/test_godot_preparation.py` | 準備workerとFuture、選択保持・例外・キャンセル・明示起動の検証 | 起動準備とlauncher。Tkは使わない |
 | `tests/test_godot_runner.py` | CLIの選択・引数・失敗・終了コードの契約 | Godot不要のモック、実起動はGodotRuntimeTests |
 
 ```mermaid
@@ -232,16 +233,44 @@ print(child.poll())         # None: 実行中、0: 正常終了、その他: 異
 print(child.log_tail())     # 最大8192byteの末尾。PIPEを待たない
 ```
 
-Godot実行ファイルは `executable=Path(...)`、`GODOT_BIN`、PATHの順。CLIとAPIは `prepare_godot_invocation()` の同じ検証・引数を使う。準備は同期で、バージョンprobeだけ10秒上限。準備のworker化は後続であり、このAPIをTkのメインスレッドで呼んでもGUIが絶対に止まらないとは保証しない。
+Godot実行ファイルは `executable=Path(...)`、`GODOT_BIN`、PATHの順。CLIと同期APIは `prepare_godot_invocation()` の同じ検証・引数を使う。準備は同期で、バージョンprobeだけ10秒上限。この同期APIをTkのメインスレッドで呼んでもGUIが絶対に止まらないとは保証しない。準備を分離するAPIは下記。
 
 APIは選択した定義と現在の `engine_project.json` が一致しない場合に再読込を要求する。specialや不正設定、実行ファイル/probeの失敗はゲーム起動前に例外を返し、Python版へフォールバックしない。起動準備の成功はJSONの全意味検証・ゲームの初期化成功を保証せず、子プロセスの終了とログを必ず確認する。
 
 ゲームは終了を待たず `LaunchedProcess` を返す。標準出力/エラーは毎回一意なログへ直接渡し、親のファイルハンドルは閉じる。ログはウィンドウを閉じた後もファイルに残し、末尾だけを読み取る。API自身は子プロセスを終了させないが、OSや実行ホストによる終了まで防ぐ保証はしない。Windowsではバージョンprobeと子プロセスのコンソールを隠すフラグを使い、対話実行にはheadlessを付けない。終了待機は呼び出し側のテストだけで実行し、API自身はゲーム完了を待たない。
 
-実Godotで実行中の戻り値、編集した別プロジェクトの正常終了、日本語の画像欠落エラーと非0終了を確認する。既存Pythonゲーム/エディター起動とGUI監視の回帰もテストする。共有JSONを書き換えず、GUIの起動方式選択・準備worker・既存監視への接続は後続範囲。
+実Godotで実行中の戻り値、編集した別プロジェクトの正常終了、日本語の画像欠落エラーと非0終了を確認する。既存Pythonゲーム/エディター起動とGUI監視の回帰もテストする。共有JSONを書き換えず、GUIの起動方式選択・既存監視への接続は後続範囲。
+
+### 準備workerと明示起動
+
+例えば、バージョン確認中に別のプロジェクトへ切り替えても、古い準備が勝手にゲームを開かないようにする。`prepare_godot_async()` は準備だけをdaemon workerで行い、完了/失敗をFutureへ保存する。ゲームを起動するのは呼び出し側が明示的に結果を渡した時だけ。
+
+```python
+launcher = ProcessLauncher(manifest)
+preparation = launcher.prepare_godot_async(headless=True, test_frames=180, seed=12345)
+
+# GUIのmain threadで定期確認する部分の例。1つの結果は1回だけ処理する。
+if preparation.done():
+    invocation = preparation.result(timeout=0)  # 失敗/キャンセルはここで例外
+    child = launcher.launch_prepared_godot(invocation)
+```
+
+GUIへ接続する時は未完了でresultを待たず、main threadのafter等でdoneをポーリングする。完了後にもう一度同じ結果を起動しないよう、処理済みの要求を取り除く。Futureの完了callbackはworker上で動く場合があるため、そこからTkウィジェットを操作しない。GUIへの実際のボタン/ポーリングはまだ追加していない。
+
+| 段階 | 実行する処理 | ゲーム起動 |
+| --- | --- | --- |
+| API呼出し | 明示パスを絶対化し、選択定義を深く複製。Futureとworkerを作る | なし |
+| daemon worker | 共有のマニフェスト/引数/実行ファイル検証とversion probe。結果または例外をFutureへ渡す | なし |
+| 呼び出し側の明示起動 | 共有準備器から得た信頼済みinvocationと現在のlauncherの選択を比較し、既存ログ付きPopenへ渡す | あり |
+
+未開始の要求だけFuture.cancelで止められる。準備が実行中ならキャンセルはFalseで、probeの中断は行わない。ただしGUI終了/選択変更時に要求と結果を捨てればゲームは起動しない。workerはdaemonで、親アプリの終了を待たせる常駐executorを作らない。OSや実行ホストがprobeを終了させるタイミングまで制御する保証はない。
+
+相対パスと選択定義はAPI呼出し時に保持する。未指定のGodot実行ファイルはworker実行時の環境/PATHから検出する。共有ファイルの内容は複製/ロックせず、準備とゲームが読む時点の値を使う。明示起動ではprobeやファイル検証をもう一度同期実行せず、選択スナップショットの一致だけ確認する。原子的な再検証や全入力互換の保証ではなく、最終的な初期化の成否はゲームの終了/ログで確認する。
+
+実Godotで準備完了までゲーム用ログが作られないこと、その後の明示起動で正常終了/日本語エラーが記録されることを確認する。同期CLIと旧APIの挙動は維持する。
 
 ## 未移植
 
-GUI側のGodot選択・準備worker・監視への接続、全部屋・キャラクター入力の完全な共有検証、Python/Godot評価ログ比較、配布構成。子プロセス/ログ取得APIは上記の範囲で実装済み。システムに日本語フォントがない環境や配布時のフォント同梱は後続対応。
+GUI側のGodot選択・Futureポーリング・監視への接続、全部屋・キャラクター入力の完全な共有検証、Python/Godot評価ログ比較、配布構成。準備workerと子プロセス/ログ取得APIは上記の範囲で実装済み。システムに日本語フォントがない環境や配布時のフォント同梱は後続対応。
 
 評価ログは10フレームごとに `frame`、`ghosts`（name/x/y/vx/vy/facing/action/turning/spin/target/talk）、`conversation`（phase/initiator/step/completed/movers/event/last_event）、`objects`（id/tag/x/y/visible/glowing）をJSONLに記録する。eventにはid/phase/timerを含む。Python版の評価ログとの完全互換ではない。
