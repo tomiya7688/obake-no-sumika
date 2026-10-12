@@ -6,6 +6,7 @@
 | --- | --- | --- |
 | 部屋の基本幾何検証 | `godot/scripts/room_geometry.gd`, `spec/map/room_geometry.md`, `spec/map/room_geometry_cases.json` | `tests/test_portable_room_contract.py` → `godot/tests/test_room_geometry.gd` |
 | 背景RGBと描画間隔の共有検証 | `godot/scripts/background_palette.gd`, `spec/map/background_palette.md`, `spec/map/background_palette_cases.json` | `tests/test_portable_palette_contract.py` → `godot/tests/test_background_palette.gd` |
+| 背景ポリゴンの点・整数座標 | `godot/scripts/polygon_geometry.gd`, `spec/map/polygon_geometry.md`, `spec/map/polygon_geometry_cases.json` | `tests/test_portable_polygon_contract.py` → `godot/tests/test_polygon_geometry.gd` |
 | プロジェクト定義の共有検証 | `godot/scripts/project_manifest.gd`, `spec/engine/project_manifest.md`, `spec/engine/project_manifest_cases.json` | `tests/test_portable_project_contract.py` → `godot/tests/test_project_manifest.gd` |
 | キャラクターの基本共有検証 | `godot/scripts/character_schema.gd`, `spec/character/characters.md`, `spec/character/characters_cases.json` | `tests/test_portable_character_contract.py` → `godot/tests/test_character_schema.gd` |
 | JSON・PNGの読込 | `godot/scripts/content_loader.gd` と対象のJSON | `godot/tests/test_runtime.gd`, `tests/test_godot_runtime.py` |
@@ -31,6 +32,8 @@
 部屋の基本幾何はPythonと同じ49ケースで検証する。サイズ・fps・移動/水場矩形・会話距離を画像読込前に確認し、矩形は正の幅/高さで部屋内であることを必須とする。入力を変更せず深い複製を返す。基本検証は16:9の複数寸法と距離1〜部屋幅を扱うが、ランタイムは960x540・距離80〜300のまま。fpsの実行時反映や背景/粒子等の全入力互換は未対応。Godot JSONで整数値の小数表記を区別できない境界は [幾何契約](../../spec/map/room_geometry.md) と専用テストに明記する。
 
 背景色・グラデーションstepはPythonと同じ39ケースで検証する。RGBは0〜255、stepは1〜部屋高さの有限な整数値として画像読込前に拒否/正規化する。未知の設定や座標・減光を深く複製して保持する。ポリゴン座標の完全な整数/大数互換や全背景入力は未対応。整数値の小数表記の違い、テスト用の幾何fixtureは [パレット契約](../../spec/map/background_palette.md) に記す。
+
+ポリゴンの配列形状・3点以上・XYの有限な整数値はPythonと同じ35ケースで検証する。絶対値2^53-1以下の共有範囲で正規化し、全層を画像読込前に検証する。負/画面外座標と重複/共線の点は許可し、色・追加メタデータを深く複製して保持する。整数値の小数表記・Python任意精度整数との差、描画可能性や全入力互換を保証しない境界は [ポリゴン契約](../../spec/map/polygon_geometry.md) を読む。
 
 テストも起動側と同じ処理で `GODOT_BIN` → PATHの `godot` → `godot4` の順に検出する。未設定かつどちらも見つからない時だけ実Godotのテストをスキップする。空文字・存在しないファイル・ディレクトリを `GODOT_BIN` に設定した場合はエラーにし、PATHへのフォールバックやスキップで隠さない。検出とスキップ条件の回帰テストはGodotの実体なしでも実行できる。
 

@@ -11,6 +11,7 @@ const ProjectManifest = preload("res://scripts/project_manifest.gd")
 const CharacterSchema = preload("res://scripts/character_schema.gd")
 const RoomGeometry = preload("res://scripts/room_geometry.gd")
 const BackgroundPalette = preload("res://scripts/background_palette.gd")
+const PolygonGeometry = preload("res://scripts/polygon_geometry.gd")
 var root: String
 var error: String = ""
 
@@ -91,15 +92,6 @@ func finite_number(value: Variant) -> bool:
 	return (value is float or value is int) and is_finite(float(value))
 
 
-func vector_data(value: Variant, count: int) -> bool:
-	if not value is Array or value.size() != count:
-		return false
-	for number in value:
-		if not finite_number(number):
-			return false
-	return true
-
-
 func validate_placements(value: Variant) -> bool:
 	if not value is Array:
 		error = "Placements must contain an objects array"
@@ -169,12 +161,10 @@ func load_project(project_root: String) -> Dictionary:
 	var vignette_error := VignetteView.validate(room.background.get("vignette"), Vector2i(size.width, size.height))
 	if not vignette_error.is_empty():
 		return fail(vignette_error)
-	for polygon in room.background.polygons:
-		if not polygon.get("points") is Array or polygon.points.size() < 3:
-			return fail("Invalid background polygon")
-		for point in polygon.points:
-			if not vector_data(point, 2):
-				return fail("Invalid polygon point")
+	var polygon_reader := PolygonGeometry.new()
+	room.background.polygons = polygon_reader.parse(room.background.polygons)
+	if not polygon_reader.error.is_empty():
+		return fail(polygon_reader.error)
 	var character_reader := CharacterSchema.new()
 	var definitions := character_reader.parse(characters, Vector2i(size.width, size.height))
 	if not character_reader.error.is_empty():
