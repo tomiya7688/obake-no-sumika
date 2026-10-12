@@ -39,8 +39,9 @@
 | `godot/tests/test_motes.gd` | 粒子設定と時間更新、再出現、乱数独立性、描画・入力の検証 | 粒子モデル、シーン、実描画のピクセル比較 |
 | `tests/test_godot_runtime.py` | Godot実行テストをPythonのテスト入口に接続 | `GODOT_BIN` またはPATH上の `godot` |
 | `engine/godot_runner.py` | Godotの共通起動準備、検出・バージョン確認とCLI同期プレイテスト | 共有マニフェスト、Godotソース。Tk・Pythonゲームには依存しない |
-| `engine/process_launcher.py`, `tests/test_godot_process_launcher.py` | 準備済みGodotの子プロセス起動、終了コードと永続UTF-8ログ | 共通起動準備、既存LaunchedProcess。GUI操作は後続 |
+| `engine/process_launcher.py`, `tests/test_godot_process_launcher.py` | 準備済みGodotの子プロセス起動、終了コードと永続UTF-8ログ | 共通起動準備、既存LaunchedProcess |
 | `tests/test_godot_preparation.py` | 準備workerとFuture、選択保持・例外・キャンセル・明示起動の検証 | 起動準備とlauncher。Tkは使わない |
+| `engine/main_window.py`, `tests/test_godot_main_window.py` | GUIのGodot起動、準備ポーリング・破棄・終了監視 | Tk main thread、準備Futureと既存launcher。実Godotの正常/異常終了も検証 |
 | `tests/test_godot_runner.py` | CLIの選択・引数・失敗・終了コードの契約 | Godot不要のモック、実起動はGodotRuntimeTests |
 
 ```mermaid
@@ -213,7 +214,7 @@ Godotのエクスポート/PCK単独配布は未対応。今はリポジトリ�
 
 CLIは同期実行でゲーム終了まで待機し、標準出力/標準エラーを引き継いで実際の終了コードを返す。構成/プロセス起動の例外はstderrへ表示して1で終了する。成功メッセージを先に出さない。headlessは正のフレーム数が必須、seedは符号付き64bit。フレーム指定時は60fpsの固定deltaで検証する。Godotオプションを別のengine_appモードへ指定した場合も黙って無視しない。
 
-共有データのコピー・書換えやゲームロジックの変更はない。モックで実行ファイル・引数・終了コードを確認し、実体で既定プロジェクト、空の会話デッキへ編集した別フォルダー、不正な粒子数の起動失敗を検証する。既存エンジンGUIのPython版起動、エディター、子プロセス監視はこの移行では変更しない。
+共有データのコピー・書換えやゲームロジックの変更はない。モックで実行ファイル・引数・終了コードを確認し、実体で既定プロジェクト、空の会話デッキへ編集した別フォルダー、不正な粒子数の起動失敗を検証する。既存エンジンGUIのPython版起動、エディター、子プロセス監視は維持し、GodotのGUI接続は後述する。
 
 ## Godotの子プロセス起動API
 
@@ -239,7 +240,7 @@ APIは選択した定義と現在の `engine_project.json` が一致しない場
 
 ゲームは終了を待たず `LaunchedProcess` を返す。標準出力/エラーは毎回一意なログへ直接渡し、親のファイルハンドルは閉じる。ログはウィンドウを閉じた後もファイルに残し、末尾だけを読み取る。API自身は子プロセスを終了させないが、OSや実行ホストによる終了まで防ぐ保証はしない。Windowsではバージョンprobeと子プロセスのコンソールを隠すフラグを使い、対話実行にはheadlessを付けない。終了待機は呼び出し側のテストだけで実行し、API自身はゲーム完了を待たない。
 
-実Godotで実行中の戻り値、編集した別プロジェクトの正常終了、日本語の画像欠落エラーと非0終了を確認する。既存Pythonゲーム/エディター起動とGUI監視の回帰もテストする。共有JSONを書き換えず、GUIの起動方式選択・既存監視への接続は後続範囲。
+実Godotで実行中の戻り値、編集した別プロジェクトの正常終了、日本語の画像欠落エラーと非0終了を確認する。既存Pythonゲーム/エディター起動とGUI監視の回帰もテストする。共有JSONを書き換えず、GUIからの利用は下記の2段階APIへ接続する。
 
 ### 準備workerと明示起動
 
@@ -255,7 +256,7 @@ if preparation.done():
     child = launcher.launch_prepared_godot(invocation)
 ```
 
-GUIへ接続する時は未完了でresultを待たず、main threadのafter等でdoneをポーリングする。完了後にもう一度同じ結果を起動しないよう、処理済みの要求を取り除く。Futureの完了callbackはworker上で動く場合があるため、そこからTkウィジェットを操作しない。GUIへの実際のボタン/ポーリングはまだ追加していない。
+GUIは未完了でresultを待たず、main threadのafterでdoneをポーリングする。完了後にもう一度同じ結果を起動しないよう、処理済みの要求を取り除く。Futureの完了callbackはworker上で動く場合があるため、そこからTkウィジェットを操作しない。
 
 | 段階 | 実行する処理 | ゲーム起動 |
 | --- | --- | --- |
@@ -269,8 +270,27 @@ GUIへ接続する時は未完了でresultを待たず、main threadのafter等�
 
 実Godotで準備完了までゲーム用ログが作られないこと、その後の明示起動で正常終了/日本語エラーが記録されることを確認する。同期CLIと旧APIの挙動は維持する。
 
+## 統合GUIからのGodot起動
+
+例えば、会話エディターで保存した後、統合エンジンの「Godot版を実行」を押して同じプロジェクトのJSON/PNGを読む。先に `GODOT_BIN` をGodot 4実行ファイルのフルパスへ設定して `engine_app.py` または `run_engine.bat` を起動する。未設定ならPATH上のgodot/godot4を探す。GUI内の実行ファイル選択・設定保存はまだない。既存「ゲームを実行」と各エディターはPythonのまま。
+
+「Godot版を実行」はproject_type=standardで有効、それ以外は無効。汎用Starterのキャラクターは未対応であり、standardでも全プロジェクトの実行成功を保証しない。special、不正設定、準備・起動の失敗からPythonへフォールバックしない。現在のGUIは対話起動のみで、headless/フレーム数/seed指定はCLIから使う。
+
+| 状態・操作 | Tk main threadの処理 | 結果 |
+| --- | --- | --- |
+| ボタンを押す | 準備Futureを取得し、Godotボタンだけ無効化。「準備を確認しています」を表示 | 準備中の重複クリックを抑止。他のボタン/画面イベントは処理できる |
+| 150msごとの確認 | Future.doneを確認し、未完了なら次のafterを予約 | worker内からTkを操作せず、未完了のresultを待たない |
+| 準備完了 | 要求を1回だけ消費。例外がなければ準備したlauncherから起動 | 「起動を確認しています」から既存の150ms子プロセス監視へ移る |
+| 準備/起動失敗 | 型名とメッセージをダイアログへ表示し、ボタンを戻す | 修正後に再試行できる。成功表示やPythonへの代替起動はしない |
+| プロジェクト切替 | 古いafterを解除し、Futureをキャンセル/破棄して新しいlauncherを作る | 実行中workerの完了や古いcallbackからは起動しない。同じプロジェクトの再読込でも破棄 |
+| ウィンドウを閉じる | 準備要求と準備/終了監視のafterを解除する | 未起動のゲームは起動しない。既に起動したゲーム/エディターは終了させず、ログも残す |
+
+起動したGodotの非0終了は元のプロジェクト名、終了コード、永続UTF-8ログの保存先と末尾をダイアログに出す。プロジェクトを切り替えた後も、実行中の子プロセスは元の名前で監視する。poll=Noneを描画準備完了と断定しない。ログ一覧/停止などの管理、実行ファイル設定UI、ゲーム内ホットリロードはこの接続に含めない。
+
+`tests/test_godot_main_window.py` は実Tkイベントループで、待機中の応答、main threadでの完了処理、1回だけの起動、失敗/キャンセル/再試行、queued/running/completedの破棄、閉鎖、special、旧選択の終了監視を確認する。実Godotのテストだけはheadless/180フレームを注入し、選択した一時プロジェクトの正常終了/日本語画像欠落エラーと共有JSON不変を検証する。これは対話ウィンドウの目視確認を代替しないため、GUI変更時は `run_engine.bat` の実画面でボタン・起動・終了通知を別途確認する。
+
 ## 未移植
 
-GUI側のGodot選択・Futureポーリング・監視への接続、全部屋・キャラクター入力の完全な共有検証、Python/Godot評価ログ比較、配布構成。準備workerと子プロセス/ログ取得APIは上記の範囲で実装済み。システムに日本語フォントがない環境や配布時のフォント同梱は後続対応。
+全部屋・キャラクター入力の完全な共有検証、Python/Godot評価ログ比較、配布構成。準備worker、子プロセス/ログ取得APIとGUI起動接続は上記の範囲で実装済み。システムに日本語フォントがない環境や配布時のフォント同梱は後続対応。
 
 評価ログは10フレームごとに `frame`、`ghosts`（name/x/y/vx/vy/facing/action/turning/spin/target/talk）、`conversation`（phase/initiator/step/completed/movers/event/last_event）、`objects`（id/tag/x/y/visible/glowing）をJSONLに記録する。eventにはid/phase/timerを含む。Python版の評価ログとの完全互換ではない。

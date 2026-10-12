@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import tkinter as tk
+from concurrent.futures import Future
 from pathlib import Path
 from tkinter import filedialog, messagebox, simpledialog, ttk
 
 from .manifest_loader import load_project_manifest
+from .godot_runner import GodotInvocation
 from .process_launcher import LaunchedProcess, ProcessLauncher
 from .project_creator import ProjectCreator
 from .project_manifest import ProjectManifest
@@ -26,6 +28,9 @@ class MainWindow:
         self.project_creator = project_creator or ProjectCreator()
         self.status = tk.StringVar(value="準備できました")
         self._launch_poll_ids: set[str] = set()
+        self._godot_preparation: Future[GodotInvocation] | None = None
+        self._godot_poll_id: str | None = None
+        self._closed = False
         self.root.bind("<Destroy>", self._cancel_launch_polls, add="+")
         self._build()
 
@@ -46,6 +51,13 @@ class MainWindow:
         ttk.Button(frame, text="ゲームを実行", command=self._launch_game).pack(
             fill="x", pady=4
         )
+        self.godot_button = ttk.Button(frame, text="Godot版を実行", command=self._launch_godot)
+        self.godot_button.pack(fill="x", pady=4)
+        self.godot_button.configure(state="normal" if self.manifest.project_type == "standard" else "disabled")
+        ttk.Label(
+            frame, text="Godot 4: GODOT_BIN または PATHで指定（通常版のみ）",
+            foreground="#666666", wraplength=420,
+        ).pack(anchor="w", pady=(0, 8))
         for editor in self.manifest.editors:
             ttk.Button(
                 frame,
@@ -65,6 +77,77 @@ class MainWindow:
     def _launch_game(self) -> None:
         self._run("ゲーム", self.launcher.launch_game)
 
+    def _launch_godot(self) -> None:
+        if self._closed or self._godot_preparation is not None:
+            return
+        if self.manifest.project_type != "standard":
+            messagebox.showerror("起動できません", "Godot版は通常版プロジェクトのみ対応しています。", parent=self.root)
+            return
+        launcher = self.launcher
+        target = f"Godot版（{self.manifest.name}）"
+        try:
+            future = launcher.prepare_godot_async()
+        except Exception as exc:
+            self._godot_error(target, "準備", exc)
+            return
+        self._godot_preparation = future
+        self.godot_button.configure(state="disabled")
+        self.status.set(f"{target}の準備を確認しています")
+        self._schedule_godot_poll(future, launcher, target)
+
+    def _schedule_godot_poll(
+        self, future: Future[GodotInvocation], launcher: ProcessLauncher, target: str,
+    ) -> None:
+        def check() -> None:
+            if self._closed or self._godot_preparation is not future:
+                return
+            self._godot_poll_id = None
+            self._poll_godot_preparation(future, launcher, target)
+
+        self._godot_poll_id = self.root.after(150, check)
+
+    def _poll_godot_preparation(
+        self, future: Future[GodotInvocation], launcher: ProcessLauncher, target: str,
+    ) -> None:
+        # Tk access and Popen stay on the main thread; workers only prepare.
+        if self._closed or self._godot_preparation is not future or launcher is not self.launcher:
+            return
+        if not future.done():
+            self._schedule_godot_poll(future, launcher, target)
+            return
+        self._godot_preparation = None  # Consume once, before dialogs/startup.
+        self.godot_button.configure(state="normal")
+        if future.cancelled():
+            self.status.set(f"{target}の準備を取り消しました")
+            return
+        # exception() also retrieves unexpected worker BaseExceptions without
+        # re-raising SystemExit/KeyboardInterrupt inside the Tk event loop.
+        problem = future.exception(timeout=0)
+        if problem is not None:
+            self._godot_error(target, "準備", problem)
+            return
+        try:
+            launched = launcher.launch_prepared_godot(future.result(timeout=0))
+        except Exception as exc:
+            self._godot_error(target, "起動", exc)
+            return
+        self._monitor_launch(target, launched)
+
+    def _godot_error(self, target: str, stage: str, problem: BaseException) -> None:
+        self.status.set(f"{target}の{stage}に失敗しました")
+        messagebox.showerror(
+            "起動できません", f"{target}の{stage}に失敗しました。\n{type(problem).__name__}: {problem}",
+            parent=self.root,
+        )
+
+    def _discard_godot_preparation(self) -> None:
+        if self._godot_poll_id is not None:
+            self.root.after_cancel(self._godot_poll_id)
+            self._godot_poll_id = None
+        if self._godot_preparation is not None:
+            self._godot_preparation.cancel()  # A running worker is discarded, not interrupted.
+            self._godot_preparation = None
+
     def _launch_editor(self, editor_id: str) -> None:
         editor = self.manifest.editor(editor_id)
         self._run(editor.label, lambda: self.launcher.launch_editor(editor_id))
@@ -76,9 +159,12 @@ class MainWindow:
             messagebox.showerror("起動できません", f"{label}を起動できませんでした。\n{exc}")
             self.status.set(f"{label}の起動に失敗しました")
             return
+        target = f"{label}（{self.manifest.name}）"
+        self._monitor_launch(target, launched)
+
+    def _monitor_launch(self, target: str, launched: LaunchedProcess) -> None:
         # Popen success is not proof that imports/validation/startup succeeded.
         # Keep the GUI responsive and monitor the child's actual exit status.
-        target = f"{label}（{self.manifest.name}）"
         self.status.set(f"{target}の起動を確認しています")
         self._schedule_launch_poll(target, launched, announced=False)
 
@@ -117,6 +203,8 @@ class MainWindow:
     def _cancel_launch_polls(self, event) -> None:
         if event.widget is not self.root:
             return
+        self._closed = True
+        self._discard_godot_preparation()
         for callback_id in self._launch_poll_ids:
             self.root.after_cancel(callback_id)
         self._launch_poll_ids.clear()
@@ -144,6 +232,7 @@ class MainWindow:
             self.status.set("プロジェクトを開けませんでした")
 
     def _set_project(self, manifest: ProjectManifest) -> None:
+        self._discard_godot_preparation()
         self.manifest = manifest
         self.launcher = ProcessLauncher(manifest)
         for child in self.root.winfo_children():

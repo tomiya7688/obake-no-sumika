@@ -57,9 +57,9 @@ $env:GODOT_BIN="C:\path\Godot_win64_console.exe"
 
 実行ファイルは `--godot-bin <フルパス>` > `GODOT_BIN` > PATHのgodot/godot4。明示したパスが無効なら別の実行ファイルへ切り替えない。Godot 4のバージョン確認は10秒以内。CLIはゲーム終了まで待ち、標準出力/エラーと終了コードを引き継ぐ。不正データや起動失敗を成功表示にしない。
 
-`--test-frames` は正の整数で、固定delta 1/60秒の指定フレーム数で終了する。`--headless` は `--test-frames` 必須。`--seed` は符号付き64bit整数。これらのGodot用オプションを `--validate` やGUI起動などへ付けるとエラーにする。既存GUIの「ゲームを実行」はPython版で、Python子プロセスの監視は実装済み。GUIでのGodot選択・起動への接続は未対応。
+`--test-frames` は正の整数で、固定delta 1/60秒の指定フレーム数で終了する。`--headless` は `--test-frames` 必須。`--seed` は符号付き64bit整数。これらのGodot用オプションを `--validate` やGUI起動などへ付けるとエラーにする。GUIの「ゲームを実行」はPython版、「Godot版を実行」は通常版Godotの対話起動。どちらも終了コードとログを監視する。
 
-子プロセスと永続ログが必要な開発者は `ProcessLauncher.launch_godot()` を使う。事前準備は同期（probeのみ10秒上限）、ゲーム完了は待たず、`poll()` / `log_tail()` で終了コードとログを取得できる。重い準備を分離するAPIは `prepare_godot_async()` → Future → `launch_prepared_godot()`。準備結果を明示的に起動へ渡すまでゲームは始まらない。GUIボタン/ポーリングへの接続はまだなので、例とキャンセル・時間差の境界は [Godot起動API](../GDScript移行機能説明書.md#godotの子プロセス起動api) を読む。
+子プロセスと永続ログが必要な開発者は `ProcessLauncher.launch_godot()` を使う。事前準備は同期（probeのみ10秒上限）、ゲーム完了は待たず、`poll()` / `log_tail()` で終了コードとログを取得できる。重い準備を分離するAPIは `prepare_godot_async()` → Future → `launch_prepared_godot()`。準備結果を明示的に起動へ渡すまでゲームは始まらない。GUIはこの2段階APIに接続済み。例とキャンセル・時間差の境界は [Godot起動API](../GDScript移行機能説明書.md#godotの子プロセス起動api) を読む。
 
 ## 対話UI（実画面が必要）
 
@@ -73,4 +73,4 @@ Remove-Item Env:SDL_AUDIODRIVER -ErrorAction SilentlyContinue
 .\.venv\Scripts\python.exe object_editor.py
 ```
 
-統合エンジンのUIからはゲーム、マニフェスト登録済みエディター、別プロジェクトの選択、新規プロジェクトの作成ができる。現時点でCUIにあるのは構成表示・検証・通常版の実行と自動評価であり、GUIでの新規作成や編集をCUIで実行するコマンドはまだない。JSONを直接変更する場合は各リポジトリの検証条件と編集可能性を守る。
+統合エンジンのUIからはPython/Godotゲーム、マニフェスト登録済みエディター、別プロジェクトの選択、新規プロジェクトの作成ができる。Godotを使う場合は上記の `GODOT_BIN` を設定してから `engine_app.py` または `run_engine.bat` を起動し、「Godot版を実行」を押す。specialでは無効。準備中もプロジェクトを切り替えられ、古い準備からはゲームを開かない。詳細は [GUI起動](../GDScript移行機能説明書.md#統合guiからのgodot起動)。現時点でCUIにあるのは構成表示・検証・通常版の実行と自動評価であり、GUIでの新規作成や編集をCUIで実行するコマンドはまだない。JSONを直接変更する場合は各リポジトリの検証条件と編集可能性を守る。

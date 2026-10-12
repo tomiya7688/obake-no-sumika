@@ -135,13 +135,28 @@ class ContextSelectionTests(unittest.TestCase):
         )
         self.assertEqual(json.loads(result.stdout)["tests"], ["tests/test_room_repository.py"])
 
+    def test_godot_gui_selects_lifecycle_tests_without_game_implementation(self) -> None:
+        for path in ("engine/main_window.py", "tests/test_godot_main_window.py"):
+            with self.subTest(path=path):
+                result = select_files([path], self.rules)
+                self.assertIn("docs/context/godot.md", result["contexts"])
+                self.assertIn("docs/context/developer_tools.md", result["contexts"])
+                self.assertIn("engine/godot_runner.py", result["related_files"])
+                self.assertIn("engine/main_window.py", result["changed_files"] + result["related_files"])
+                self.assertIn("tests/test_godot_main_window.py", result["tests"])
+                self.assertIn("tests/test_godot_preparation.py", result["tests"])
+                self.assertIn("tests/test_main_window.py", result["tests"])
+                self.assertNotIn("game.py", result["related_files"])
+                self.assertEqual(result["unmapped_files"], [])
+
     def test_godot_test_discovery_selects_all_consumers_without_game_code(self) -> None:
         result = select_files(["tests/godot_support.py", "tests/test_godot_support.py"], self.rules)
         self.assertEqual(result["contexts"], ["docs/context/project.md", "docs/context/godot.md"])
         self.assertIn("engine/godot_runner.py", result["related_files"])
         self.assertEqual(result["tests"], ["tests/test_godot_support.py", "tests/test_godot_runtime.py",
                                           "tests/test_portable_project_contract.py", "tests/test_portable_character_contract.py",
-                                          "tests/test_portable_room_contract.py", "tests/test_portable_palette_contract.py"])
+                                          "tests/test_portable_room_contract.py", "tests/test_portable_palette_contract.py",
+                                          "tests/test_godot_main_window.py"])
         self.assertNotIn("game.py", result["related_files"])
         self.assertEqual(result["unmapped_files"], [])
 

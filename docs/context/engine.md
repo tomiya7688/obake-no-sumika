@@ -15,6 +15,6 @@
 
 `engine/main_window.py` はTk GUIなので [developer_tools.md](developer_tools.md) を参照。マニフェストの検証は `.\.venv\Scripts\python.exe engine_app.py --validate`、プロジェクト構成のJSON表示は `--describe` でGUIを起動せずに実行できる。使用例は [CUIコマンドシート](cli_commands.md)。
 
-`engine_app.py --playtest-godot` は終了まで待つCLI専用の入口。Python版のゲーム・エディター起動と混ぜず、共有JSON/PNGの意味検証と実行はGodotへ任せる。Godot側の未対応範囲は [godot.md](godot.md) を参照。既存GUIはPython版の子プロセスを150ms間隔で監視し、異常終了時に終了コード・ログ末尾・保存先を表示する。
+`engine_app.py --playtest-godot` は終了まで待つCLI専用の入口。Python版のゲーム・エディター起動と混ぜず、共有JSON/PNGの意味検証と実行はGodotへ任せる。Godot側の未対応範囲は [godot.md](godot.md) を参照。GUIはPython/Godotの子プロセスを150ms間隔で監視し、異常終了時に終了コード・ログ末尾・保存先を表示する。
 
-`ProcessLauncher.launch_godot()` はCLIと同じ準備処理を経て `LaunchedProcess` を返す同期準備API。ゲーム実行は終了を待たず、`poll()` と `log_tail()` で終了状態と永続ログを取得できる。選択定義が現在の `engine_project.json` と違う時は再読込を要求する。バックグラウンド準備は `prepare_godot_async()`、完成後の明示起動は `launch_prepared_godot()`。Futureだけではゲームを起動せず、選択変更時は古い結果を破棄できる。GUIのGodot選択・Futureポーリング・既存監視への接続は未実装。詳細は [Godot起動API](../GDScript移行機能説明書.md#godotの子プロセス起動api)。
+`ProcessLauncher.launch_godot()` はCLIと同じ準備処理を経て `LaunchedProcess` を返す同期準備API。ゲーム実行は終了を待たず、`poll()` と `log_tail()` で終了状態と永続ログを取得できる。選択定義が現在の `engine_project.json` と違う時は再読込を要求する。バックグラウンド準備は `prepare_godot_async()`、完成後の明示起動は `launch_prepared_godot()`。Futureだけではゲームを起動せず、選択変更時は古い結果を破棄できる。GUIはこの2段階APIをmain threadのポーリングと既存終了監視へ接続する。準備中の切替/終了では古い結果を使わない。詳細は [Godot起動API](../GDScript移行機能説明書.md#godotの子プロセス起動api) と [GUI起動](../GDScript移行機能説明書.md#統合guiからのgodot起動)。
