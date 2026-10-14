@@ -10,7 +10,7 @@
 | `engine_app.py`, `engine/main_window.py` | 統合GUI、プロジェクト切替、検証・Godot CLIプレイテスト入口 | `tests/test_main_window.py`, `tests/test_engine_manifest.py`, `tests/test_godot_runner.py` |
 | `engine/process_launcher.py` | 非同期のゲーム・エディター起動、終了コードとUTF-8ログの取得 | `tests/test_process_launcher.py`, `tests/test_main_window.py` |
 | `run_*.bat` | Windows起動入口、必要時の環境構築 | 起動対象の実行確認 |
-| `scripts/evaluate_project.py` | 構文、単体テスト、通常版とspecial版の検証 | `tests/test_evaluate_project.py` |
+| `scripts/evaluate_project.py`, `.github/workflows/work-ci.yml` | ローカル/PR共通の構文・単体・通常版/special検証、Godot必須モード、JSON非破壊確認 | `tests/test_evaluate_project.py` |
 | `tools/context/responsibilities.json`, `tools/context/script/select_files.py` | 変更ファイルから読む文書・関連ファイル・テストを選択 | `tests/test_context_selection.py` |
 | `tools/diff_summary/`, `tools/repo_sync/` | コミット差分の圧縮とリモート進捗の確認 | `tests/test_diff_summary.py`, `tests/test_repo_sync.py` |
 | `docs/context/cli_commands.md`, `engine_app.py --describe` | GUI不要の構成照会と主要コマンドの案内 | `tests/test_engine_manifest.py` |

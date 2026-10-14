@@ -20,7 +20,7 @@ def project_python(project_root: Path) -> Path:
 
 
 def iter_python_files(project_root: Path) -> list[Path]:
-    ignored_parts = {".git", ".venv", "__pycache__"}
+    ignored_parts = {".git", ".venv", ".godot", "tmp", "__pycache__"}
     files = []
     for path in project_root.rglob("*.py"):
         if ignored_parts.intersection(path.relative_to(project_root).parts):
@@ -29,11 +29,13 @@ def iter_python_files(project_root: Path) -> list[Path]:
     return sorted(files)
 
 
-def build_checks(project_root: Path, frame_count: int) -> list[tuple[str, list[str], dict[str, str]]]:
+def build_checks(
+    project_root: Path, frame_count: int, require_godot: bool = False,
+) -> list[tuple[str, list[str], dict[str, str]]]:
     python = str(project_python(project_root))
     dummy_env = {"SDL_VIDEODRIVER": "dummy", "SDL_AUDIODRIVER": "dummy"}
     py_files = [str(path.relative_to(project_root)) for path in iter_python_files(project_root)]
-    return [
+    checks = [
         ("py_compile", [python, "-m", "py_compile", *py_files], {}),
         ("unit tests", [python, "-m", "unittest", "discover", "-s", "tests", "-v"], {}),
         ("engine manifest", [python, "engine_app.py", "--validate"], {}),
@@ -64,12 +66,37 @@ def build_checks(project_root: Path, frame_count: int) -> list[tuple[str, list[s
             {},
         ),
     ]
+    if require_godot:
+        # The normal unit suite may skip an unconfigured Godot. This separate
+        # CLI check must actually launch Godot 4 and return a successful exit.
+        checks.insert(0, (
+            "required Godot smoke",
+            [python, "engine_app.py", "--playtest-godot", "--headless",
+             "--test-frames", str(frame_count), "--seed", "12345"],
+            {},
+        ))
+        checks.append((
+            "context responsibilities",
+            [python, "tools/context/script/audit.py", "--strict", "--scope", "engine",
+             "--scope", "tools", "--scope", "godot", "--scope", "scripts", "--scope", ".github"],
+            {},
+        ))
+    return checks
+
+
+def snapshot_shared_json(project_root: Path) -> dict[str, bytes]:
+    """Capture source inputs, never generated evaluation logs or temp fixtures."""
+    roots = (project_root, project_root / "projects" / "obakeno_sumika_special")
+    return {
+        path.relative_to(project_root).as_posix(): path.read_bytes()
+        for root in roots for path in sorted(root.glob("*.json"))
+    }
 
 
 def run_check(label: str, command: list[str], extra_env: dict[str, str]) -> bool:
     env = os.environ.copy()
     env.update(extra_env)
-    print(f"[RUN] {label}")
+    print(f"[RUN] {label}", flush=True)
     result = subprocess.run(command, cwd=PROJECT_ROOT, env=env)
     if result.returncode == 0:
         print(f"[OK] {label}")
@@ -108,22 +135,43 @@ def validate_runtime_log(project_root: Path, log_path: Path) -> bool:
     return True
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run project evaluation checks.")
     parser.add_argument("--frames", type=int, default=900)
-    return parser.parse_args()
+    parser.add_argument("--require-godot", action="store_true",
+                        help="Require a real Godot 4 smoke and strict context audit (CI mode).")
+    args = parser.parse_args(argv)
+    if args.frames <= 0:
+        parser.error("--frames must be positive")
+    return args
 
 
-def main() -> int:
-    args = parse_args()
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
     failures = []
-    for label, command, extra_env in build_checks(PROJECT_ROOT, args.frames):
+    try:
+        before = snapshot_shared_json(PROJECT_ROOT)
+    except OSError as exc:
+        print(f"[FAIL] shared JSON snapshot: {exc}")
+        return 1
+    for label, command, extra_env in build_checks(PROJECT_ROOT, args.frames, args.require_godot):
         if not run_check(label, command, extra_env):
             failures.append(label)
         elif label == "runtime evaluation log" and not validate_runtime_log(
             PROJECT_ROOT, RUNTIME_LOG
         ):
             failures.append("runtime evaluation log format")
+    try:
+        after = snapshot_shared_json(PROJECT_ROOT)
+        changed = sorted(name for name in before.keys() | after.keys() if before.get(name) != after.get(name))
+        if changed:
+            print("[FAIL] shared JSON unchanged: " + ", ".join(changed))
+            failures.append("shared JSON unchanged")
+        else:
+            print("[OK] shared JSON unchanged")
+    except OSError as exc:
+        print(f"[FAIL] shared JSON snapshot: {exc}")
+        failures.append("shared JSON snapshot")
     if failures:
         print("FAILED: " + ", ".join(failures))
         return 1
