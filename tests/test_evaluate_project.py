@@ -128,6 +128,8 @@ class EvaluateProjectTests(unittest.TestCase):
         self.assertIn("--require-godot --frames 900", workflow)
         self.assertIn("set -o pipefail", workflow)
         self.assertIn("if: always()", workflow)
+        self.assertNotIn("${{ runner.", workflow.split("    steps:", 1)[0])
+        self.assertIn('echo "GODOT_BIN=$GODOT_BIN" >> "$GITHUB_ENV"', workflow)
         for unsafe_or_skipping in ("pull_request_target:", "continue-on-error:", "paths-ignore:", "contents: write"):
             self.assertNotIn(unsafe_or_skipping, workflow)
 

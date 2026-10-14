@@ -23,7 +23,6 @@ jobs:
       PYTHONUTF8: "1"
       PYTHONIOENCODING: utf-8
       PYGAME_HIDE_SUPPORT_PROMPT: "1"
-      GODOT_BIN: ${{ runner.temp }}/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -60,12 +59,15 @@ jobs:
             https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
 
       - name: Verify and unpack Godot (including cache hits)
+        env:
+          GODOT_BIN: ${{ runner.temp }}/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64
         run: |
           echo "cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4  $RUNNER_TEMP/godot-download/Godot_v4.7.2-stable_linux.x86_64.zip" | sha256sum --check -
           mkdir -p "$RUNNER_TEMP/godot-4.7.2"
           unzip "$RUNNER_TEMP/godot-download/Godot_v4.7.2-stable_linux.x86_64.zip" -d "$RUNNER_TEMP/godot-4.7.2"
           chmod +x "$GODOT_BIN"
           "$GODOT_BIN" --version | grep '^4\.7\.2\.'
+          echo "GODOT_BIN=$GODOT_BIN" >> "$GITHUB_ENV"
 
       - name: Run shared project evaluation (Godot is mandatory)
         shell: bash
