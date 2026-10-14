@@ -1,0 +1,89 @@
+name: Work CI
+
+on:
+  pull_request:
+    branches: [work]
+  push:
+    branches: [work]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: work-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Work validation (Python 3.10 / Godot 4.7.2)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: utf-8
+      PYGAME_HIDE_SUPPORT_PROMPT: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.10"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth tk8.6 libegl1 libgl1 fonts-noto-cjk
+          python -m pip install --disable-pip-version-check -r requirements.txt
+          python -m pip check
+
+      - name: Cache official Godot archive
+        id: godot-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/godot-download/Godot_v4.7.2-stable_linux.x86_64.zip
+          key: godot-linux-4.7.2-cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+
+      - name: Download official Godot archive
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$RUNNER_TEMP/godot-download"
+          curl --fail --location --retry 3 \
+            --output "$RUNNER_TEMP/godot-download/Godot_v4.7.2-stable_linux.x86_64.zip" \
+            https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+
+      - name: Verify and unpack Godot (including cache hits)
+        env:
+          GODOT_BIN: ${{ runner.temp }}/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64
+        run: |
+          echo "cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4  $RUNNER_TEMP/godot-download/Godot_v4.7.2-stable_linux.x86_64.zip" | sha256sum --check -
+          mkdir -p "$RUNNER_TEMP/godot-4.7.2"
+          unzip "$RUNNER_TEMP/godot-download/Godot_v4.7.2-stable_linux.x86_64.zip" -d "$RUNNER_TEMP/godot-4.7.2"
+          chmod +x "$GODOT_BIN"
+          "$GODOT_BIN" --version | grep '^4\.7\.2\.'
+          echo "GODOT_BIN=$GODOT_BIN" >> "$GITHUB_ENV"
+
+      - name: Run shared project evaluation (Godot is mandatory)
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p tmp/evaluation
+          xvfb-run -a python -u scripts/evaluate_project.py --require-godot --frames 900 2>&1 | tee tmp/evaluation/ci.log
+
+      - name: Save evaluation logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: work-validation-logs
+          if-no-files-found: warn
+          retention-days: 7
+          path: |
+            tmp/evaluation/*.log
+            tmp/evaluation/runtime.jsonl
+            tmp/launch_logs/*.log
