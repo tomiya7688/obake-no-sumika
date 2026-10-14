@@ -7,7 +7,7 @@
 | `character_editor.py` | キャラクターJSONの編集 | `tests/test_character_repository.py` |
 | `conversation_editor.py` | 会話・イベントJSONの編集 | `tests/test_tagged_conversations.py` |
 | `object_editor.py` | ドット絵作成と住処への配置 | `tests/test_object_editor_tools.py` |
-| `engine_app.py`, `engine/main_window.py` | 統合GUI、プロジェクト切替、検証・Godot CLIプレイテスト入口 | `tests/test_main_window.py`, `tests/test_engine_manifest.py`, `tests/test_godot_runner.py` |
+| `engine_app.py`, `engine/main_window.py` | 統合GUI、プロジェクト切替、Godotの準備/起動/監視、検証・CLI入口 | `tests/test_main_window.py`, `tests/test_godot_main_window.py`, `tests/test_engine_manifest.py`, `tests/test_godot_runner.py` |
 | `engine/process_launcher.py` | 非同期のゲーム・エディター起動、終了コードとUTF-8ログの取得 | `tests/test_process_launcher.py`, `tests/test_main_window.py` |
 | `run_*.bat` | Windows起動入口、必要時の環境構築 | 起動対象の実行確認 |
 | `scripts/evaluate_project.py`, `.github/workflows/work-ci.yml` | ローカル/PR共通の構文・単体・通常版/special検証、Godot必須モード、JSON非破壊確認 | `tests/test_evaluate_project.py` |
@@ -17,7 +17,7 @@
 
 プロジェクト内の `.venv` を使う。venvの参照先が移動した場合は `.\.venv\Scripts\python.exe --version` と `.\.venv\pyvenv.cfg` を確認する。GUIの見た目や操作を変えた場合は、単体テストに加えて実画面で確認する。
 
-GodotのCLI起動は `engine/godot_runner.py` と [godot.md](godot.md) の範囲。`--playtest-godot` は終了まで待って終了コードを返し、Tk・Pythonゲームを起動しない。既存GUIの「ゲームを実行」は引き続きPython版。
+GodotのCLI起動は `engine/godot_runner.py` と [godot.md](godot.md) の範囲。`--playtest-godot` は終了まで待って終了コードを返し、Tk・Pythonゲームを起動しない。GUIの「ゲームを実行」はPython版、「Godot版を実行」はstandard選択で有効。Godotは `GODOT_BIN` → PATHで指定する。準備Futureをmain threadで150msごとに確認し、完了時だけ起動する。準備中はGodotボタンだけ無効化し、切替/ウィンドウ終了で古い要求とポーリングを破棄する。実行中のworkerは止めず、結果から遅延起動しない。失敗はダイアログへ出しPythonにフォールバックしない。詳細は [GUI起動](../GDScript移行機能説明書.md#統合guiからのgodot起動)。
 
 GUI起動は「起動を確認しています」→「実行中」→正常/異常終了を表示する。子プロセスの生存はゲーム画面の準備完了を保証しないため「起動しました」と断定しない。異常終了は150ms間隔の監視で検出し、終了コード・ログ末尾（最大8192バイト）・保存先をダイアログへ表示する。標準出力と標準エラーは選択プロジェクトの `tmp/launch_logs/*.log` にUTF-8で保存する。PIPEを使わず大量出力による停止を避け、pythonw経由でも診断できる。同時起動のログは分離し、プロジェクトを切り替えても元のプロジェクト名で終了を通知する。エンジンを閉じても子プロセスは終了させず、ログも残す。停止操作・ログ一覧などの統合プロセス管理はIssue #15の後続範囲。
 
