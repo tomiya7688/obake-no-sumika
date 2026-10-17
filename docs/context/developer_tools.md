@@ -12,6 +12,7 @@
 | `run_*.bat` | Windows起動入口、必要時の環境構築 | 起動対象の実行確認 |
 | `scripts/evaluate_project.py`, `.github/workflows/work-ci.yml` | ローカル/PR共通の構文・単体・通常版/special検証、Godot必須モード、JSON非破壊確認 | `tests/test_evaluate_project.py` |
 | `tools/context/responsibilities.json`, `tools/context/script/select_files.py` | 変更ファイルから読む文書・関連ファイル・テストを選択 | `tests/test_context_selection.py` |
+| `tools/context/script/snapshot.py` | 未stage/stage済み・未追跡・履歴を本文なし・上限付きで照会 | `tests/test_context_snapshot.py` |
 | `tools/diff_summary/`, `tools/repo_sync/` | コミット差分の圧縮とリモート進捗の確認 | `tests/test_diff_summary.py`, `tests/test_repo_sync.py` |
 | `tools/repo_sync/script/inventory.py`, `tools/repo_sync/main_work_inventory.json` | main/work固有コミットの分類と比較範囲の変化を読み取り専用で確認 | `tests/test_integration_inventory.py` |
 | `docs/context/cli_commands.md`, `engine_app.py --describe` | GUI不要の構成照会と主要コマンドの案内 | `tests/test_engine_manifest.py` |
@@ -23,6 +24,8 @@ GodotのCLI起動は `engine/godot_runner.py` と [godot.md](godot.md) の範囲
 GUI起動は「起動を確認しています」→「実行中」→正常/異常終了を表示する。子プロセスの生存はゲーム画面の準備完了を保証しないため「起動しました」と断定しない。異常終了は150ms間隔の監視で検出し、終了コード・ログ末尾（最大8192バイト）・保存先をダイアログへ表示する。標準出力と標準エラーは選択プロジェクトの `tmp/launch_logs/*.log` にUTF-8で保存する。PIPEを使わず大量出力による停止を避け、pythonw経由でも診断できる。同時起動のログは分離し、プロジェクトを切り替えても元のプロジェクト名で終了を通知する。エンジンを閉じても子プロセスは終了させず、ログも残す。停止操作・ログ一覧などの統合プロセス管理はIssue #15の後続範囲。
 
 ## 責務表の更新
+
+変更一覧だけが必要なら `tools/context/script/snapshot.py --json` を使う。オプションと三点比較の意味は [tools/context/README.md](../../tools/context/README.md)。リモートは更新せず、ファイル本文も出力しない。読むべき文書と関連テストの選択は従来通り `select_files.py`。
 
 `tools/context/responsibilities.json` を機械検索用の正本とする。各ルールの `paths` はリポジトリ相対のパスまたはglob、`context` は領域文書、`related` は追加で読む候補、`tests` は関連テスト。複数ルールに一致すれば結果は重複なく統合される。新しい主要ファイルを追加したら対応ルールと `tests/test_context_selection.py` を更新し、文書の責務表も合わせる。未登録ファイルは `unmapped_files` として表示し、推測で分類しない。
 
