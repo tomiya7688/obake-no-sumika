@@ -37,6 +37,14 @@ class ContextSelectionTests(unittest.TestCase):
         self.assertNotIn("game.py", result["related_files"])
         self.assertEqual(result["unmapped_files"], [])
 
+    def test_integration_inventory_selects_only_history_tool_and_plan(self) -> None:
+        result = select_files(["tools/repo_sync/script/inventory.py", "tools/repo_sync/main_work_inventory.json"], self.rules)
+        self.assertEqual(result["contexts"], ["docs/context/project.md", "docs/context/developer_tools.md"])
+        self.assertIn("tests/test_integration_inventory.py", result["tests"])
+        self.assertIn("docs/ワークフロー/main_work統合.md", result["related_files"])
+        self.assertNotIn("game.py", result["related_files"])
+        self.assertEqual(result["unmapped_files"], [])
+
     def test_engine_repository_selects_engine_and_game_contexts(self) -> None:
         result = select_files(["engine\\room_repository.py"], self.rules)
         self.assertEqual(result["changed_files"], ["engine/room_repository.py"])
