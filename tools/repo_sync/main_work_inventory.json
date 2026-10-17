@@ -16,10 +16,10 @@
     },
     "context_snapshot": {
       "decision": "port",
-      "summary": "mainの未stage/stage済みファイル名・差分量・履歴を上限付きで出す機能は、workのdirty booleanと同等とはしない。既存tools/context・diff_summary・repo_syncへ統合し、重複したroot scripts入口は増やさない。",
+      "summary": "mainの未stage/stage済みファイル名・差分量・履歴を上限付きで出す機能をtools/context/script/snapshot.pyへ適応。既存diff_summaryのGit照会を再利用し、重複したroot scripts入口は増やさない。意味的な移植であり、元コミットの履歴統合ではない。",
       "source_paths": ["scripts/context_snapshot.py", "tests/test_context_snapshot.py"],
-      "work_targets": ["tools/context/script", "tools/diff_summary/script/summarize.py", "tools/repo_sync/script/report.py"],
-      "verification": "上限・省略数、stage/未stage、三点比較の意味、失敗表示、非破壊性をfixtureで検証。"
+      "work_targets": ["tools/context/script/snapshot.py", "tools/context/README.md", "tests/test_context_snapshot.py", "tools/diff_summary/script/summarize.py"],
+      "verification": "tests/test_context_snapshot.pyで上限・省略数、stage/未stage/未追跡、三点比較の意味、失敗表示、index/HEAD/ref/ユーザーファイル非破壊性を検証。"
     },
     "merge_record": {
       "decision": "replaced",

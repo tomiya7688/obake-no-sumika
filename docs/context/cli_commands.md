@@ -26,6 +26,7 @@ PowerShellでリポジトリのルートから実行する。Pythonはこのプ�
 
 ```powershell
 .\.venv\Scripts\python.exe tools/context/script/select_files.py --json game.py
+.\.venv\Scripts\python.exe tools/context/script/snapshot.py --base origin/work --limit 20 --commits 8 --json
 .\.venv\Scripts\python.exe tools/repo_sync/script/report.py --fetch --json
 .\.venv\Scripts\python.exe tools/repo_sync/script/inventory.py --json
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
@@ -35,6 +36,8 @@ PowerShellでリポジトリのルートから実行する。Pythonはこのプ�
 選択ツールには変更したリポジトリ相対パスを複数渡せる。未登録パスは `unmapped_files` に出る。全体評価は構文、単体テスト、エンジン、通常版の短い起動、実行ログ、special版を確認し、`tmp/evaluation/runtime.jsonl` を更新する。フレーム数を変える場合は `scripts/evaluate_project.py --frames 60`。
 
 `inventory.py` は更新済みの追跡refと[main/workの分類表](../../tools/repo_sync/main_work_inventory.json)を照合する。fetchや取り込みはしない。一致は0、再分類が必要なら1、不正入力/履歴不足は2。`consistent` は分類の網羅性だけを表し、実装済み・リリース承認済みではない。手順は[統合計画](../ワークフロー/main_work統合.md)。
+
+`snapshot.py` は未stage/stage済み・未追跡の名前と差分量、コミット件名を上限付きで返し、ファイル本文は出さない。`--limit` は各ファイル一覧、`--commits` は各履歴の上限。`--base` のファイル比較はmerge-base→HEAD、履歴はbase..HEAD。省略件数も表示する。fetch/index更新は行わない。詳細は [tools/context/README.md](../../tools/context/README.md)。
 
 ## ゲームの短い起動・記録（GUI不要）
 

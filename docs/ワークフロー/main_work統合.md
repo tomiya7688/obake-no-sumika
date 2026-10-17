@@ -23,7 +23,7 @@ shallow cloneや追跡refがない環境では必要な履歴を別途取得す�
 | 意味単位 | 分類 | 対応方針 |
 | --- | --- | --- |
 | AI向けルーター・探索停止・詳細契約分離 | port | mainの5コミットを現行の `docs/context/` と責務表へ適応する。旧索引のPython専用説明やロードマップ部分読みに戻さない |
-| stage済み・未stageの上限付きsnapshot | port | 2コミットの機能とテストを既存 `tools/` へ統合。workのdirty booleanと同等とはしない |
+| stage済み・未stageの上限付きsnapshot | port | 2コミットの機能を `tools/context/script/snapshot.py` へ適応。未追跡・省略件数・非破壊性も検証し、元の履歴統合とは分ける |
 | PR #23のmerge記録 | replaced | 構成7コミットを別途分類済み。追加パッチとして重ねず、統合候補で履歴は保持 |
 | 初期CIとrunner.temp参照修正 | replaced | 2コミットの基本評価目的はPR #87で対応。後続の品質・型・性能ゲート全体を置換したわけではない |
 | ライセンス境界とMIT本文 | port | mainとworkの現行文言の違いを残して所有者確認。今回ライセンス変更はしない |
@@ -35,7 +35,11 @@ shallow cloneや追跡refがない環境では必要な履歴を別途取得す�
 | かどか・まるの新画像 | port | mainは192×192、workは1152×1152で別のblob。表示身長・透過・向きを確認して共有素材として取り込む |
 | nearest拡縮とREADME | port | Pythonはsmoothscale、GodotはLANCZOSの箇所が残る。対応済みと扱わず、実描画と説明を揃える |
 
-元のファイル、work側の対象、個別の検証条件はJSONの `groups` に記録する。取り込み対象と書かれたグループは将来の実装範囲であり、この棚卸しPRで適用するパッチではない。
+元のファイル、work側の対象、個別の検証条件はJSONの `groups` に記録する。分類 `port` は取り込み方針であり、それだけで全体の完了を表さない。個別機能の実装状況は対応方針・以下の進捗とIssue/PRで確認する。
+
+### workへの個別適応: 上限付きsnapshot
+
+`tools/context/script/snapshot.py --base origin/work --json` で未stage/stage済み・未追跡・履歴を本文なしで照会できる。各一覧の上限・省略件数、分岐時のmerge-base比較、エラー終了、Git index/HEAD/ref/ユーザーファイルの非破壊性をfixtureで検証する。操作と出力仕様は [tools/context/README.md](../../tools/context/README.md)。mainの元コミットをmerge/cherry-pickしたわけではなく、23件の履歴分類と他グループの移植は継続する。
 
 ## 段階的な統合順序
 

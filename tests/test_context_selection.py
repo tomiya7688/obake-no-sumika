@@ -29,6 +29,15 @@ class ContextSelectionTests(unittest.TestCase):
         self.assertEqual(result["contexts"], ["docs/context/project.md", "docs/context/developer_tools.md"])
         self.assertEqual(result["tests"], ["tests/test_character_repository.py"])
 
+    def test_snapshot_selects_metadata_tool_without_game_implementation(self) -> None:
+        result = select_files(["tools/context/script/snapshot.py", "tests/test_context_snapshot.py"], self.rules)
+        self.assertEqual(result["contexts"], ["docs/context/project.md", "docs/context/developer_tools.md"])
+        self.assertIn("tests/test_context_snapshot.py", result["tests"])
+        self.assertIn("tools/context/README.md", result["related_files"])
+        self.assertIn("tools/diff_summary/script/summarize.py", result["related_files"])
+        self.assertNotIn("game.py", result["related_files"])
+        self.assertEqual(result["unmapped_files"], [])
+
     def test_ci_change_selects_shared_evaluator_without_game_implementation(self) -> None:
         result = select_files([".github/workflows/work-ci.yml"], self.rules)
         self.assertEqual(result["contexts"], ["docs/context/project.md", "docs/context/developer_tools.md"])
