@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "status": "proposal",
+  "snapshots": {
+    "main": "43c02c76568ad4df9df7592bd85eab1742ef31ac",
+    "work": "80b4f48ec0db208ae79911cd96fd25e9c219779a",
+    "merge_base": "6d6643c9e6ed6b45accce4318690243395012df4"
+  },
+  "groups": {
+    "context_policy": {
+      "decision": "port",
+      "summary": "探索停止・短いルーター・詳細契約の分離という改善を既存docs/contextへ選択的に取り込む。古いPython専用索引やロードマップ部分読みの指示で現行の毎回全文確認・Issue方針を上書きしない。",
+      "source_paths": ["AI_CONTEXT.md", "AGENTS.md", "docs/context-routing.md", "docs/ai-development-contract.md"],
+      "work_targets": ["docs/context/project.md", "docs/context/developer_tools.md", "tools/context/responsibilities.json", "AGENTS.md"],
+      "verification": "対象ファイル選択・strict責務監査とリンク検査。Godotを含む現行契約とユーザーの読込順を保持する。"
+    },
+    "context_snapshot": {
+      "decision": "port",
+      "summary": "mainの未stage/stage済みファイル名・差分量・履歴を上限付きで出す機能は、workのdirty booleanと同等とはしない。既存tools/context・diff_summary・repo_syncへ統合し、重複したroot scripts入口は増やさない。",
+      "source_paths": ["scripts/context_snapshot.py", "tests/test_context_snapshot.py"],
+      "work_targets": ["tools/context/script", "tools/diff_summary/script/summarize.py", "tools/repo_sync/script/report.py"],
+      "verification": "上限・省略数、stage/未stage、三点比較の意味、失敗表示、非破壊性をfixtureで検証。"
+    },
+    "merge_record": {
+      "decision": "replaced",
+      "summary": "PR #23のマージ記録は、その7つの構成コミットを本表で別途分類済み。独立した追加パッチとして二重適用しない。将来main起点の統合候補で履歴自体は保持する。",
+      "source_paths": ["AGENTS.md", "AI_CONTEXT.md"],
+      "work_targets": ["docs/context/project.md", "tools/repo_sync/main_work_inventory.json"],
+      "verification": "親コミットと23件の集合照合。履歴の網羅性を意味的な実装完了と混同しない。"
+    },
+    "baseline_ci": {
+      "decision": "replaced",
+      "summary": "初期の基本評価CIとrunner.temp参照位置の修正はPR #87のwork-ci.ymlで対応済み。ただし、後から同じmain ci.ymlへ加わった品質・型・性能ゲート全体が置換済みという意味ではない。",
+      "source_paths": [".github/workflows/ci.yml"],
+      "work_targets": [".github/workflows/work-ci.yml", "scripts/evaluate_project.py"],
+      "verification": "PR #87とwork CIの実Godot必須評価成功。mainのWindows/Python 3.12レーンを不用意に削除しない。"
+    },
+    "license_boundary": {
+      "decision": "port",
+      "summary": "mainの暫定的なツール/エンジンMITとゲーム固有素材の境界、およびMIT本文を落とさない。workの現行LICENSE.mdとは異なるため、統合前に対象範囲を所有者確認する。この棚卸しではライセンスを変更しない。",
+      "source_paths": ["LICENSE.md", "LICENSES/MIT.txt"],
+      "work_targets": ["LICENSE.md", "LICENSES/MIT.txt", "godot/scripts", "engine", "tools"],
+      "verification": "Issue #33と原典を照合し、混在するGodot固有ゲームコード/汎用ツールの境界を明示して確認する。"
+    },
+    "python_quality": {
+      "decision": "port",
+      "summary": "Ruff lint/format・UPDの必須ゲートと設定を保持する。0062028のPython差分はAST比較でtests/test_engine_manifest.pyのimport整理以外が一致したが、workの新規APIを古いファイル全体で上書きしない。",
+      "source_paths": [".github/workflows/ci.yml", "ruff.toml", "tools/quality/requirements.txt", "tests/test_engine_manifest.py"],
+      "work_targets": [".github/workflows/work-ci.yml", "ruff.toml", "engine", "tests", "godot"],
+      "verification": "段階的に再format/検証し、共有契約とGodot必須CIを保持。Python用チェッカー成功をGDScript検証済みとは扱わない。"
+    },
+    "checker_policy": {
+      "decision": "port",
+      "summary": "mainのlatest-first方針と品質チェッカー更新運用を残す。ActionやGodot本体の固定と、Python品質チェッカーの更新方針を混同しない。",
+      "source_paths": ["tools/quality/POLICY.md", "tools/quality/requirements.txt", ".github/workflows/ci.yml"],
+      "work_targets": ["tools/quality/POLICY.md", "tools/quality/requirements.txt", ".github/workflows/work-ci.yml"],
+      "verification": "現行依存関係と互換性を再確認してCIで実行。通すためだけの上限緩和はしない。"
+    },
+    "engine_performance": {
+      "decision": "port",
+      "summary": "Python共有エンジンの絶対性能と同一runnerでのbase/head回帰検出、比較処理とテストを残す。エンジンは編集ツール側にも残るためGodot化で不要とはしない。",
+      "source_paths": ["tools/performance/check_runtime.py", "tools/performance/compare_runtime.py", "tools/performance/thresholds.json", "tests/test_performance_regression.py", ".github/workflows/ci.yml"],
+      "work_targets": ["tools/performance", "engine", ".github/workflows/work-ci.yml"],
+      "verification": "共有入力・同一マシン条件で実測し、medianとnoise floorとworstを区別。新APIへ適応後に閾値の根拠を確認する。"
+    },
+    "python_game_performance": {
+      "decision": "reference_only",
+      "summary": "check_runtime.pyのgame.py起動を測る部分とPython用ms/frame閾値はPython reference implementationのレーンに残す。GDScriptの速度を測定済みとせず、Godot用の計測は別途設計する。",
+      "source_paths": ["tools/performance/check_runtime.py", "tools/performance/thresholds.json", ".github/workflows/ci.yml"],
+      "work_targets": ["game.py", "tools/performance", ".github/workflows/work-ci.yml"],
+      "verification": "計測対象ランタイムをログで識別し、PythonとGodotの閾値・結果を混用しない。"
+    },
+    "mypy_boundary": {
+      "decision": "port",
+      "summary": "Mypy baselineゲート、境界の型検証、callback/評価ログ/special入力とfixtureの改善を選択適用する。mainの基準は36件で、型エラー0の保証ではない。workの新しいAPIで再計測し、都合だけで増加を許可しない。",
+      "source_paths": ["mypy.ini", "tools/quality/check_mypy.py", "tools/quality/mypy_baseline.json", "tests/test_mypy_baseline.py", "engine/character_repository.py", "engine/evaluation_logger.py", "engine/main_window.py", "engine/pixel_object_repository.py", "projects/obakeno_sumika_special/game.py"],
+      "work_targets": ["engine", "projects/obakeno_sumika_special", "tests", "tools/quality", ".github/workflows/work-ci.yml"],
+      "verification": "Issue #39の基準と結果分類を保持し、bool/数値変換等の変更はPython/Godot共有入力ケースも実行する。"
+    },
+    "shared_art": {
+      "decision": "port",
+      "summary": "mainの新しい192x192 RGBA画像を取りこぼさない。workは1152x1152の旧画像であり同等扱いしない。共有素材として両ランタイムで身長・向き・余白を検証してから取り込む。",
+      "source_paths": ["assets/kadoka.png", "assets/maru.png"],
+      "work_targets": ["assets/kadoka.png", "assets/maru.png", "characters.json", "godot/scripts/content_loader.gd"],
+      "verification": "元のmain blobを保持し、透過の可視範囲・同じ表示身長・横並びとnative_facingを実描画で確認する。今回画像の差し替えはしない。"
+    },
+    "pixel_scaling": {
+      "decision": "port",
+      "summary": "mainのnearest拡縮とREADMEの画像説明を保持する。workのPython Ghostはsmoothscale、Godot main.gdはLANCZOSであり、Godot移植済みとは判断しない。",
+      "source_paths": ["game.py", "README.md"],
+      "work_targets": ["game.py", "godot/scripts/main.gd", "godot/project.godot", "README.md", "godot/README.md"],
+      "verification": "新画像で縮小・回転・拡大・全画面を実描画確認し、root READMEの現行ランタイム/Python参照版/開発ツールを実際の構成に合わせる。"
+    }
+  },
+  "commits": {
+    "a88d3b6731b3817a44800dd5b25a42b701eb0760": ["context_policy"],
+    "ea7b7ca1295416c685e9c001c160bed3ffc1327a": ["context_policy"],
+    "c1de1e9c619294d0d73bc580eddeb5d39afdccd3": ["context_snapshot"],
+    "c6e828f3baf67c96aa685eb9975cfb6ee9b79bd4": ["context_snapshot"],
+    "dae3acedf2e99bcf36947bdebf034695763a24ec": ["context_policy"],
+    "48058510f5fb05433debd657de577c31de754fef": ["context_policy"],
+    "6d68b6a58bde3030f4d905ecda3135b0d2e62973": ["context_policy"],
+    "6268fd6e2daed60f9fc72e55892d083d1dae621d": ["merge_record"],
+    "6bfff0ad734b0f0e141b2a4caa6e7eddcd21972b": ["baseline_ci"],
+    "cef70c0ed9fd5f009120ba6737a9067bcb72b171": ["baseline_ci"],
+    "a40b5e8785070687077b3960c98b38ed0def3d6e": ["license_boundary"],
+    "46028477508880aa34f12b0d1e113da94eb0e7f7": ["license_boundary"],
+    "006202806959eff7ced1e9e364e4564d4ecd10db": ["python_quality"],
+    "935f7bdb0c75e55d60ddab4bc9f8245878748605": ["checker_policy"],
+    "85ee5bc40b16c9b9db185c67953988c39add8d4a": ["checker_policy"],
+    "a3e5c71a5fd7cdf00f555b94aa216aec88044db8": ["checker_policy"],
+    "c21acaf30ac26950a094f7882be4c079eeff5e55": ["engine_performance", "python_game_performance"],
+    "59bea41fac13bef540050d68b3b5855ae39593cd": ["engine_performance", "python_game_performance"],
+    "a99fbb9250174898467cbb821d4891ee8cd3443c": ["mypy_boundary"],
+    "2d6a8736a92873e1a31871405913e990029934c6": ["mypy_boundary"],
+    "0e198485806caaff50b92cf711ae764e25634255": ["mypy_boundary"],
+    "33ee8b3792602b8d618cdbbf4f076b49841a244d": ["shared_art"],
+    "43c02c76568ad4df9df7592bd85eab1742ef31ac": ["pixel_scaling"]
+  }
+}
