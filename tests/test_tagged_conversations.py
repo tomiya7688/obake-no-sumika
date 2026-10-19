@@ -1,6 +1,8 @@
+import io
 import os
 import sys
 import unittest
+from unittest import mock
 from pathlib import Path
 
 
@@ -89,6 +91,38 @@ class TaggedConversationTests(unittest.TestCase):
         self.assertEqual(kadoka.current_action, "flee")
         self.assertEqual(maru.current_action, "flee")
         self.assertLess(kadoka.click_target.x, maru.click_target.x)
+
+    def test_unhandled_event_ends_conversation_instead_of_waiting_forever(self):
+        objects = game.load_placed_objects()
+        kadoka, maru = self.make_ghosts(
+            objects, [{"type": "event", "event": "custom_event"}]
+        )
+        bounds = pygame.Rect(74, 80, 812, 446)
+        kadoka.sequence_steps = [{"type": "event", "event": "custom_event"}]
+        kadoka.sequence_index = 0
+        for ghost in (kadoka, maru):
+            ghost.current_action = "sequence_wait"
+        kadoka.run_next_conversation_step(maru, bounds)
+        self.assertNotEqual(kadoka.current_action, "sequence_wait")
+        self.assertNotEqual(maru.current_action, "sequence_wait")
+        self.assertEqual(kadoka.current_action, "talk_afterglow")
+        self.assertEqual(maru.current_action, "talk_afterglow")
+        self.assertEqual(kadoka.sequence_steps, [])
+
+    def test_deck_skips_conversations_with_unimplemented_events(self):
+        say = {"type": "say", "speaker": "kadoka", "text": "やあ"}
+        custom = ConversationDefinition(
+            1.0, (say, {"type": "event", "event": "custom_event"})
+        )
+        bath = ConversationDefinition(
+            1.0, (say, {"type": "event", "event": "water_bath"})
+        )
+        with mock.patch.object(
+            game.CONVERSATION_REPOSITORY, "load", return_value=(custom, bath)
+        ), mock.patch("sys.stderr", new_callable=io.StringIO) as stderr:
+            deck = game.load_conversation_deck()
+        self.assertEqual(deck, (bath,))
+        self.assertIn("custom_event", stderr.getvalue())
 
     def test_game_device_conversation_is_in_the_deck(self):
         deck = game.load_conversation_deck()

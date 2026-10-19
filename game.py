@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import math
 import random
+import sys
 from pathlib import Path
 
 import pygame
@@ -52,10 +53,33 @@ SPRING_REST_AREA = pygame.Rect(ROOM.water_rest_area)
 CONVERSATION_DISTANCE = ROOM.conversation_distance
 
 
+# events.json may define more IDs than this runtime can play. Only these have
+# handlers in Ghost.begin_scripted_event (mirrors godot EventCatalog.IMPLEMENTED).
+IMPLEMENTED_EVENTS = frozenset({"water_bath", "game_device"})
+
+
+def unimplemented_events(definition: ConversationDefinition) -> list[str]:
+    return [
+        str(step.get("event"))
+        for step in definition.steps
+        if step.get("type") == "event" and step.get("event") not in IMPLEMENTED_EVENTS
+    ]
+
+
 def load_conversation_deck() -> tuple[ConversationDefinition, ...]:
     """Load the shared deck, with a small safe fallback for broken data."""
-    deck = CONVERSATION_REPOSITORY.load()
+    deck = []
+    for definition in CONVERSATION_REPOSITORY.load():
+        missing = unimplemented_events(definition)
+        if missing:
+            print(
+                f"warning: skipping conversation with unimplemented event(s) {missing}",
+                file=sys.stderr,
+            )
+            continue
+        deck.append(definition)
     if deck:
+        return tuple(deck)
         return deck
     return (
         ConversationDefinition(
@@ -709,6 +733,17 @@ class Ghost:
             kadoka.talk_text = ""
             kadoka.velocity.update(0.0, 0.0)
             maru.velocity.update(0.0, 0.0)
+            return
+
+        # Events can be defined in events.json without a runtime handler. Never
+        # leave both ghosts parked in sequence_wait: report it and end the
+        # conversation through the normal afterglow so they resume behavior.
+        print(
+            f"warning: no runtime handler for event {event_name!r}; "
+            "ending the conversation",
+            file=sys.stderr,
+        )
+        self.finish_conversation_sequence(partner, bounds)
 
     def update_script(
         self,
