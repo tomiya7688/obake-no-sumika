@@ -35,6 +35,28 @@ class ConversationRepository:
                 definitions.append(definition)
         return tuple(definitions)
 
+    def load_problems(self) -> list[str]:
+        """List what the tolerant load() would silently drop (strict diagnosis)."""
+        try:
+            text = self.data_path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            return []
+        except OSError as exc:
+            return [f"読み込めません: {exc}"]
+        try:
+            raw = json.loads(text)
+        except ValueError as exc:
+            return [f"JSONとして読み込めません: {exc}"]
+        if not isinstance(raw, list):
+            return ["最上位が会話の配列ではありません"]
+        problems = []
+        for index, raw_item in enumerate(raw, 1):
+            try:
+                self._parse_entry(raw_item, strict=True)
+            except ValueError as exc:
+                problems.append(f"会話{index}: {exc}")
+        return problems
+
     def load_editable(self) -> list[dict[str, object]]:
         return [self._serialize(definition) for definition in self.load()]
 
