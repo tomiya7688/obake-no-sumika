@@ -62,6 +62,7 @@ class ConversationEditor:
         self.root.geometry("1180x680")
         self.root.minsize(960, 560)
         self.data = CONVERSATION_REPOSITORY.load_editable()
+        self.load_problems = CONVERSATION_REPOSITORY.load_problems()
         self.tags = PLACEMENT_REPOSITORY.tags()
         self.current_conversation: int | None = None
         self.current_step: int | None = None
@@ -77,6 +78,9 @@ class ConversationEditor:
         self.build_ui()
         self.refresh_conversations(0 if self.data else None)
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+        if self.load_problems:
+            self.status_var.set("読込エラーがあります。保存すると該当部分は破棄されます")
+            messagebox.showwarning("読込エラー", self.problem_text())
 
     def build_ui(self) -> None:
         outer = ttk.Frame(self.root, padding=12)
@@ -388,14 +392,28 @@ class ConversationEditor:
         self.show_conversation(self.current_conversation, destination)
         self.status_var.set("未保存の変更があります")
 
+    def problem_text(self) -> str:
+        shown = self.load_problems[:10]
+        more = len(self.load_problems) - len(shown)
+        lines = ["conversations.json に読み込めない部分があります:", *shown]
+        if more > 0:
+            lines.append(f"ほか{more}件")
+        return "\n".join(lines)
+
     def save(self) -> bool:
         self.commit_step()
+        if self.load_problems and not messagebox.askyesno(
+            "読込エラーを破棄して保存",
+            self.problem_text() + "\n\n保存するとこれらは失われます。破棄して保存しますか？",
+        ):
+            return False
         try:
             CONVERSATION_REPOSITORY.save_editable(self.data)
         except (OSError, ValueError) as exc:
             messagebox.showerror("保存できません", str(exc))
             return False
         self.data = CONVERSATION_REPOSITORY.load_editable()
+        self.load_problems = []
         self.refresh_conversations(self.current_conversation)
         self.status_var.set("保存しました。次回ゲーム起動時から反映されます")
         return True

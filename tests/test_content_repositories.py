@@ -62,6 +62,42 @@ class ContentRepositoryTests(unittest.TestCase):
             self.assertEqual(saved[0]["steps"][0]["text"], "しずか だね")
             self.assertEqual(saved[0]["weight"], 1)
 
+    def make_conversation_repository(self, path):
+        return ConversationRepository(
+            path, ("kadoka", "maru"), ("kadoka", "maru", "both"),
+            ("water_bath", "game_device"),
+        )
+
+    def test_load_problems_reports_what_tolerant_load_drops(self):
+        good = {"weight": 1, "steps": [{"type": "say", "speaker": "kadoka", "text": "やあ"}]}
+        bad_step = {"steps": [{"type": "say", "speaker": "nobody", "text": "x"}]}
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "conversations.json"
+            path.write_text(json.dumps([good, bad_step, "oops"]), encoding="utf-8")
+            repository = self.make_conversation_repository(path)
+            self.assertEqual(len(repository.load_editable()), 1)
+            problems = repository.load_problems()
+            self.assertEqual(len(problems), 2)
+            self.assertIn("会話2", problems[0])
+            self.assertIn("会話3", problems[1])
+
+    def test_load_problems_reports_broken_file_and_accepts_clean_or_missing(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "conversations.json"
+            repository = self.make_conversation_repository(path)
+            self.assertEqual(repository.load_problems(), [])
+            path.write_text("{not json", encoding="utf-8")
+            self.assertEqual(repository.load_editable(), [])
+            self.assertEqual(len(repository.load_problems()), 1)
+            path.write_text(json.dumps({"a": 1}), encoding="utf-8")
+            self.assertEqual(len(repository.load_problems()), 1)
+        self.assertEqual(
+            self.make_conversation_repository(
+                PROJECT_DIR / "conversations.json"
+            ).load_problems(),
+            [],
+        )
+
     def test_current_placements_are_valid_and_tags_are_unique(self):
         repository = PlacementRepository(
             PROJECT_DIR,
