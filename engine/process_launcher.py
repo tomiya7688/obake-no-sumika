@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from concurrent.futures import Future
 import os
-from pathlib import Path
 import subprocess
 import sys
 import tempfile
+from concurrent.futures import Future
+from dataclasses import dataclass
+from pathlib import Path
 
-from .project_manifest import ProjectManifest
 from .godot_runner import GodotInvocation, prepare_godot_invocation, prepare_godot_invocation_async
+from .project_manifest import ProjectManifest
 
 
 @dataclass(frozen=True)

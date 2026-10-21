@@ -1,17 +1,27 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
+from tools.context.script import snapshot
 from tools.context.script.snapshot import collect_snapshot, diff_metadata
+from tools.diff_summary.script import summarize
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "tools/context/script/snapshot.py"
+
+
+class ContextSnapshotBindingTests(unittest.TestCase):
+    def test_wrapper_keeps_imported_callable_and_disables_optional_locks(self) -> None:
+        self.assertIs(snapshot.run_git, summarize.git)
+        with patch("tools.context.script.snapshot.run_git", return_value=b"ok") as run:
+            self.assertEqual(snapshot.git(ROOT, "status", "--porcelain"), b"ok")
+        run.assert_called_once_with(ROOT, "--no-optional-locks", "status", "--porcelain")
 
 
 class ContextSnapshotTests(unittest.TestCase):

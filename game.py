@@ -21,7 +21,6 @@ from engine.room_definition import RoomDefinition
 from engine.room_renderer import RoomRenderer
 from engine.room_repository import RoomRepository
 
-
 VERSION = "0.2.0"
 TAU = math.tau
 PROJECT_DIR = Path(__file__).resolve().parent

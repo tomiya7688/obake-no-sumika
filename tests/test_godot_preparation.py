@@ -1,13 +1,13 @@
 """Background preparation, cancellation and explicit launch without GUI widgets."""
 
-from concurrent.futures import CancelledError
-from dataclasses import replace
 import os
-from pathlib import Path
 import sys
 import tempfile
-from threading import Event, get_ident
 import unittest
+from concurrent.futures import CancelledError
+from dataclasses import replace
+from pathlib import Path
+from threading import Event, get_ident
 from unittest.mock import Mock, patch
 
 if __name__ == "__main__" and not __package__:

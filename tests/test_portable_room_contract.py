@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import copy
 import json
-from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 if __name__ == "__main__" and not __package__:
@@ -16,7 +16,6 @@ if __name__ == "__main__" and not __package__:
 
 from engine.room_repository import RoomRepository
 from tests.godot_support import find_test_godot
-
 
 GODOT = find_test_godot()
 CASES_PATH = ROOT / "spec/map/room_geometry_cases.json"

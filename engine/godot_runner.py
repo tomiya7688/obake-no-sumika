@@ -2,19 +2,18 @@
 
 from __future__ import annotations
 
-import os
 import copy
-from concurrent.futures import Future
-from dataclasses import dataclass
-from pathlib import Path
+import os
 import re
 import shutil
 import subprocess
+from concurrent.futures import Future
+from dataclasses import dataclass
+from pathlib import Path
 from threading import Thread
 
 from .manifest_loader import load_project_manifest
 from .project_manifest import ProjectManifest
-
 
 RUNTIME_ROOT = Path(__file__).resolve().parents[1] / "godot"
 

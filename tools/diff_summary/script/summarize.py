@@ -4,16 +4,15 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 import re
 import subprocess
 import sys
+from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from tools.context.script.select_files import load_mapping, select_files
-
 
 DEFINITION = re.compile(r"^[+-]\s*((?:async\s+)?def\s+\w+|class\s+\w+)")
 

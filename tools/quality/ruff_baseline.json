@@ -4,300 +4,6 @@
   "tracking_issue": 86,
   "diagnostics": [
     {
-      "path": "character_editor.py",
-      "code": "I001",
-      "row": 3,
-      "column": 1
-    },
-    {
-      "path": "conversation_editor.py",
-      "code": "I001",
-      "row": 3,
-      "column": 1
-    },
-    {
-      "path": "engine/godot_runner.py",
-      "code": "I001",
-      "row": 3,
-      "column": 1
-    },
-    {
-      "path": "engine/process_launcher.py",
-      "code": "I001",
-      "row": 1,
-      "column": 1
-    },
-    {
-      "path": "engine/project_creator.py",
-      "code": "I001",
-      "row": 1,
-      "column": 1
-    },
-    {
-      "path": "engine/room_definition.py",
-      "code": "I001",
-      "row": 1,
-      "column": 1
-    },
-    {
-      "path": "engine_app.py",
-      "code": "I001",
-      "row": 1,
-      "column": 1
-    },
-    {
-      "path": "game.py",
-      "code": "I001",
-      "row": 3,
-      "column": 1
-    },
-    {
-      "path": "object_editor.py",
-      "code": "I001",
-      "row": 3,
-      "column": 1
-    },
-    {
-      "path": "projects/obakeno_sumika_special/game.py",
-      "code": "I001",
-      "row": 1,
-      "column": 1
-    },
-    {
-      "path": "scripts/evaluate_project.py",
-      "code": "I001",
-      "row": 1,
-      "column": 1
-    },
-    {
-      "path": "tests/test_character_context.py",
-      "code": "I001",
-      "row": 1,
-      "column": 1
-    },
-    {
-      "path": "tests/test_character_repository.py",
-      "code": "I001",
-      "row": 1,
-      "column": 1
-    },
-    {
-      "path": "tests/test_content_repositories.py",
-      "code": "I001",
-      "row": 1,
-      "column": 1
-    },
-    {
-      "path": "tests/test_context_policy.py",
-      "code": "I001",
-      "row": 3,
-      "column": 1
-    },
-    {
-      "path": "tests/test_context_selection.py",
-      "code": "I001",
-      "row": 1,
-      "column": 1
-    },
-    {
-      "path": "tests/test_context_snapshot.py",
-      "code": "I001",
-      "row": 1,
-      "column": 1
-    },
-    {
-      "path": "tests/test_diff_summary.py",
-      "code": "I001",
-      "row": 1,
-      "column": 1
-    },
-    {
-      "path": "tests/test_engine_manifest.py",
-      "code": "I001",
-      "row": 1,
-      "column": 1
-    },
-    {
-      "path": "tests/test_engine_manifest.py",
-      "code": "I001",
-      "row": 15,
-      "column": 1
-    },
-    {
-      "path": "tests/test_evaluate_project.py",
-      "code": "I001",
-      "row": 1,
-      "column": 1
-    },
-    {
-      "path": "tests/test_godot_preparation.py",
-      "code": "I001",
-      "row": 3,
-      "column": 1
-    },
-    {
-      "path": "tests/test_godot_process_launcher.py",
-      "code": "I001",
-      "row": 3,
-      "column": 1
-    },
-    {
-      "path": "tests/test_godot_runner.py",
-      "code": "I001",
-      "row": 3,
-      "column": 1
-    },
-    {
-      "path": "tests/test_godot_runtime.py",
-      "code": "I001",
-      "row": 3,
-      "column": 1
-    },
-    {
-      "path": "tests/test_godot_runtime.py",
-      "code": "I001",
-      "row": 18,
-      "column": 1
-    },
-    {
-      "path": "tests/test_godot_support.py",
-      "code": "I001",
-      "row": 3,
-      "column": 1
-    },
-    {
-      "path": "tests/test_godot_support.py",
-      "code": "I001",
-      "row": 19,
-      "column": 1
-    },
-    {
-      "path": "tests/test_integration_inventory.py",
-      "code": "I001",
-      "row": 1,
-      "column": 1
-    },
-    {
-      "path": "tests/test_integration_inventory.py",
-      "code": "I001",
-      "row": 15,
-      "column": 1
-    },
-    {
-      "path": "tests/test_main_window.py",
-      "code": "I001",
-      "row": 1,
-      "column": 1
-    },
-    {
-      "path": "tests/test_object_editor_tools.py",
-      "code": "I001",
-      "row": 1,
-      "column": 1
-    },
-    {
-      "path": "tests/test_portable_character_contract.py",
-      "code": "I001",
-      "row": 3,
-      "column": 1
-    },
-    {
-      "path": "tests/test_portable_character_contract.py",
-      "code": "I001",
-      "row": 17,
-      "column": 1
-    },
-    {
-      "path": "tests/test_portable_palette_contract.py",
-      "code": "I001",
-      "row": 3,
-      "column": 1
-    },
-    {
-      "path": "tests/test_portable_palette_contract.py",
-      "code": "I001",
-      "row": 17,
-      "column": 1
-    },
-    {
-      "path": "tests/test_portable_polygon_contract.py",
-      "code": "I001",
-      "row": 3,
-      "column": 1
-    },
-    {
-      "path": "tests/test_portable_project_contract.py",
-      "code": "I001",
-      "row": 3,
-      "column": 1
-    },
-    {
-      "path": "tests/test_portable_project_contract.py",
-      "code": "I001",
-      "row": 19,
-      "column": 1
-    },
-    {
-      "path": "tests/test_portable_room_contract.py",
-      "code": "I001",
-      "row": 3,
-      "column": 1
-    },
-    {
-      "path": "tests/test_portable_room_contract.py",
-      "code": "I001",
-      "row": 17,
-      "column": 1
-    },
-    {
-      "path": "tests/test_process_launcher.py",
-      "code": "I001",
-      "row": 1,
-      "column": 1
-    },
-    {
-      "path": "tests/test_project_creator.py",
-      "code": "I001",
-      "row": 1,
-      "column": 1
-    },
-    {
-      "path": "tests/test_repo_sync.py",
-      "code": "I001",
-      "row": 1,
-      "column": 1
-    },
-    {
-      "path": "tests/test_room_repository.py",
-      "code": "I001",
-      "row": 1,
-      "column": 1
-    },
-    {
-      "path": "tests/test_special_project_isolation.py",
-      "code": "I001",
-      "row": 1,
-      "column": 1
-    },
-    {
-      "path": "tests/test_special_project_isolation.py",
-      "code": "I001",
-      "row": 10,
-      "column": 1
-    },
-    {
-      "path": "tests/test_tagged_conversations.py",
-      "code": "I001",
-      "row": 1,
-      "column": 1
-    },
-    {
-      "path": "tools/context/script/audit.py",
-      "code": "I001",
-      "row": 3,
-      "column": 1
-    },
-    {
       "path": "tools/context/script/audit.py",
       "code": "E402",
       "row": 15,
@@ -305,19 +11,7 @@
     },
     {
       "path": "tools/context/script/character_info.py",
-      "code": "I001",
-      "row": 3,
-      "column": 1
-    },
-    {
-      "path": "tools/context/script/character_info.py",
       "code": "E402",
-      "row": 13,
-      "column": 1
-    },
-    {
-      "path": "tools/context/script/character_info.py",
-      "code": "I001",
       "row": 13,
       "column": 1
     },
@@ -334,51 +28,15 @@
       "column": 1
     },
     {
-      "path": "tools/context/script/select_files.py",
-      "code": "I001",
-      "row": 3,
-      "column": 1
-    },
-    {
-      "path": "tools/context/script/snapshot.py",
-      "code": "I001",
-      "row": 3,
-      "column": 1
-    },
-    {
       "path": "tools/context/script/snapshot.py",
       "code": "E402",
       "row": 13,
       "column": 1
     },
     {
-      "path": "tools/context/script/snapshot.py",
-      "code": "I001",
-      "row": 13,
-      "column": 1
-    },
-    {
-      "path": "tools/diff_summary/script/summarize.py",
-      "code": "I001",
-      "row": 3,
-      "column": 1
-    },
-    {
       "path": "tools/diff_summary/script/summarize.py",
       "code": "E402",
       "row": 15,
-      "column": 1
-    },
-    {
-      "path": "tools/diff_summary/script/summarize.py",
-      "code": "I001",
-      "row": 15,
-      "column": 1
-    },
-    {
-      "path": "tools/repo_sync/script/inventory.py",
-      "code": "I001",
-      "row": 3,
       "column": 1
     },
     {
@@ -389,20 +47,8 @@
     },
     {
       "path": "tools/repo_sync/script/report.py",
-      "code": "I001",
-      "row": 3,
-      "column": 1
-    },
-    {
-      "path": "tools/repo_sync/script/report.py",
       "code": "E402",
-      "row": 15,
-      "column": 1
-    },
-    {
-      "path": "tools/repo_sync/script/report.py",
-      "code": "I001",
-      "row": 15,
+      "row": 14,
       "column": 1
     }
   ]

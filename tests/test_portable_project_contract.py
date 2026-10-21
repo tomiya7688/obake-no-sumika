@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import json
 import os
-from pathlib import Path
 import stat
 import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 if __name__ == "__main__" and not __package__:
@@ -18,7 +18,6 @@ if __name__ == "__main__" and not __package__:
 
 from engine.manifest_loader import load_project_manifest
 from tests.godot_support import find_test_godot
-
 
 CASES_PATH = ROOT / "spec" / "engine" / "project_manifest_cases.json"
 GODOT = find_test_godot()

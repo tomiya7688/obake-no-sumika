@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 import runpy
 import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import call, patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,7 +18,6 @@ if __name__ == "__main__" and not __package__:
 
 from engine import godot_runner
 from tests.godot_support import find_test_godot
-
 
 CONSUMERS = (
     ("tests/test_godot_runtime.py", "GodotRuntimeTests"),

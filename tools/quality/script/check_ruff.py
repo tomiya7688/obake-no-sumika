@@ -10,7 +10,7 @@ import sys
 from pathlib import Path, PurePosixPath
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-BASELINE_CODES = {"I001", "E402"}
+BASELINE_CODES = {"E402"}
 Signature = tuple[str, str, int, int]
 
 
@@ -51,7 +51,7 @@ def records_to_set(records: object, *, baseline: bool = False) -> set[Signature]
     for record in records:
         item = signature(record)
         if baseline and item[1] not in BASELINE_CODES:
-            raise ValueError("only existing I001/E402 diagnostics may be baselined")
+            raise ValueError("only existing E402 diagnostics may be baselined")
         if item in result:
             raise ValueError("duplicate diagnostic")
         result.add(item)

@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 
 from tools.context.script.audit import audit_mapping
 from tools.context.script.select_files import load_mapping, normalize_path, select_files
-
 
 ROOT = Path(__file__).resolve().parents[1]
 

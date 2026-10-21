@@ -3,22 +3,21 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 if __name__ == "__main__" and not __package__:
     # Direct file execution starts in tests/, not at the repository root.
     sys.path.insert(0, str(ROOT))
 
-from tests.godot_support import find_test_godot
 from engine.manifest_loader import load_project_manifest
 from engine.process_launcher import ProcessLauncher
-
+from tests.godot_support import find_test_godot
 
 GODOT = find_test_godot()
 

@@ -13,7 +13,6 @@ from engine.pixel_object_repository import PixelObjectRepository
 from engine.placement_repository import PlacementRepository, normalize_tag
 from engine.room_repository import RoomRepository
 
-
 PROJECT_DIR = Path(__file__).resolve().parent
 OBJECT_DIR = PROJECT_DIR / "objects"
 PLACEMENTS_PATH = PROJECT_DIR / "placed_objects.json"

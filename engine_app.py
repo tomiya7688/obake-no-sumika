@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 import sys
+from pathlib import Path
 
 from engine.manifest_loader import load_project_manifest
-
 
 DEFAULT_MANIFEST = Path(__file__).resolve().parent / "engine_project.json"
 

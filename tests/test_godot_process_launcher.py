@@ -1,12 +1,12 @@
 """Godot launch preparation and persistent diagnostics without GUI widgets."""
 
-from dataclasses import replace
 import os
-from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from dataclasses import replace
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 if __name__ == "__main__" and not __package__:
