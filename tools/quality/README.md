@@ -1,6 +1,6 @@
 # Python品質ゲート（段階的移植）
 
-Issue #86の最初の単位はRuff **lint**。format・Mypy・UPD・性能ゲートは未移植で、この成功だけでmain側の品質CI全体を再現したとは扱わない。
+Issue #86のRuff **lint** は違反0必須まで適応済み。format・Mypy・UPD・性能ゲートは未移植で、この成功だけでmain側の品質CI全体を再現したとは扱わない。
 
 ## 準備と実行
 
@@ -20,26 +20,22 @@ Issue #86の最初の単位はRuff **lint**。format・Mypy・UPD・性能ゲー
 
 | 終了コード | 意味 |
 | --- | --- |
-| 0 | 診断集合が既存baselineと完全一致 |
-| 1 | 新規診断、または修正済みで不要になったstale記録がある |
-| 2 | Ruff未導入・起動失敗・timeout・設定/出力/baseline不正 |
+| 0 | 選択ルールの診断0、baselineも空 |
+| 1 | Ruffの診断がある |
+| 2 | Ruff未導入・起動失敗・timeout・設定/出力/baseline不正（空でない場合も含む） |
 
-## 一時baselineの縮小
+## 一時baselineの解消と維持
 
-導入時のRuff 0.17.1では67件（import順序I001: 59、import位置E402: 8）。`ruff_baseline.json` は既存の **path/code/row/column** を限定列挙し、総数だけでの相殺を許さない。生の `ruff check` は既存違反でも非0になるため、CIの合否は上記runnerで判定する。通過はlint違反0の意味ではない。
+導入時のRuff 0.17.1では67件（import順序I001: 59、import位置E402: 8）。PR #95で8件へ減らし、CLI入口の整理で現在は0件。`ruff_baseline.json` は互換性・経緯のため空のまま保持し、どのカテゴリの診断追加もパーサーで拒否する。件数やルールを緩めて通さない。
 
-import順序59件を整理し、現在のbaselineはE402の8件のみ。I001の記録はパーサーで拒否し、元へ戻さない。`snapshot.py` はimportしたgitを既存の `run_git` に退避してからラッパーを定義し、別名import分割によるE402の増加を避ける。実装のimport整理と設定変更、全体formatは区別する。
+context/diff_summary/repo_syncの6入口は、ローカルimportの前に `__file__` から解決したパスを `sys.path.insert` へ渡し、公開 `PROJECT_ROOT` 定数はimport後に定義する。呼び出し元cwdやPYTHONPATHへ依存しない直接起動と定数の値を、`-I` の隔離実行でテストする。この配置は[Ruff E402の公式仕様](https://docs.astral.sh/ruff/rules/module-import-not-at-top-of-file/)が認めるsys.path準備を利用し、ignore/noqaは追加しない。importだけをパス準備より前へ動かして起動を壊す修正はしない。
 
-- 新規コードはbaselineへ追加しない。E402以外は記録自体を拒否する。
-- 既存違反を直したら、そのstale記録も同じ変更で削除する。古い記録を残して通さない。
-- 行位置が変わるだけでもnew/staleになる。移動を確認し、実際の悪化がないことをレビューして必要最小限の位置更新を行う。位置の一致は意味的同等性の証明ではない。
-- 一括再生成・件数上限の引上げ・ルール無効化で通さない。段階的に0へ減らす。
-- E402には既存ツールの `sys.path` 準備後のimportが含まれる。lintのためだけに前へ移して起動を壊さず、起動契約も検証する。
+新規違反はコード側で直す。既存の上限付きJSON形式と `baseline_size` / `stale_count` は維持するが、正常時の値は0。baselineを一括再生成して失敗を隠す運用は認めない。`snapshot.py` の `run_git` 別名とラッパーも維持する。
 
-設定はmain由来のE4/E7/E9/F/Iとテストの既存E402例外を保持する。import整理はI001のみに限定し、旧ソース全体のformatはしない。baselineの増加、チェッカー版変更、新しい例外はPRで明示する。
+設定はmain由来のE4/E7/E9/F/Iとテストの既存E402例外を保持する。ここでの0件はこの選択ルールに対する値であり、全ルール・format・型検査の成功ではない。旧ソース全体のformatは別単位。チェッカー版変更、新しい例外の提案は根拠をPRで明示する。
 
 ## Work CI
 
-`Ruff lint baseline (Python 3.10)` と既存の `Work validation (Python 3.10 / Godot 4.7.2)` は独立した必須確認。片方の成功で他方の失敗・未完を相殺しない。全体単体テストにもRuff実CLIテストがあるため、validation側も品質依存を導入する。CIへの接続の原典は[Ruff integrations](https://docs.astral.sh/ruff/integrations/)。ブランチ保護設定は変更しない。
+`Ruff lint baseline (Python 3.10)` と既存の `Work validation (Python 3.10 / Godot 4.7.2)` は独立した必須確認。baselineは空になったが、required statusとの互換性のためチェック名は変えない。片方の成功で他方の失敗・未完を相殺しない。全体単体テストにもRuff実CLIテストがあるため、validation側も品質依存を導入する。CIへの接続の原典は[Ruff integrations](https://docs.astral.sh/ruff/integrations/)。ブランチ保護設定は変更しない。
 
 全体評価とGodotの手順は[開発ワークフロー](../../docs/ワークフロー/ワークフロー.md)。この変更はゲーム挙動・描画・実GUIの検証を代替しない。

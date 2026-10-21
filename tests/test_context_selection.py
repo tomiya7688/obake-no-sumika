@@ -68,6 +68,14 @@ class ContextSelectionTests(unittest.TestCase):
         self.assertNotIn("game.py", result["related_files"])
         self.assertEqual(result["unmapped_files"], [])
 
+    def test_bootstrap_change_selects_isolated_entrypoint_checks(self) -> None:
+        result = select_files(["tools/context/script/snapshot.py", "tests/test_tool_bootstrap.py"], self.rules)
+        self.assertEqual(result["contexts"], ["docs/context/project.md", "docs/context/developer_tools.md"])
+        self.assertIn("tests/test_tool_bootstrap.py", result["tests"])
+        self.assertIn("tools/quality/README.md", result["related_files"])
+        self.assertNotIn("game.py", result["related_files"])
+        self.assertEqual(result["unmapped_files"], [])
+
     def test_engine_repository_selects_engine_and_game_contexts(self) -> None:
         result = select_files(["engine\\room_repository.py"], self.rules)
         self.assertEqual(result["changed_files"], ["engine/room_repository.py"])

@@ -8,10 +8,12 @@ import re
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(PROJECT_ROOT))
+# Resolve from this file, not the caller's working directory, before local imports.
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from tools.diff_summary.script.summarize import git, resolve_commit, text
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 DEFAULT_PLAN = PROJECT_ROOT / "tools/repo_sync/main_work_inventory.json"
 COMMIT = re.compile(r"[0-9a-f]{40}")

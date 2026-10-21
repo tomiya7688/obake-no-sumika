@@ -27,7 +27,7 @@ shallow cloneや追跡refがない環境では必要な履歴を別途取得す�
 | PR #23のmerge記録 | replaced | 構成7コミットを別途分類済み。追加パッチとして重ねず、統合候補で履歴は保持 |
 | 初期CIとrunner.temp参照修正 | replaced | 2コミットの基本評価目的はPR #87で対応。後続の品質・型・性能ゲート全体を置換したわけではない |
 | ライセンス境界とMIT本文 | port | mainとworkの現行文言の違いを残して所有者確認。今回ライセンス変更はしない |
-| Ruff lint/formatとUPD | port | lint設定と位置限定baselineゲートを適応。format・UPDは未移植。整形差分は新しいworkソースへ再適用し、古い全ファイルで上書きしない |
+| Ruff lint/formatとUPD | port | lint設定と違反0必須ゲートを適応。一時baselineは空になり診断追加も拒否。format・UPDは未移植。古い全ファイルで上書きしない |
 | 品質チェッカーのlatest-first方針 | port | Ruffのみ最新版導入と版の報告を適応。他のチェッカー/POLICY全体は未移植。GodotやActionの固定とは別の対象として扱う |
 | Python共有エンジンの絶対性能・base/head回帰 | port | 編集ツールにも残るPythonエンジンを同じrunner条件で再計測して適応 |
 | game.pyの性能計測・閾値 | reference_only | 同じ2コミット内でもPythonゲームの計測は参照版レーン。Godotの測定結果に読み替えない |
@@ -49,9 +49,9 @@ mainの第二索引 `AI_CONTEXT.md` / `docs/context-routing.md` は追加しな�
 
 ### workへの個別適応: Ruff lint
 
-main由来の `ruff.toml` とlintゲートを適応する。導入時67件の既存import診断（I001: 59 / E402: 8）はpath/code/row/columnで限定し、新規・stale記録の両方を拒否する。実行失敗や設定不正は成功扱いしない。これは違反0ではなく一時baselineであり、修正ごとに縮小する。最新版を導入して実行版を表示する方針はRuffのみ先行し、format・Mypy・UPD・性能およびPOLICY全体は未移植。詳細は [品質ゲート](../../tools/quality/README.md)。元コミットの履歴統合、main反映、保護設定変更は行わない。
+main由来の `ruff.toml` とlintゲートを適応した。導入時67件の既存import診断（I001: 59 / E402: 8）から段階的に0件へ削減し、空baselineへの診断追加も拒否する。実行失敗や設定不正は成功扱いしない。最新版を導入して実行版を表示する方針はRuffのみ先行し、format・Mypy・UPD・性能およびPOLICY全体は未移植。詳細は [品質ゲート](../../tools/quality/README.md)。元コミットの履歴統合、main反映、保護設定変更は行わない。
 
-import順序I001の59件を整理してbaselineを8件のE402へ削減した。I001をbaselineへ戻す入力も拒否し、残件は修正に応じて0へ減らせる。起動前のsys.path準備は動かさず、formatゲートやツールの起動方式変更は別単位とする。
+PR #95でI001の59件を整理し、残るE402の8件は6 CLI入口のパス準備と定数配置の整理で解消した。パスはimport前にファイル基準で準備し、cwd/PYTHONPATHに依存しない直接起動と公開定数を隔離プロセスで検証する。CIチェック名は互換性のため維持。formatゲートやパッケージ化は別単位とする。
 
 ## 段階的な統合順序
 
