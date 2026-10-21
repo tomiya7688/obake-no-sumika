@@ -44,17 +44,17 @@
     },
     "python_quality": {
       "decision": "port",
-      "summary": "Ruff lint/format・UPDの必須ゲートと設定を保持する。0062028のPython差分はAST比較でtests/test_engine_manifest.pyのimport整理以外が一致したが、workの新規APIを古いファイル全体で上書きしない。",
+      "summary": "Ruff lint設定と新規/staleを拒否する位置限定の一時baselineをworkへ適応。format・UPDは未移植。0062028のPython差分はAST比較でtests/test_engine_manifest.pyのimport整理以外が一致したが、workの新規APIを古いファイル全体で上書きしない。",
       "source_paths": [".github/workflows/ci.yml", "ruff.toml", "tools/quality/requirements.txt", "tests/test_engine_manifest.py"],
-      "work_targets": [".github/workflows/work-ci.yml", "ruff.toml", "engine", "tests", "godot"],
-      "verification": "段階的に再format/検証し、共有契約とGodot必須CIを保持。Python用チェッカー成功をGDScript検証済みとは扱わない。"
+      "work_targets": [".github/workflows/work-ci.yml", "ruff.toml", "tools/quality/script/check_ruff.py", "tools/quality/ruff_baseline.json", "tools/quality/README.md", "engine", "tests", "godot"],
+      "verification": "lintは既存I001/E402のみ限定列挙し、新規/stale・設定/実行失敗を検出する。format/UPDは後続で検証し、共有契約とGodot必須CIを保持。Python用チェッカー成功をGDScript検証済みとは扱わない。"
     },
     "checker_policy": {
       "decision": "port",
-      "summary": "mainのlatest-first方針と品質チェッカー更新運用を残す。ActionやGodot本体の固定と、Python品質チェッカーの更新方針を混同しない。",
+      "summary": "Ruffのみlatest-first導入と実行版の報告をworkへ適応。他の品質チェッカーとPOLICY全体は未移植。ActionやGodot本体の固定と、Python品質チェッカーの更新方針を混同しない。",
       "source_paths": ["tools/quality/POLICY.md", "tools/quality/requirements.txt", ".github/workflows/ci.yml"],
-      "work_targets": ["tools/quality/POLICY.md", "tools/quality/requirements.txt", ".github/workflows/work-ci.yml"],
-      "verification": "現行依存関係と互換性を再確認してCIで実行。通すためだけの上限緩和はしない。"
+      "work_targets": ["tools/quality/README.md", "tools/quality/requirements.txt", ".github/workflows/work-ci.yml"],
+      "verification": "Ruff実CLIとCIで版・互換性・失敗時の停止を確認。他のチェッカーは後続で確認し、通すためだけの上限緩和はしない。"
     },
     "engine_performance": {
       "decision": "port",
