@@ -13,6 +13,7 @@
 | `scripts/evaluate_project.py`, `.github/workflows/work-ci.yml` | ローカル/PR共通の構文・単体・通常版/special検証、Godot必須モード、JSON非破壊確認 | `tests/test_evaluate_project.py` |
 | `tools/context/responsibilities.json`, `tools/context/script/select_files.py` | 変更ファイルから読む文書・関連ファイル・テストを選択 | `tests/test_context_selection.py` |
 | `tools/context/script/snapshot.py` | 未stage/stage済み・未追跡・履歴を本文なし・上限付きで照会 | `tests/test_context_snapshot.py` |
+| `AGENTS.md`, `docs/context/project.md`, `docs/ai-development-contract.md` | 短い入口、探索停止条件、必要時だけ読む詳細契約 | `tests/test_context_policy.py` |
 | `tools/diff_summary/`, `tools/repo_sync/` | コミット差分の圧縮とリモート進捗の確認 | `tests/test_diff_summary.py`, `tests/test_repo_sync.py` |
 | `tools/repo_sync/script/inventory.py`, `tools/repo_sync/main_work_inventory.json` | main/work固有コミットの分類と比較範囲の変化を読み取り専用で確認 | `tests/test_integration_inventory.py` |
 | `docs/context/cli_commands.md`, `engine_app.py --describe` | GUI不要の構成照会と主要コマンドの案内 | `tests/test_engine_manifest.py` |

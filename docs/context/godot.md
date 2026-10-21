@@ -1,5 +1,7 @@
 # Godot / GDScriptのコンテキスト
 
+同身長・独立乱数・前向き移動・会話整列など、ゲームとして維持する不変条件は [開発契約](../ai-development-contract.md) の Project contract を参照する。Python実装全体を読む必要はない。
+
 移行中のソース実装は `godot/`。個別移動、通常会話、タグ付きmove/take/put、水浴び・ゲーム機イベント、名前ホバー、床の影、背景の周辺減光、環境粒子まで対応。共通のJSON/PNGを読み、Pythonを実行しない。Godot以外のゲーム実装全体は通常読まない。仕様・未移植範囲は [機能説明書](../GDScript移行機能説明書.md)、起動は [README](../../godot/README.md)。Issue #54。
 
 | 変更領域 | 読むファイル | 検証 |
