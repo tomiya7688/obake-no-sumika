@@ -11,6 +11,7 @@
 | `engine/process_launcher.py` | 非同期のゲーム・エディター起動、終了コードとUTF-8ログの取得 | `tests/test_process_launcher.py`, `tests/test_main_window.py` |
 | `run_*.bat` | Windows起動入口、必要時の環境構築 | 起動対象の実行確認 |
 | `scripts/evaluate_project.py`, `.github/workflows/work-ci.yml` | ローカル/PR共通の構文・単体・通常版/special検証、Godot必須モード、JSON非破壊確認 | `tests/test_evaluate_project.py` |
+| `ruff.toml`, `tools/quality/` | 必須Ruff lint、位置限定の一時baseline、新規/stale診断の検出 | `tests/test_ruff_baseline.py` |
 | `tools/context/responsibilities.json`, `tools/context/script/select_files.py` | 変更ファイルから読む文書・関連ファイル・テストを選択 | `tests/test_context_selection.py` |
 | `tools/context/script/snapshot.py` | 未stage/stage済み・未追跡・履歴を本文なし・上限付きで照会 | `tests/test_context_snapshot.py` |
 | `AGENTS.md`, `docs/context/project.md`, `docs/ai-development-contract.md` | 短い入口、探索停止条件、必要時だけ読む詳細契約 | `tests/test_context_policy.py` |
@@ -19,6 +20,8 @@
 | `docs/context/cli_commands.md`, `engine_app.py --describe` | GUI不要の構成照会と主要コマンドの案内 | `tests/test_engine_manifest.py` |
 
 プロジェクト内の `.venv` を使う。venvの参照先が移動した場合は `.\.venv\Scripts\python.exe --version` と `.\.venv\pyvenv.cfg` を確認する。GUIの見た目や操作を変えた場合は、単体テストに加えて実画面で確認する。
+
+品質依存は `python -m pip install --upgrade -r tools/quality/requirements.txt` で導入する。全体単体テストにもRuff実CLIテストがあるため必須。`tools/quality/script/check_ruff.py` が新規違反と修正後に残ったbaselineを拒否する。通過は既存違反0ではなく、format/型/性能ゲートは未移植。縮小手順は [tools/quality/README.md](../../tools/quality/README.md)。
 
 GodotのCLI起動は `engine/godot_runner.py` と [godot.md](godot.md) の範囲。`--playtest-godot` は終了まで待って終了コードを返し、Tk・Pythonゲームを起動しない。既存GUIの「ゲームを実行」は引き続きPython版。
 

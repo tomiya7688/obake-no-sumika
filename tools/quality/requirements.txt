@@ -1,0 +1,2 @@
+# First migration slice: mandatory Ruff lint; other main quality gates remain in Issue #86.
+ruff

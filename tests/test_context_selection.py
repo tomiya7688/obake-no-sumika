@@ -49,7 +49,15 @@ class ContextSelectionTests(unittest.TestCase):
         result = select_files([".github/workflows/work-ci.yml"], self.rules)
         self.assertEqual(result["contexts"], ["docs/context/project.md", "docs/context/developer_tools.md"])
         self.assertIn("scripts/evaluate_project.py", result["related_files"])
-        self.assertEqual(result["tests"], ["tests/test_evaluate_project.py"])
+        self.assertEqual(result["tests"], ["tests/test_evaluate_project.py", "tests/test_ruff_baseline.py"])
+        self.assertNotIn("game.py", result["related_files"])
+        self.assertEqual(result["unmapped_files"], [])
+
+    def test_quality_change_selects_its_gate_without_game_implementation(self) -> None:
+        result = select_files(["ruff.toml", "tools/quality/script/check_ruff.py"], self.rules)
+        self.assertEqual(result["contexts"], ["docs/context/project.md", "docs/context/developer_tools.md"])
+        self.assertEqual(result["tests"], ["tests/test_ruff_baseline.py"])
+        self.assertIn("tools/quality/README.md", result["related_files"])
         self.assertNotIn("game.py", result["related_files"])
         self.assertEqual(result["unmapped_files"], [])
 

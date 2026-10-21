@@ -27,8 +27,8 @@ shallow cloneや追跡refがない環境では必要な履歴を別途取得す�
 | PR #23のmerge記録 | replaced | 構成7コミットを別途分類済み。追加パッチとして重ねず、統合候補で履歴は保持 |
 | 初期CIとrunner.temp参照修正 | replaced | 2コミットの基本評価目的はPR #87で対応。後続の品質・型・性能ゲート全体を置換したわけではない |
 | ライセンス境界とMIT本文 | port | mainとworkの現行文言の違いを残して所有者確認。今回ライセンス変更はしない |
-| Ruff lint/formatとUPD | port | 設定・ゲートを移植。整形差分は新しいworkソースへ再適用し、古い全ファイルで上書きしない |
-| 品質チェッカーのlatest-first方針 | port | 方針・更新運用を保持。GodotやActionの固定とは別の対象として扱う |
+| Ruff lint/formatとUPD | port | lint設定と位置限定baselineゲートを適応。format・UPDは未移植。整形差分は新しいworkソースへ再適用し、古い全ファイルで上書きしない |
+| 品質チェッカーのlatest-first方針 | port | Ruffのみ最新版導入と版の報告を適応。他のチェッカー/POLICY全体は未移植。GodotやActionの固定とは別の対象として扱う |
 | Python共有エンジンの絶対性能・base/head回帰 | port | 編集ツールにも残るPythonエンジンを同じrunner条件で再計測して適応 |
 | game.pyの性能計測・閾値 | reference_only | 同じ2コミット内でもPythonゲームの計測は参照版レーン。Godotの測定結果に読み替えない |
 | Mypy基準と型境界・fixture改善 | port | mainの基準36件と減少方向の運用を保持して再計測。36件はエラー0の意味ではない |
@@ -46,6 +46,10 @@ mainの第二索引 `AI_CONTEXT.md` / `docs/context-routing.md` は追加しな�
 ### workへの個別適応: 上限付きsnapshot
 
 `tools/context/script/snapshot.py --base origin/work --json` で未stage/stage済み・未追跡・履歴を本文なしで照会できる。各一覧の上限・省略件数、分岐時のmerge-base比較、エラー終了、Git index/HEAD/ref/ユーザーファイルの非破壊性をfixtureで検証する。操作と出力仕様は [tools/context/README.md](../../tools/context/README.md)。mainの元コミットをmerge/cherry-pickしたわけではなく、23件の履歴分類と他グループの移植は継続する。
+
+### workへの個別適応: Ruff lint
+
+main由来の `ruff.toml` とlintゲートを適応する。導入時67件の既存import診断（I001: 59 / E402: 8）はpath/code/row/columnで限定し、新規・stale記録の両方を拒否する。実行失敗や設定不正は成功扱いしない。これは違反0ではなく一時baselineであり、修正ごとに縮小する。最新版を導入して実行版を表示する方針はRuffのみ先行し、format・Mypy・UPD・性能およびPOLICY全体は未移植。詳細は [品質ゲート](../../tools/quality/README.md)。元コミットの履歴統合、main反映、保護設定変更は行わない。
 
 ## 段階的な統合順序
 
