@@ -22,7 +22,7 @@ shallow cloneや追跡refがない環境では必要な履歴を別途取得す�
 
 | 意味単位 | 分類 | 対応方針 |
 | --- | --- | --- |
-| AI向けルーター・探索停止・詳細契約分離 | port | mainの5コミットを現行の `docs/context/` と責務表へ適応する。旧索引のPython専用説明やロードマップ部分読みに戻さない |
+| AI向けルーター・探索停止・詳細契約分離 | port | 5コミットの方針を短い `AGENTS.md`・既存 `docs/context/`・詳細契約へ適応。ロードマップ毎回全文確認とGodot必須評価は維持 |
 | stage済み・未stageの上限付きsnapshot | port | 2コミットの機能を `tools/context/script/snapshot.py` へ適応。未追跡・省略件数・非破壊性も検証し、元の履歴統合とは分ける |
 | PR #23のmerge記録 | replaced | 構成7コミットを別途分類済み。追加パッチとして重ねず、統合候補で履歴は保持 |
 | 初期CIとrunner.temp参照修正 | replaced | 2コミットの基本評価目的はPR #87で対応。後続の品質・型・性能ゲート全体を置換したわけではない |
@@ -36,6 +36,12 @@ shallow cloneや追跡refがない環境では必要な履歴を別途取得す�
 | nearest拡縮とREADME | port | Pythonはsmoothscale、GodotはLANCZOSの箇所が残る。対応済みと扱わず、実描画と説明を揃える |
 
 元のファイル、work側の対象、個別の検証条件はJSONの `groups` に記録する。分類 `port` は取り込み方針であり、それだけで全体の完了を表さない。個別機能の実装状況は対応方針・以下の進捗とIssue/PRで確認する。
+
+### workへの個別適応: コンテキスト方針
+
+`AGENTS.md` を短い入口とし、移動前（work `9225f87`）のRequired roadmap以降の契約本文を `docs/ai-development-contract.md` に完全一致で保持した。既存の `docs/context/project.md` にGoal / Required / Acceptance / Working setが揃った時の探索停止・不足時の再開・原典確認を追加し、Python/Godot両方の領域文書から詳細契約へ辿れるようにした。
+
+mainの第二索引 `AI_CONTEXT.md` / `docs/context-routing.md` は追加しない。ロードマップの部分読み、対象テストだけで終了する旧方針、Python専用の読込順は採用しない。ロードマップ毎回全文確認・最新Issue・リモート取得・全体評価・Godot必須CI・必要な実画面・本人のリリース承認を維持し、`tests/test_context_policy.py` と責務表で退行を検出する。これは意味的な適応であり、元の5コミットを履歴統合した意味ではない。
 
 ### workへの個別適応: 上限付きsnapshot
 

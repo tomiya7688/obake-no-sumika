@@ -9,10 +9,10 @@
   "groups": {
     "context_policy": {
       "decision": "port",
-      "summary": "探索停止・短いルーター・詳細契約の分離という改善を既存docs/contextへ選択的に取り込む。古いPython専用索引やロードマップ部分読みの指示で現行の毎回全文確認・Issue方針を上書きしない。",
+      "summary": "mainの探索停止・短いルーター・詳細契約分離を、AGENTS.mdと既存docs/contextへ適応。workの詳細契約本文はdocs/ai-development-contract.mdへ保持し、第二のAI_CONTEXT/context-routing索引は増やさない。古いPython専用索引やロードマップ部分読み・対象テストだけの方針で、毎回全文確認・Issue運用・Godot必須評価を上書きしない。",
       "source_paths": ["AI_CONTEXT.md", "AGENTS.md", "docs/context-routing.md", "docs/ai-development-contract.md"],
-      "work_targets": ["docs/context/project.md", "docs/context/developer_tools.md", "tools/context/responsibilities.json", "AGENTS.md"],
-      "verification": "対象ファイル選択・strict責務監査とリンク検査。Godotを含む現行契約とユーザーの読込順を保持する。"
+      "work_targets": ["AGENTS.md", "docs/ai-development-contract.md", "docs/context/project.md", "docs/context/game.md", "docs/context/godot.md", "tools/context/responsibilities.json", "tests/test_context_policy.py"],
+      "verification": "tests/test_context_policy.pyと対象ファイル選択・strict責務監査で短い入口、停止条件、ローカルリンク、全文確認、Godot/実GUI/リリース境界を検証。契約移動時は作業開始点9225f87のAGENTS.mdのRequired roadmap以降との本文完全一致を確認。"
     },
     "context_snapshot": {
       "decision": "port",

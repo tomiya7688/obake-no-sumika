@@ -29,6 +29,13 @@ class ContextSelectionTests(unittest.TestCase):
         self.assertEqual(result["contexts"], ["docs/context/project.md", "docs/context/developer_tools.md"])
         self.assertEqual(result["tests"], ["tests/test_character_repository.py"])
 
+    def test_policy_change_selects_only_router_and_contract(self) -> None:
+        result = select_files(["AGENTS.md"], self.rules)
+        self.assertEqual(result["contexts"], ["docs/context/project.md", "docs/context/developer_tools.md"])
+        self.assertEqual(result["tests"], ["tests/test_context_policy.py"])
+        self.assertEqual(result["related_files"], ["docs/context/project.md", "docs/ai-development-contract.md"])
+        self.assertEqual(result["unmapped_files"], [])
+
     def test_snapshot_selects_metadata_tool_without_game_implementation(self) -> None:
         result = select_files(["tools/context/script/snapshot.py", "tests/test_context_snapshot.py"], self.rules)
         self.assertEqual(result["contexts"], ["docs/context/project.md", "docs/context/developer_tools.md"])
