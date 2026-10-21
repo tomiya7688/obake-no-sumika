@@ -2,54 +2,5 @@
   "schema_version": 1,
   "recorded_with": "ruff 0.17.1",
   "tracking_issue": 86,
-  "diagnostics": [
-    {
-      "path": "tools/context/script/audit.py",
-      "code": "E402",
-      "row": 15,
-      "column": 1
-    },
-    {
-      "path": "tools/context/script/character_info.py",
-      "code": "E402",
-      "row": 13,
-      "column": 1
-    },
-    {
-      "path": "tools/context/script/character_info.py",
-      "code": "E402",
-      "row": 14,
-      "column": 1
-    },
-    {
-      "path": "tools/context/script/character_info.py",
-      "code": "E402",
-      "row": 15,
-      "column": 1
-    },
-    {
-      "path": "tools/context/script/snapshot.py",
-      "code": "E402",
-      "row": 13,
-      "column": 1
-    },
-    {
-      "path": "tools/diff_summary/script/summarize.py",
-      "code": "E402",
-      "row": 15,
-      "column": 1
-    },
-    {
-      "path": "tools/repo_sync/script/inventory.py",
-      "code": "E402",
-      "row": 14,
-      "column": 1
-    },
-    {
-      "path": "tools/repo_sync/script/report.py",
-      "code": "E402",
-      "row": 14,
-      "column": 1
-    }
-  ]
+  "diagnostics": []
 }

@@ -7,10 +7,12 @@ import json
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(PROJECT_ROOT))
+# Resolve from this file, not the caller's working directory, before local imports.
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from tools.diff_summary.script.summarize import git, resolve_commit, text
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 # Preserve the imported callable before defining the read-only wrapper below.
 run_git = git

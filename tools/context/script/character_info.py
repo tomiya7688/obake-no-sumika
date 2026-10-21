@@ -7,12 +7,14 @@ import json
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(PROJECT_ROOT))
+# Resolve from this file, not the caller's working directory, before local imports.
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from engine.character_repository import CharacterRepository
 from engine.manifest_loader import load_project_manifest
 from engine.room_repository import RoomRepository
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 FIELDS = (
     "id", "display_name", "image", "start_position", "display_height",

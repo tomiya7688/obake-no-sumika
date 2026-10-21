@@ -37,7 +37,7 @@ PowerShellでリポジトリのルートから実行する。Pythonはこのプ�
 
 選択ツールには変更したリポジトリ相対パスを複数渡せる。未登録パスは `unmapped_files` に出る。全体評価は構文、単体テスト、エンジン、通常版の短い起動、実行ログ、special版を確認し、`tmp/evaluation/runtime.jsonl` を更新する。フレーム数を変える場合は `scripts/evaluate_project.py --frames 60`。
 
-Ruffは全体評価とは別の必須lint確認。新規/stale診断は1、チェッカー未導入・設定不正等は2。既存baselineとの一致は違反0を意味しない。全体単体テストにもRuffが必要。更新方針と縮小手順は [品質ゲート](../../tools/quality/README.md)。通常開発の全体評価は `GODOT_BIN` を設定し `scripts/evaluate_project.py --require-godot --frames 900` を使う。
+Ruffは全体評価とは別の必須lint確認で、選択ルールの違反0を要求する。診断ありは1、チェッカー未導入・設定不正・空でないbaseline等は2。全体単体テストにもRuffが必要。更新方針と空baselineの運用は [品質ゲート](../../tools/quality/README.md)。通常開発の全体評価は `GODOT_BIN` を設定し `scripts/evaluate_project.py --require-godot --frames 900` を使う。
 
 `inventory.py` は更新済みの追跡refと[main/workの分類表](../../tools/repo_sync/main_work_inventory.json)を照合する。fetchや取り込みはしない。一致は0、再分類が必要なら1、不正入力/履歴不足は2。`consistent` は分類の網羅性だけを表し、実装済み・リリース承認済みではない。手順は[統合計画](../ワークフロー/main_work統合.md)。
 

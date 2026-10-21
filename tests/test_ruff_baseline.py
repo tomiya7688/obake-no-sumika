@@ -154,22 +154,19 @@ class RuffBaselineTests(unittest.TestCase):
             with self.assertRaises(subprocess.TimeoutExpired):
                 run_ruff(ROOT)
 
-    def test_committed_baseline_is_only_the_known_import_debt(self) -> None:
+    def test_committed_baseline_is_empty(self) -> None:
         expected = load_baseline(ROOT / "tools/quality/ruff_baseline.json")
-        self.assertLessEqual({item[1] for item in expected}, {"E402"})
-        self.assertLessEqual(len(expected), 8)
-        self.assertNotIn("tools/quality/script/check_ruff.py", {item[0] for item in expected})
-        self.assertNotIn("tests/test_ruff_baseline.py", {item[0] for item in expected})
+        self.assertEqual(expected, set())
 
-    def test_baseline_can_shrink_to_empty_but_never_restore_import_order_debt(self) -> None:
+    def test_zero_baseline_rejects_every_old_diagnostic_category(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "baseline.json"
-            for records in ([KNOWN], []):
-                path.write_text(json.dumps(baseline(records)), encoding="utf-8")
-                self.assertEqual(load_baseline(path), records_to_set(records))
-            path.write_text(json.dumps(baseline([{**KNOWN, "code": "I001"}])), encoding="utf-8")
-            with self.assertRaisesRegex(ValueError, "only existing E402"):
-                load_baseline(path)
+            path.write_text(json.dumps(baseline([])), encoding="utf-8")
+            self.assertEqual(load_baseline(path), set())
+            for code in ("I001", "E402", "F821"):
+                path.write_text(json.dumps(baseline([{**KNOWN, "code": code}])), encoding="utf-8")
+                with self.subTest(code=code), self.assertRaisesRegex(ValueError, "must remain empty"):
+                    load_baseline(path)
 
     def test_workflow_installs_latest_and_runs_an_independent_mandatory_gate(self) -> None:
         workflow = (ROOT / ".github/workflows/work-ci.yml").read_text(encoding="utf-8")
@@ -219,6 +216,12 @@ class RuffBaselineTests(unittest.TestCase):
             self.assertEqual(result.returncode, 1, result.stderr)
             self.assertEqual(json.loads(result.stdout)["new"][0]["code"], "F821")
             self.assertEqual({path.name: path.read_bytes() for path in repo.iterdir()}, before)
+            saved.write_text(json.dumps(baseline(json.loads(result.stdout)["new"])), encoding="utf-8")
+            result = run()
+            self.assertEqual(result.returncode, 2)
+            self.assertIn("must remain empty", result.stderr)
+            self.assertEqual(result.stdout, "")
+            saved.write_text(json.dumps(baseline([])), encoding="utf-8")
             self.assertEqual(run("--limit", "0").returncode, 2)
             config.write_text("invalid toml =\n", encoding="utf-8")
             result = run()

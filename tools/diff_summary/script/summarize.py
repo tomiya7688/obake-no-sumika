@@ -9,10 +9,12 @@ import subprocess
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(PROJECT_ROOT))
+# Resolve from this file, not the caller's working directory, before local imports.
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from tools.context.script.select_files import load_mapping, select_files
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 DEFINITION = re.compile(r"^[+-]\s*((?:async\s+)?def\s+\w+|class\s+\w+)")
 

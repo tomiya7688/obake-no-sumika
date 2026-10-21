@@ -44,10 +44,10 @@
     },
     "python_quality": {
       "decision": "port",
-      "summary": "Ruff lint設定と新規/staleを拒否する位置限定baselineを適応し、I001の59件を整理してE402の8件へ縮小。I001の再登録も拒否。format・UPDは未移植。workの新規APIを古いファイル全体で上書きしない。",
+      "summary": "Ruff lint設定と違反0必須ゲートを適応。I001の59件と6 CLI入口のE402 8件を解消し、空baselineへの診断追加も拒否する。format・UPDは未移植。workの新規APIを古いファイル全体で上書きしない。",
       "source_paths": [".github/workflows/ci.yml", "ruff.toml", "tools/quality/requirements.txt", "tests/test_engine_manifest.py"],
       "work_targets": [".github/workflows/work-ci.yml", "ruff.toml", "tools/quality/script/check_ruff.py", "tools/quality/ruff_baseline.json", "tools/quality/README.md", "engine", "tests", "godot"],
-      "verification": "lintの残件は既存E402のみ限定列挙し、新規/stale・I001再登録・設定/実行失敗を検出する。import順序以外の実装を保持し、snapshotの別名退避も検証する。format/UPDは後続で検証し、共有契約とGodot必須CIを保持。Python用チェッカー成功をGDScript検証済みとは扱わない。"
+      "verification": "lint診断0・baseline空を必須にし、追加記録・設定/実行失敗を検出する。6入口を別cwd/PYTHONPATHなしで隔離起動し、公開定数とsnapshotの別名退避も検証する。format/UPDは後続で検証し、共有契約とGodot必須CIを保持。Python用チェッカー成功をGDScript検証済みとは扱わない。"
     },
     "checker_policy": {
       "decision": "port",

@@ -9,10 +9,12 @@ import sys
 from fnmatch import fnmatchcase
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(PROJECT_ROOT))
+# Resolve from this file, not the caller's working directory, before local imports.
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from tools.context.script.select_files import MAPPING_PATH, load_mapping, normalize_path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 def audit_mapping(root: Path, tracked: list[str], rules: list[dict[str, object]],

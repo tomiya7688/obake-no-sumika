@@ -8,10 +8,12 @@ import re
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(PROJECT_ROOT))
+# Resolve from this file, not the caller's working directory, before local imports.
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from tools.diff_summary.script.summarize import git, resolve_commit, summarize, text
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 REMOTE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 

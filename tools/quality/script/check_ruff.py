@@ -1,4 +1,4 @@
-"""Run mandatory Ruff lint and reject new or stale, location-specific baseline entries."""
+"""Run mandatory Ruff lint with an empty, non-expandable baseline."""
 
 from __future__ import annotations
 
@@ -10,7 +10,6 @@ import sys
 from pathlib import Path, PurePosixPath
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-BASELINE_CODES = {"E402"}
 Signature = tuple[str, str, int, int]
 
 
@@ -50,8 +49,8 @@ def records_to_set(records: object, *, baseline: bool = False) -> set[Signature]
     result = set()
     for record in records:
         item = signature(record)
-        if baseline and item[1] not in BASELINE_CODES:
-            raise ValueError("only existing E402 diagnostics may be baselined")
+        if baseline:
+            raise ValueError("baseline must remain empty; fix diagnostics instead of adding exceptions")
         if item in result:
             raise ValueError("duplicate diagnostic")
         result.add(item)
