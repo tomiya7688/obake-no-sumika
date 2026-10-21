@@ -12,7 +12,6 @@ from engine.character_definition import CharacterDefinition
 from engine.character_repository import CharacterRepository
 from engine.room_repository import RoomRepository
 
-
 PROJECT_DIR = Path(__file__).resolve().parent
 CHARACTER_PATH = PROJECT_DIR / "characters.json"
 ROOM_PATH = PROJECT_DIR / "room.json"

@@ -51,6 +51,8 @@ mainの第二索引 `AI_CONTEXT.md` / `docs/context-routing.md` は追加しな�
 
 main由来の `ruff.toml` とlintゲートを適応する。導入時67件の既存import診断（I001: 59 / E402: 8）はpath/code/row/columnで限定し、新規・stale記録の両方を拒否する。実行失敗や設定不正は成功扱いしない。これは違反0ではなく一時baselineであり、修正ごとに縮小する。最新版を導入して実行版を表示する方針はRuffのみ先行し、format・Mypy・UPD・性能およびPOLICY全体は未移植。詳細は [品質ゲート](../../tools/quality/README.md)。元コミットの履歴統合、main反映、保護設定変更は行わない。
 
+import順序I001の59件を整理してbaselineを8件のE402へ削減した。I001をbaselineへ戻す入力も拒否し、残件は修正に応じて0へ減らせる。起動前のsys.path準備は動かさず、formatゲートやツールの起動方式変更は別単位とする。
+
 ## 段階的な統合順序
 
 ```mermaid

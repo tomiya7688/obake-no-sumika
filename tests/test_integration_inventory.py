@@ -1,19 +1,24 @@
 from __future__ import annotations
 
-from copy import deepcopy
 import json
-from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from copy import deepcopy
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 if __name__ == "__main__" and not __package__:
     sys.path.insert(0, str(ROOT))
 
-from tools.repo_sync.script.inventory import DEFAULT_PLAN, inspect_inventory, load_plan, validate_plan
 from tests.test_repo_sync import run_git
+from tools.repo_sync.script.inventory import (
+    DEFAULT_PLAN,
+    inspect_inventory,
+    load_plan,
+    validate_plan,
+)
 
 
 class InventorySchemaTests(unittest.TestCase):

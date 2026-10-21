@@ -2,9 +2,8 @@ import io
 import os
 import sys
 import unittest
-from unittest import mock
 from pathlib import Path
-
+from unittest import mock
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_DIR))

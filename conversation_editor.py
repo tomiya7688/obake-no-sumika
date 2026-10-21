@@ -12,7 +12,6 @@ from engine.event_repository import EventRepository
 from engine.placement_repository import PlacementRepository
 from engine.room_repository import RoomRepository
 
-
 PROJECT_DIR = Path(__file__).resolve().parent
 DECK_PATH = PROJECT_DIR / "conversations.json"
 PLACEMENTS_PATH = PROJECT_DIR / "placed_objects.json"

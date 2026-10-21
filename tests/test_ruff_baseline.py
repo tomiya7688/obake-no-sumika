@@ -18,7 +18,7 @@ from tools.quality.script.check_ruff import (
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "tools/quality/script/check_ruff.py"
-KNOWN = {"path": "old.py", "code": "I001", "row": 3, "column": 1}
+KNOWN = {"path": "old.py", "code": "E402", "row": 3, "column": 1}
 
 
 def baseline(records: list) -> dict:
@@ -74,6 +74,7 @@ class RuffBaselineTests(unittest.TestCase):
                     ("path", "a\\b.py"),
                     ("row", 0),
                     ("column", True),
+                    ("code", "I001"),
                     ("code", "F821"),
                     ("code", "invalid-syntax"),
                 )
@@ -155,9 +156,20 @@ class RuffBaselineTests(unittest.TestCase):
 
     def test_committed_baseline_is_only_the_known_import_debt(self) -> None:
         expected = load_baseline(ROOT / "tools/quality/ruff_baseline.json")
-        self.assertEqual({item[1] for item in expected}, {"I001", "E402"})
+        self.assertLessEqual({item[1] for item in expected}, {"E402"})
+        self.assertLessEqual(len(expected), 8)
         self.assertNotIn("tools/quality/script/check_ruff.py", {item[0] for item in expected})
         self.assertNotIn("tests/test_ruff_baseline.py", {item[0] for item in expected})
+
+    def test_baseline_can_shrink_to_empty_but_never_restore_import_order_debt(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "baseline.json"
+            for records in ([KNOWN], []):
+                path.write_text(json.dumps(baseline(records)), encoding="utf-8")
+                self.assertEqual(load_baseline(path), records_to_set(records))
+            path.write_text(json.dumps(baseline([{**KNOWN, "code": "I001"}])), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "only existing E402"):
+                load_baseline(path)
 
     def test_workflow_installs_latest_and_runs_an_independent_mandatory_gate(self) -> None:
         workflow = (ROOT / ".github/workflows/work-ci.yml").read_text(encoding="utf-8")

@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import argparse
-from fnmatch import fnmatchcase
 import json
+from fnmatch import fnmatchcase
 from pathlib import Path
-
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 MAPPING_PATH = PROJECT_ROOT / "tools" / "context" / "responsibilities.json"

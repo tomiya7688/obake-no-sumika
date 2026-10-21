@@ -8,13 +8,12 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
-
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_DIR))
 
+import engine_app
 from engine.manifest_loader import load_project_manifest
 from engine.process_launcher import ProcessLauncher
-import engine_app
 
 
 class EngineManifestTests(unittest.TestCase):

@@ -2,20 +2,19 @@
 
 from __future__ import annotations
 
-from contextlib import redirect_stderr
 import io
 import os
-from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr
+from pathlib import Path
 from unittest.mock import patch
 
 import engine_app
 from engine import godot_runner
 from engine.project_creator import ProjectCreator
-
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "engine_project.json"

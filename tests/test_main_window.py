@@ -1,12 +1,11 @@
 import sys
 import tempfile
-import tkinter as tk
 import time
+import tkinter as tk
 import unittest
 from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
-
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_DIR))
