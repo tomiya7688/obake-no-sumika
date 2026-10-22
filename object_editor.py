@@ -59,6 +59,7 @@ class ObjectEditor:
         self.painting = False
         self.last_cell: tuple[int, int] | None = None
         self.placements = PLACEMENT_REPOSITORY.load_editable()
+        self.load_problems = PLACEMENT_REPOSITORY.load_problems()
         self.selected_placement: int | None = None
         self.drag_offset = (0, 0)
         self.dragging_placement = False
@@ -83,6 +84,30 @@ class ObjectEditor:
         self.refresh_placement_list()
         self.refresh_library_list()
         self.redraw_preview()
+        if self.load_problems:
+            self.status_var.set("配置データに読込エラーがあります。保存時に確認します。")
+            messagebox.showwarning("読込エラー", self.problem_text())
+
+    def problem_text(self) -> str:
+        shown = self.load_problems[:10]
+        more = len(self.load_problems) - len(shown)
+        lines = ["placed_objects.json に読み込めない配置があります:", *shown]
+        if more > 0:
+            lines.append(f"ほか{more}件")
+        return "\n".join(lines)
+
+    def save_placements(self) -> bool:
+        """Save placements, never silently dropping entries the load skipped."""
+        if self.load_problems:
+            if not messagebox.askyesno(
+                "読込エラーを破棄して保存",
+                self.problem_text() + "\n\n保存するとこれらは失われます。破棄して保存しますか？",
+            ):
+                self.status_var.set("読込エラーがあるため保存していません。")
+                return False
+            self.load_problems = []
+        PLACEMENT_REPOSITORY.save_editable(self.placements)
+        return True
 
     @staticmethod
     def blank_pixels(size: int) -> list[list[str | None]]:
@@ -690,10 +715,11 @@ class ObjectEditor:
 
     def preview_release(self, _event: tk.Event) -> None:
         if self.dragging_placement and self.selected_placement is not None:
-            PLACEMENT_REPOSITORY.save_editable(self.placements)
+            saved = self.save_placements()
             self.refresh_placement_list()
             self.placement_list.selection_set(self.selected_placement)
-            self.status_var.set("ドラッグした位置を保存しました。")
+            if saved:
+                self.status_var.set("ドラッグした位置を保存しました。")
         self.dragging_placement = False
 
     def move_selected_to(self, x: int, y: int) -> None:
@@ -745,13 +771,14 @@ class ObjectEditor:
         if tag:
             item["tag"] = tag
         self.placements.append(item)
-        PLACEMENT_REPOSITORY.save_editable(self.placements)
+        saved = self.save_placements()
         self.refresh_library_list()
         self.selected_placement = len(self.placements) - 1
         self.refresh_placement_list()
         self.placement_list.selection_set(self.selected_placement)
         self.redraw_preview()
-        self.status_var.set("住処に置きました。ゲームを起動し直すと表示されます。")
+        if saved:
+            self.status_var.set("住処に置きました。ゲームを起動し直すと表示されます。")
 
     def update_placement(self) -> None:
         if self.selected_placement is None:
@@ -769,11 +796,12 @@ class ObjectEditor:
             item["tag"] = tag
         else:
             item.pop("tag", None)
-        PLACEMENT_REPOSITORY.save_editable(self.placements)
+        saved = self.save_placements()
         self.refresh_placement_list()
         self.placement_list.selection_set(self.selected_placement)
         self.redraw_preview()
-        self.status_var.set("位置と大きさを更新しました。")
+        if saved:
+            self.status_var.set("位置と大きさを更新しました。")
 
     def delete_placement(self) -> None:
         if self.selected_placement is None:
@@ -783,10 +811,11 @@ class ObjectEditor:
             return
         del self.placements[self.selected_placement]
         self.selected_placement = None
-        PLACEMENT_REPOSITORY.save_editable(self.placements)
+        saved = self.save_placements()
         self.refresh_placement_list()
         self.redraw_preview()
-        self.status_var.set("住処から外しました。PNGはobjectsフォルダーに残ります。")
+        if saved:
+            self.status_var.set("住処から外しました。PNGはobjectsフォルダーに残ります。")
 
     def refresh_placement_list(self) -> None:
         self.placement_list.delete(0, "end")
@@ -859,12 +888,13 @@ class ObjectEditor:
         if source_path.exists():
             item["source"] = source_path.relative_to(PROJECT_DIR).as_posix()
         self.placements.append(item)
-        PLACEMENT_REPOSITORY.save_editable(self.placements)
+        saved = self.save_placements()
         self.selected_placement = len(self.placements) - 1
         self.refresh_placement_list()
         self.placement_list.selection_set(self.selected_placement)
         self.apply_selected_placement()
-        self.status_var.set("保存済み画像を新しく挿入しました。ドラッグで移動できます。")
+        if saved:
+            self.status_var.set("保存済み画像を新しく挿入しました。ドラッグで移動できます。")
 
     def load_library_object(self) -> None:
         image_path = self.selected_library_path()

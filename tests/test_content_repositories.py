@@ -110,6 +110,34 @@ class ContentRepositoryTests(unittest.TestCase):
             {"water", "small_rock", "large_rock", "found_item", "game_device"},
         )
 
+    def test_placement_load_problems_reports_what_tolerant_load_drops(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            Image.new("RGBA", (2, 2), "white").save(root / "object.png")
+            data_path = root / "placed_objects.json"
+            repository = PlacementRepository(root, data_path, (960, 540))
+            self.assertEqual(repository.load_problems(), [])
+            good = self.placement_payload("one", "rock")
+            duplicate_id = self.placement_payload("one", "other")
+            duplicate_tag = self.placement_payload("two", "rock")
+            out_of_room = dict(self.placement_payload("three", "far"), x=5000)
+            data_path.write_text(
+                json.dumps({"objects": [good, duplicate_id, duplicate_tag, out_of_room]}),
+                encoding="utf-8",
+            )
+            self.assertEqual(len(repository.load_editable()), 1)
+            problems = repository.load_problems()
+            self.assertEqual(len(problems), 3)
+            self.assertIn("配置2", problems[0])
+            self.assertIn("配置3", problems[1])
+            self.assertIn("配置4", problems[2])
+            data_path.write_text("{broken", encoding="utf-8")
+            self.assertEqual(len(repository.load_problems()), 1)
+        current = PlacementRepository(
+            PROJECT_DIR, PROJECT_DIR / "placed_objects.json", (960, 540)
+        )
+        self.assertEqual(current.load_problems(), [])
+
     def test_placement_save_rejects_duplicate_tags(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

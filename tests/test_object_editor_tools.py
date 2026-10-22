@@ -1,10 +1,12 @@
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_DIR))
 
+import object_editor
 from object_editor import ObjectEditor
 
 
@@ -124,6 +126,47 @@ class ObjectEditorToolTests(unittest.TestCase):
             ObjectEditor.brush_cells(0, 0, 5, 4),
             [(0, 0), (1, 0), (2, 0), (0, 1), (1, 1), (2, 1), (0, 2), (1, 2), (2, 2)],
         )
+
+    def make_saving_editor(self, problems: list[str]) -> ObjectEditor:
+        editor = ObjectEditor.__new__(ObjectEditor)
+        editor.placements = [{"id": "one"}]
+        editor.load_problems = list(problems)
+        editor.status_var = mock.Mock()
+        return editor
+
+    def test_save_placements_refuses_to_drop_problems_without_consent(self):
+        editor = self.make_saving_editor(["配置2: x must be an integer"])
+        with mock.patch.object(
+            object_editor.messagebox, "askyesno", return_value=False
+        ) as ask, mock.patch.object(
+            object_editor.PLACEMENT_REPOSITORY, "save_editable"
+        ) as save:
+            self.assertFalse(editor.save_placements())
+        ask.assert_called_once()
+        save.assert_not_called()
+        self.assertEqual(editor.load_problems, ["配置2: x must be an integer"])
+
+    def test_save_placements_discards_problems_only_after_consent(self):
+        editor = self.make_saving_editor(["配置2: x must be an integer"])
+        with mock.patch.object(
+            object_editor.messagebox, "askyesno", return_value=True
+        ), mock.patch.object(
+            object_editor.PLACEMENT_REPOSITORY, "save_editable"
+        ) as save:
+            self.assertTrue(editor.save_placements())
+        save.assert_called_once_with(editor.placements)
+        self.assertEqual(editor.load_problems, [])
+
+    def test_save_placements_without_problems_does_not_ask(self):
+        editor = self.make_saving_editor([])
+        with mock.patch.object(
+            object_editor.messagebox, "askyesno"
+        ) as ask, mock.patch.object(
+            object_editor.PLACEMENT_REPOSITORY, "save_editable"
+        ) as save:
+            self.assertTrue(editor.save_placements())
+        ask.assert_not_called()
+        save.assert_called_once()
 
 
 if __name__ == "__main__":

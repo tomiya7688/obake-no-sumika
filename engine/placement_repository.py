@@ -53,6 +53,40 @@ class PlacementRepository:
                 seen_tags.add(definition.tag)
         return tuple(definitions)
 
+    def load_problems(self) -> list[str]:
+        """List what the tolerant load() would silently drop (strict diagnosis)."""
+        try:
+            text = self.data_path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            return []
+        except OSError as exc:
+            return [f"読み込めません: {exc}"]
+        try:
+            raw = json.loads(text)
+        except ValueError as exc:
+            return [f"JSONとして読み込めません: {exc}"]
+        if not isinstance(raw, dict) or not isinstance(raw.get("objects"), list):
+            return ["objects 配列がありません"]
+        problems = []
+        seen_ids = set()
+        seen_tags = set()
+        for index, raw_item in enumerate(raw["objects"], 1):
+            try:
+                definition = self._parse(raw_item)
+            except (TypeError, ValueError) as exc:
+                problems.append(f"配置{index}: {exc}")
+                continue
+            if definition.id in seen_ids:
+                problems.append(f"配置{index}: id が重複しています ({definition.id})")
+                continue
+            if definition.tag and definition.tag in seen_tags:
+                problems.append(f"配置{index}: tag が重複しています ({definition.tag})")
+                continue
+            seen_ids.add(definition.id)
+            if definition.tag:
+                seen_tags.add(definition.tag)
+        return problems
+
     def load_editable(self) -> list[dict[str, object]]:
         return [self._serialize(definition) for definition in self.load()]
 
