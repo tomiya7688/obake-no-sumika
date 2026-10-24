@@ -61,9 +61,32 @@ class ContextPolicyTests(unittest.TestCase):
         self.assertIn("Godot/GDScript", router)
         self.assertIn("tools/context/script/snapshot.py", router)
 
+    def test_collaboration_rules_are_reachable_from_every_agent_entrypoint(self) -> None:
+        entry = self.read("AGENTS.md")
+        for doc in ("共同作業ルール.md", "役割別ワークフロー.md", "レビュー基準.md"):
+            with self.subTest(doc=doc):
+                self.assertIn(f"docs/ワークフロー/{doc}", entry)
+        self.assertIn("Work CIの成功確認は必須", entry)
+        roles = self.read("docs/ワークフロー/役割別ワークフロー.md")
+        agents = sorted((ROOT / ".claude" / "agents").glob("*.md"))
+        self.assertTrue(agents)
+        for agent in agents:
+            text = agent.read_text(encoding="utf-8")
+            role = re.search(r"\*\*(.+?)\*\* 役", text)
+            with self.subTest(agent=agent.name):
+                self.assertIsNotNone(role)
+                self.assertIn(f"## {role.group(1)}", roles)
+                self.assertIn("docs/ワークフロー/共同作業ルール.md", text)
+        for skill in sorted((ROOT / ".claude" / "skills").glob("*/SKILL.md")):
+            for doc in re.findall(r"`(docs/[^`]+\.md)`", skill.read_text(encoding="utf-8")):
+                with self.subTest(skill=skill.parent.name, doc=doc):
+                    self.assertTrue((ROOT / doc).is_file())
+
     def test_policy_markdown_links_stay_inside_repo_and_exist(self) -> None:
         for path in ("AGENTS.md", "docs/context/project.md", "docs/ai-development-contract.md",
-                     "docs/context/game.md", "docs/context/godot.md"):
+                     "docs/context/game.md", "docs/context/godot.md", "docs/ワークフロー/ワークフロー.md",
+                     "docs/ワークフロー/共同作業ルール.md", "docs/ワークフロー/役割別ワークフロー.md",
+                     "docs/ワークフロー/レビュー基準.md"):
             for link in re.findall(r"\[[^\]]+\]\(([^)]+)\)", self.read(path)):
                 with self.subTest(path=path, link=link):
                     parsed = urlsplit(link)
