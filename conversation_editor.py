@@ -41,14 +41,27 @@ STEP_LABELS = {
     "event": "既存イベント（ここで会話終了）",
 }
 STEP_VALUES = {label: value for value, label in STEP_LABELS.items()}
-ACTOR_LABELS = {definition.id: definition.display_name for definition in CHARACTERS}
-ACTOR_LABELS["both"] = "ふたり"
+BOTH_ACTOR = "both"
+
+
+def actor_labels(characters) -> dict[str, str]:
+    """Label every loaded character; offer the shared actor only for 2+ ghosts."""
+    labels = {definition.id: definition.display_name for definition in characters}
+    if len(labels) >= 2:
+        labels[BOTH_ACTOR] = "ふたり" if len(labels) == 2 else "全員"
+    return labels
+
+
+SPEAKER_IDS = tuple(definition.id for definition in CHARACTERS)
+DEFAULT_SPEAKER = SPEAKER_IDS[0] if SPEAKER_IDS else ""
+ACTOR_LABELS = actor_labels(CHARACTERS)
 ACTOR_VALUES = {label: value for value, label in ACTOR_LABELS.items()}
 EVENT_LABELS = {definition.id: definition.label for definition in EVENTS}
 EVENT_VALUES = {label: value for value, label in EVENT_LABELS.items()}
+DEFAULT_EVENT = next(iter(EVENT_LABELS), "")
 CONVERSATION_REPOSITORY = ConversationRepository(
     DECK_PATH,
-    tuple(definition.id for definition in CHARACTERS),
+    SPEAKER_IDS,
     tuple(ACTOR_LABELS),
     tuple(EVENT_LABELS),
 )
@@ -68,9 +81,9 @@ class ConversationEditor:
         self.loading_fields = False
 
         self.step_type_var = tk.StringVar(value=STEP_LABELS["say"])
-        self.actor_var = tk.StringVar(value=ACTOR_LABELS["kadoka"])
+        self.actor_var = tk.StringVar(value=ACTOR_LABELS.get(DEFAULT_SPEAKER, ""))
         self.tag_var = tk.StringVar(value=self.tags[0] if self.tags else "")
-        self.event_var = tk.StringVar(value=EVENT_LABELS["water_bath"])
+        self.event_var = tk.StringVar(value=EVENT_LABELS.get(DEFAULT_EVENT, ""))
         self.weight_var = tk.IntVar(value=1)
         self.status_var = tk.StringVar(value="発言や動作を上から順に実行します")
 
@@ -241,12 +254,17 @@ class ConversationEditor:
         self.current_step = index
         self.loading_fields = True
         self.step_type_var.set(STEP_LABELS[step["type"]])
-        actor = step.get("speaker", step.get("actor", "kadoka"))
-        self.actor_var.set(ACTOR_LABELS.get(actor, ACTOR_LABELS["kadoka"]))
+        actor = step.get("speaker", step.get("actor", DEFAULT_SPEAKER))
+        self.actor_var.set(ACTOR_LABELS.get(actor, ACTOR_LABELS.get(DEFAULT_SPEAKER, "")))
+        # A disabled Text ignores delete/insert; the previous step (event/move)
+        # may have disabled it, which would blank this step on the next commit.
+        self.text.configure(state="normal")
         self.text.delete("1.0", "end")
         self.text.insert("1.0", step.get("text", ""))
         self.tag_var.set(step.get("tag", self.tags[0] if self.tags else ""))
-        self.event_var.set(EVENT_LABELS.get(step.get("event", "water_bath"), EVENT_LABELS["water_bath"]))
+        self.event_var.set(
+            EVENT_LABELS.get(step.get("event", DEFAULT_EVENT), EVENT_LABELS.get(DEFAULT_EVENT, ""))
+        )
         self.loading_fields = False
         self.update_field_states()
 
@@ -259,14 +277,14 @@ class ConversationEditor:
 
     def build_current_step(self) -> dict[str, str]:
         kind = STEP_VALUES.get(self.step_type_var.get(), "say")
-        actor = ACTOR_VALUES.get(self.actor_var.get(), "kadoka")
+        actor = ACTOR_VALUES.get(self.actor_var.get(), DEFAULT_SPEAKER)
         if kind == "say":
-            if actor == "both":
-                actor = "kadoka"
+            if actor == BOTH_ACTOR:
+                actor = DEFAULT_SPEAKER
             return {"type": "say", "speaker": actor, "text": self.text.get("1.0", "end-1c").strip()}
         if kind in ("move", "take", "put"):
             return {"type": kind, "actor": actor, "tag": self.tag_var.get().strip()}
-        return {"type": "event", "event": EVENT_VALUES.get(self.event_var.get(), "water_bath")}
+        return {"type": "event", "event": EVENT_VALUES.get(self.event_var.get(), DEFAULT_EVENT)}
 
     def commit_step(self) -> None:
         if self.loading_fields or self.current_conversation is None or self.current_step is None:
@@ -330,8 +348,8 @@ class ConversationEditor:
     def add_conversation(self) -> None:
         self.commit_step()
         self.data.append({"weight": 1, "steps": [
-            {"type": "say", "speaker": "kadoka", "text": "新しいセリフ"},
-            {"type": "say", "speaker": "maru", "text": "新しいセリフなのだ！"},
+            {"type": "say", "speaker": speaker, "text": "新しいセリフ"}
+            for speaker in SPEAKER_IDS[:2]
         ]})
         self.refresh_conversations(len(self.data) - 1)
         self.status_var.set("未保存の変更があります")
@@ -363,7 +381,7 @@ class ConversationEditor:
         self.commit_step()
         steps = self.data[self.current_conversation]["steps"]
         insert_at = len(steps) if self.current_step is None else self.current_step + 1
-        steps.insert(insert_at, {"type": "say", "speaker": "kadoka", "text": "つづき"})
+        steps.insert(insert_at, {"type": "say", "speaker": DEFAULT_SPEAKER, "text": "つづき"})
         self.show_conversation(self.current_conversation, insert_at)
         self.status_var.set("未保存の変更があります")
 

@@ -5,7 +5,7 @@
 | 対象 | 責務 | 関連テスト |
 | --- | --- | --- |
 | `character_editor.py` | キャラクターJSONの編集 | `tests/test_character_repository.py` |
-| `conversation_editor.py` | 会話・イベントJSONの編集 | `tests/test_tagged_conversations.py` |
+| `conversation_editor.py` | 会話・イベントJSONの編集。話者・イベントの既定値は読み込んだ定義から選び、特定IDに依存しない | `tests/test_tagged_conversations.py`, `tests/test_conversation_editor_generic_ids.py` |
 | `object_editor.py` | ドット絵作成と住処への配置 | `tests/test_object_editor_tools.py` |
 | `engine_app.py`, `engine/main_window.py` | 統合GUI、プロジェクト切替、検証・Godot CLIプレイテスト入口 | `tests/test_main_window.py`, `tests/test_engine_manifest.py`, `tests/test_godot_runner.py` |
 | `engine/process_launcher.py` | 非同期のゲーム・エディター起動、終了コードとUTF-8ログの取得 | `tests/test_process_launcher.py`, `tests/test_main_window.py` |
@@ -21,6 +21,8 @@
 | `docs/context/cli_commands.md`, `engine_app.py --describe` | GUI不要の構成照会と主要コマンドの案内 | `tests/test_engine_manifest.py` |
 
 プロジェクト内の `.venv` を使う。venvの参照先が移動した場合は `.\.venv\Scripts\python.exe --version` と `.\.venv\pyvenv.cfg` を確認する。GUIの見た目や操作を変えた場合は、単体テストに加えて実画面で確認する。
+
+Tkエディターを実際に生成するテストでは、モジュールの `messagebox` を `mock` で置き換える。本物のモーダルダイアログ（保存エラー・確認）が出るとheadless実行が終わらなくなるため、呼び出しを記録して検証する。
 
 品質依存は `python -m pip install --upgrade -r tools/quality/requirements.txt` で導入する。全体単体テストにもRuff実CLIテストがあるため必須。`tools/quality/script/check_ruff.py` は選択ルールの違反0を必須とし、baselineへの診断追加も拒否する。format/型/性能ゲートは未移植。互換性を保つCI名と空baselineの運用は [tools/quality/README.md](../../tools/quality/README.md)。
 
