@@ -23,39 +23,52 @@ GAME_SIZE = (ROOM.width, ROOM.height)
 PREVIEW_SIZE = (480, round(480 * ROOM.height / ROOM.width))
 
 
+Size = tuple[int, int]
+
+
 def preview_scale(
-    game_size: tuple[int, int] = GAME_SIZE, preview_size: tuple[int, int] = PREVIEW_SIZE
+    game_size: Size | None = None, preview_size: Size | None = None
 ) -> tuple[float, float]:
-    """Game pixels per preview pixel on each axis, derived from room.json."""
-    return game_size[0] / preview_size[0], game_size[1] / preview_size[1]
+    """Game pixels per preview pixel on each axis, derived from room.json.
+
+    Sizes default to the module constants at call time so tests and any later room
+    reload see the current values. RoomRepository enforces an exact 16:9 room, so
+    both axes always share the same scale.
+    """
+    game = GAME_SIZE if game_size is None else game_size
+    preview = PREVIEW_SIZE if preview_size is None else preview_size
+    return game[0] / preview[0], game[1] / preview[1]
 
 
 def game_to_preview(
-    x: float, y: float,
-    game_size: tuple[int, int] = GAME_SIZE, preview_size: tuple[int, int] = PREVIEW_SIZE,
+    x: float, y: float, game_size: Size | None = None, preview_size: Size | None = None
 ) -> tuple[float, float]:
     scale_x, scale_y = preview_scale(game_size, preview_size)
     return x / scale_x, y / scale_y
 
 
 def game_length_to_preview(
-    length: float,
-    game_size: tuple[int, int] = GAME_SIZE, preview_size: tuple[int, int] = PREVIEW_SIZE,
+    length: float, game_size: Size | None = None, preview_size: Size | None = None
 ) -> float:
-    # Widths are horizontal; 16:9 rooms keep both axes on the same scale.
     return length / preview_scale(game_size, preview_size)[0]
 
 
 def preview_to_game(
-    x: float, y: float,
-    game_size: tuple[int, int] = GAME_SIZE, preview_size: tuple[int, int] = PREVIEW_SIZE,
+    x: float,
+    y: float,
+    game_size: Size | None = None,
+    preview_size: Size | None = None,
+    clamp: bool = True,
 ) -> tuple[int, int]:
-    """Map a preview click to room coordinates, clamped inside the room."""
-    scale_x, scale_y = preview_scale(game_size, preview_size)
-    return (
-        max(0, min(game_size[0], round(x * scale_x))),
-        max(0, min(game_size[1], round(y * scale_y))),
-    )
+    """Map a preview point to room coordinates, clamped inside the room by default."""
+    game = GAME_SIZE if game_size is None else game_size
+    scale_x, scale_y = preview_scale(game, preview_size)
+    game_x, game_y = round(x * scale_x), round(y * scale_y)
+    if not clamp:
+        return game_x, game_y
+    return max(0, min(game[0], game_x)), max(0, min(game[1], game_y))
+
+
 EDITOR_PIXELS = 512
 CANVAS_SIZES = (16, 32, 64, 128)
 EXPORT_SIZE = 1024
@@ -744,7 +757,9 @@ class ObjectEditor:
     def preview_drag(self, event: tk.Event) -> None:
         if not self.dragging_placement or self.selected_placement is None:
             return
-        game_x, game_y = preview_to_game(event.x, event.y)
+        # Add the grab offset before clamping so dragging past an edge keeps the
+        # object against that edge; move_selected_to() clamps to the room.
+        game_x, game_y = preview_to_game(event.x, event.y, clamp=False)
         self.move_selected_to(game_x + self.drag_offset[0], game_y + self.drag_offset[1])
 
     def preview_release(self, _event: tk.Event) -> None:
