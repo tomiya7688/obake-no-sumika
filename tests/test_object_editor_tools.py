@@ -127,6 +127,27 @@ class ObjectEditorToolTests(unittest.TestCase):
             [(0, 0), (1, 0), (2, 0), (0, 1), (1, 1), (2, 1), (0, 2), (1, 2), (2, 2)],
         )
 
+    def test_preview_conversion_follows_room_size(self):
+        preview = (480, 270)
+        for room in ((960, 540), (1280, 720), (1920, 1080)):
+            with self.subTest(room=room):
+                scale = room[0] / preview[0]
+                self.assertEqual(object_editor.preview_scale(room, preview), (scale, scale))
+                center = (room[0] // 2, room[1] // 2)
+                self.assertEqual(object_editor.preview_to_game(240, 135, room, preview), center)
+                self.assertEqual(object_editor.game_to_preview(*center, room, preview), (240, 135))
+                self.assertEqual(object_editor.game_length_to_preview(64 * scale, room, preview), 64)
+                self.assertEqual(object_editor.preview_to_game(-5, 999, room, preview), (0, room[1]))
+
+    def test_preview_click_and_drawing_round_trip(self):
+        room, preview = (1920, 1080), (480, 270)
+        for point in ((0, 0), (37, 201), (479, 269)):
+            with self.subTest(point=point):
+                game = object_editor.preview_to_game(*point, room, preview)
+                back = object_editor.game_to_preview(*game, room, preview)
+                self.assertAlmostEqual(back[0], point[0], delta=0.5)
+                self.assertAlmostEqual(back[1], point[1], delta=0.5)
+
     def make_saving_editor(self, problems: list[str]) -> ObjectEditor:
         editor = ObjectEditor.__new__(ObjectEditor)
         editor.placements = [{"id": "one"}]

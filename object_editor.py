@@ -21,6 +21,41 @@ ROOM_PATH = PROJECT_DIR / "room.json"
 ROOM = RoomRepository(ROOM_PATH).load()
 GAME_SIZE = (ROOM.width, ROOM.height)
 PREVIEW_SIZE = (480, round(480 * ROOM.height / ROOM.width))
+
+
+def preview_scale(
+    game_size: tuple[int, int] = GAME_SIZE, preview_size: tuple[int, int] = PREVIEW_SIZE
+) -> tuple[float, float]:
+    """Game pixels per preview pixel on each axis, derived from room.json."""
+    return game_size[0] / preview_size[0], game_size[1] / preview_size[1]
+
+
+def game_to_preview(
+    x: float, y: float,
+    game_size: tuple[int, int] = GAME_SIZE, preview_size: tuple[int, int] = PREVIEW_SIZE,
+) -> tuple[float, float]:
+    scale_x, scale_y = preview_scale(game_size, preview_size)
+    return x / scale_x, y / scale_y
+
+
+def game_length_to_preview(
+    length: float,
+    game_size: tuple[int, int] = GAME_SIZE, preview_size: tuple[int, int] = PREVIEW_SIZE,
+) -> float:
+    # Widths are horizontal; 16:9 rooms keep both axes on the same scale.
+    return length / preview_scale(game_size, preview_size)[0]
+
+
+def preview_to_game(
+    x: float, y: float,
+    game_size: tuple[int, int] = GAME_SIZE, preview_size: tuple[int, int] = PREVIEW_SIZE,
+) -> tuple[int, int]:
+    """Map a preview click to room coordinates, clamped inside the room."""
+    scale_x, scale_y = preview_scale(game_size, preview_size)
+    return (
+        max(0, min(game_size[0], round(x * scale_x))),
+        max(0, min(game_size[1], round(y * scale_y))),
+    )
 EDITOR_PIXELS = 512
 CANVAS_SIZES = (16, 32, 64, 128)
 EXPORT_SIZE = 1024
@@ -627,14 +662,15 @@ class ObjectEditor:
             try:
                 image_path = PROJECT_DIR / item["image"]
                 source = Image.open(image_path).convert("RGBA")
-                width = max(2, round(int(item["width"]) / 2))
+                width = max(2, round(game_length_to_preview(int(item["width"]))))
                 height = max(1, round(source.height * width / source.width))
                 sprite = source.resize((width, height), Image.Resampling.LANCZOS)
                 if not bool(item.get("visible", True)):
                     alpha = sprite.getchannel("A").point(lambda value: round(value * 0.28))
                     sprite.putalpha(alpha)
-                x = round(int(item["x"]) / 2 - width / 2)
-                y = round(int(item["y"]) / 2 - height / 2)
+                center_x, center_y = game_to_preview(int(item["x"]), int(item["y"]))
+                x = round(center_x - width / 2)
+                y = round(center_y - height / 2)
                 composite.alpha_composite(sprite, (x, y))
                 if index == selected:
                     ImageDraw.Draw(composite).rectangle(
@@ -647,11 +683,12 @@ class ObjectEditor:
 
         draft = self.current_preview_image()
         if draft is not None and selected is None:
-            width = max(2, round(self.width_var.get() / 2))
+            width = max(2, round(game_length_to_preview(self.width_var.get())))
             height = max(1, round(draft.height * width / draft.width))
             draft = draft.resize((width, height), Image.Resampling.LANCZOS)
-            x = round(self.x_var.get() / 2 - width / 2)
-            y = round(self.y_var.get() / 2 - height / 2)
+            center_x, center_y = game_to_preview(self.x_var.get(), self.y_var.get())
+            x = round(center_x - width / 2)
+            y = round(center_y - height / 2)
             composite.alpha_composite(draft, (x, y))
             ImageDraw.Draw(composite).rectangle(
                 (x - 2, y - 2, x + width + 1, y + height + 1),
@@ -677,8 +714,7 @@ class ObjectEditor:
             return False
 
     def preview_press(self, event: tk.Event) -> None:
-        game_x = max(0, min(GAME_SIZE[0], event.x * 2))
-        game_y = max(0, min(GAME_SIZE[1], event.y * 2))
+        game_x, game_y = preview_to_game(event.x, event.y)
         hit = next(
             (
                 index
@@ -708,10 +744,8 @@ class ObjectEditor:
     def preview_drag(self, event: tk.Event) -> None:
         if not self.dragging_placement or self.selected_placement is None:
             return
-        self.move_selected_to(
-            max(0, min(GAME_SIZE[0], event.x * 2)) + self.drag_offset[0],
-            max(0, min(GAME_SIZE[1], event.y * 2)) + self.drag_offset[1],
-        )
+        game_x, game_y = preview_to_game(event.x, event.y)
+        self.move_selected_to(game_x + self.drag_offset[0], game_y + self.drag_offset[1])
 
     def preview_release(self, _event: tk.Event) -> None:
         if self.dragging_placement and self.selected_placement is not None:
