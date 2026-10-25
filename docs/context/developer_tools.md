@@ -12,6 +12,7 @@
 | `run_*.bat` | Windows起動入口、必要時の環境構築 | 起動対象の実行確認 |
 | `scripts/evaluate_project.py`, `.github/workflows/work-ci.yml` | ローカル/PR共通の構文・単体・通常版/special検証、Godot必須モード、JSON非破壊確認 | `tests/test_evaluate_project.py` |
 | `ruff.toml`, `tools/quality/` | 違反0必須のRuff lint、空baselineの維持、実行/設定失敗の検出 | `tests/test_ruff_baseline.py` |
+| `tools/security/script/bootstrap.py`, `tools/security/README.md` | 選択Pythonのpip/certifi最低版確認と明示更新。CAファイル点検は全TLS経路/OS信頼の検証とは区別する | `tests/test_python_security.py` |
 | context/diff_summary/repo_syncの6 CLI入口 | 別cwd・PYTHONPATHなしの直接起動、ファイル基準のPROJECT_ROOT | `tests/test_tool_bootstrap.py` |
 | `tools/context/responsibilities.json`, `tools/context/script/select_files.py` | 変更ファイルから読む文書・関連ファイル・テストを選択 | `tests/test_context_selection.py` |
 | `tools/context/script/snapshot.py` | 未stage/stage済み・未追跡・履歴を本文なし・上限付きで照会 | `tests/test_context_snapshot.py` |
