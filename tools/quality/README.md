@@ -39,3 +39,18 @@ context/diff_summary/repo_syncの6入口は、ローカルimportの前に `__fil
 `Ruff lint baseline (Python 3.10)` と既存の `Work validation (Python 3.10 / Godot 4.7.2)` は独立した必須確認。baselineは空になったが、required statusとの互換性のためチェック名は変えない。片方の成功で他方の失敗・未完を相殺しない。全体単体テストにもRuff実CLIテストがあるため、validation側も品質依存を導入する。CIへの接続の原典は[Ruff integrations](https://docs.astral.sh/ruff/integrations/)。ブランチ保護設定は変更しない。
 
 全体評価とGodotの手順は[開発ワークフロー](../../docs/ワークフロー/ワークフロー.md)。この変更はゲーム挙動・描画・実GUIの検証を代替しない。
+
+## 作業後の対象限定整形
+
+実装担当は、変更したPythonファイルをプロジェクトのvenvのRuffで整形し、書換えないcheck、関連テスト、自己レビュー、追加レビューの順に確認する。指摘を修正した場合も同じ順で再確認する。レビュアーには整形を依頼しない。
+
+リポジトリ直下で実行する。次はIssue #103の対象例で、別の作業では引数をその作業の変更ファイルへ置き換える。
+
+```powershell
+.\.venv\Scripts\python.exe -m ruff format engine/character_repository.py engine/conversation_repository.py engine/room_repository.py
+.\.venv\Scripts\python.exe -m ruff format --check engine/character_repository.py engine/conversation_repository.py engine/room_repository.py
+```
+
+既存の `ruff.toml`（Python 3.10、100桁、ダブルクォート、空白インデント、改行自動判定）を共有する。`.git`・`.venv`・`tmp` は除外設定を維持し、担当外のdirtyファイル、生成物、vendorは明示引数にも含めない。競合するformatterやグローバル版は使わない。準備は上記の品質依存の導入手順を使い、実行版を `-m ruff --version` で記録する（Issue #103の実行版: 0.17.2）。
+
+整形コマンドとcheckは別々の1コマンドである。対象限定checkの成功は、全Pythonのformat成功やformat CI導入を意味しない。全体ゲートはIssue #86で引き続き扱う。
