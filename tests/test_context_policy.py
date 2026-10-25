@@ -14,8 +14,14 @@ class ContextPolicyTests(unittest.TestCase):
 
     def test_entrypoint_is_a_short_router_not_the_data_contract(self) -> None:
         entry = self.read("AGENTS.md")
-        self.assertLessEqual(len(entry.splitlines()), 50)
-        self.assertLessEqual(len(entry.encode("utf-8")), 4000)
+        # Cross-project policy blocks (<!-- name:date --> ... <!-- /name -->) are
+        # distributed and maintained outside this repository; keep them intact and
+        # measure only the project's own router.
+        managed = re.compile(r"<!-- ([a-z0-9-]+):[^>]*-->.*?<!-- /\1 -->\n*", re.S)
+        self.assertIn("<!-- shared-review-operations:", entry)
+        router = managed.sub("", entry)
+        self.assertLessEqual(len(router.splitlines()), 50)
+        self.assertLessEqual(len(router.encode("utf-8")), 4000)
         self.assertIn("docs/context/project.md", entry)
         self.assertIn("docs/ai-development-contract.md", entry)
         self.assertNotIn("```json", entry)

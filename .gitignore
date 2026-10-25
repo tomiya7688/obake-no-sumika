@@ -20,3 +20,9 @@ tmp/
 
 # Godot editor/import cache; source scripts and scenes stay tracked
 godot/.godot/
+
+# Review v2 private artifacts
+.review-private/
+.review-work/
+provider-keys.clixml
+provider-keys.clixml.tmp
