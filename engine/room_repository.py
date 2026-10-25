@@ -44,13 +44,9 @@ class RoomRepository:
             mote_count=self._integer(motes.get("count"), "motes.count", 0, 1000),
             mote_x_range=self._range(motes.get("x_range"), "motes.x_range"),
             mote_y_range=self._range(motes.get("y_range"), "motes.y_range"),
-            mote_reset_y_range=self._range(
-                motes.get("reset_y_range"), "motes.reset_y_range"
-            ),
+            mote_reset_y_range=self._range(motes.get("reset_y_range"), "motes.reset_y_range"),
             mote_top=self._number(motes.get("top"), "motes.top", 0.0, float(height)),
-            mote_speed_range=self._nonnegative_range(
-                motes.get("speed_range"), "motes.speed_range"
-            ),
+            mote_speed_range=self._nonnegative_range(motes.get("speed_range"), "motes.speed_range"),
             mote_drift_speed=self._number(
                 motes.get("drift_speed"), "motes.drift_speed", 0.0, 100.0
             ),
@@ -63,9 +59,7 @@ class RoomRepository:
             ),
             mote_color=self._color(motes.get("color"), "motes.color"),
             gradient_top=self._color(gradient.get("top"), "background.gradient.top"),
-            gradient_bottom=self._color(
-                gradient.get("bottom"), "background.gradient.bottom"
-            ),
+            gradient_bottom=self._color(gradient.get("bottom"), "background.gradient.bottom"),
             gradient_step=self._integer(
                 gradient.get("step"), "background.gradient.step", 1, height
             ),
@@ -74,9 +68,7 @@ class RoomRepository:
             vignette_max_inset=self._integer(
                 vignette.get("max_inset"), "background.vignette.max_inset", 0, width // 2
             ),
-            vignette_step=self._integer(
-                vignette.get("step"), "background.vignette.step", 1, width
-            ),
+            vignette_step=self._integer(vignette.get("step"), "background.vignette.step", 1, width),
             vignette_border_width=self._integer(
                 vignette.get("border_width"), "background.vignette.border_width", 1, 100
             ),
