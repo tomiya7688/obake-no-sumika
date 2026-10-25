@@ -215,34 +215,58 @@ class ObjectEditorToolTests(unittest.TestCase):
                 self.assertEqual(item["x"], room[0])
 
     def test_drawing_places_sprites_with_the_room_scale(self):
-        sprite = Image.new("RGBA", (10, 10), "white")
+        # A tall sprite so a wrong vertical scale would show in the height and y.
+        sprite = Image.new("RGBA", (10, 20), "white")
         for room in self.ROOMS:
-            scale = room[0] / 480
-            item = {
-                "image": "x.png",
-                "x": round(240 * scale),
-                "y": round(135 * scale),
-                "width": round(40 * scale),
-                "visible": True,
-            }
-            editor = self.make_preview_editor([item])
-            editor.redraw_preview = ObjectEditor.redraw_preview.__get__(editor)
-            editor.preview_base = Image.new("RGBA", (480, 270))
-            editor.current_preview_image = mock.Mock(return_value=None)
-            editor.preview_canvas = mock.Mock()
-            base = mock.Mock(wraps=editor.preview_base)
-            editor.preview_base = mock.Mock(copy=mock.Mock(return_value=base))
-            with (
-                self.subTest(room=room),
-                mock.patch.object(object_editor, "GAME_SIZE", room),
-                mock.patch.object(object_editor, "PREVIEW_SIZE", (480, 270)),
-                mock.patch.object(object_editor.Image, "open", return_value=sprite),
-                mock.patch.object(object_editor.ImageTk, "PhotoImage"),
-            ):
-                editor.redraw_preview()
+            with self.subTest(room=room):
+                scale = room[0] / 480
+                item = {
+                    "image": "x.png",
+                    "x": round(240 * scale),
+                    "y": round(135 * scale),
+                    "width": round(40 * scale),
+                    "visible": True,
+                }
+                editor = self.make_preview_editor([item])
+                editor.redraw_preview = ObjectEditor.redraw_preview.__get__(editor)
+                editor.current_preview_image = mock.Mock(return_value=None)
+                editor.preview_canvas = mock.Mock()
+                base = mock.Mock(wraps=Image.new("RGBA", (480, 270)))
+                editor.preview_base = mock.Mock(copy=mock.Mock(return_value=base))
+                with (
+                    mock.patch.object(object_editor, "GAME_SIZE", room),
+                    mock.patch.object(object_editor, "PREVIEW_SIZE", (480, 270)),
+                    mock.patch.object(object_editor.Image, "open", return_value=sprite),
+                    mock.patch.object(object_editor.ImageTk, "PhotoImage"),
+                ):
+                    editor.redraw_preview()
                 pasted, position = base.alpha_composite.call_args.args
-                self.assertEqual(pasted.size, (40, 40))
-                self.assertEqual(position, (220, 115))
+                self.assertEqual(pasted.size, (40, 80))
+                # Sprites are drawn centered on the placement.
+                self.assertEqual(position, (220, 95))
+
+    def test_click_hit_test_uses_real_image_and_room_scale(self):
+        # placement_contains compares in game coordinates, so a click is only a
+        # hit when preview_to_game maps it inside the object's scaled box.
+        for room in self.ROOMS:
+            with self.subTest(room=room):
+                scale = room[0] / 480
+                item = {
+                    "image": "assets/kadoka.png",
+                    "x": round(240 * scale),
+                    "y": round(135 * scale),
+                    "width": round(40 * scale),
+                }
+                with (
+                    mock.patch.object(object_editor, "GAME_SIZE", room),
+                    mock.patch.object(object_editor, "PREVIEW_SIZE", (480, 270)),
+                ):
+                    inside = self.make_preview_editor([item])
+                    inside.preview_press(SimpleNamespace(x=245, y=135))
+                    outside = self.make_preview_editor([item])
+                    outside.preview_press(SimpleNamespace(x=300, y=135))
+                self.assertEqual(inside.selected_placement, 0)
+                self.assertIsNone(outside.selected_placement)
 
     def make_saving_editor(self, problems: list[str]) -> ObjectEditor:
         editor = ObjectEditor.__new__(ObjectEditor)

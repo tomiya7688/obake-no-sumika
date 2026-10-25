@@ -61,9 +61,10 @@ def preview_to_game(
     clamp: bool = True,
 ) -> tuple[int, int]:
     """Map a preview point to room coordinates, clamped inside the room by default."""
-    game = GAME_SIZE if game_size is None else game_size
-    scale_x, scale_y = preview_scale(game, preview_size)
+    scale_x, scale_y = preview_scale(game_size, preview_size)
+    # round() may move a non-integer scale (e.g. 1280 / 480) by one game pixel.
     game_x, game_y = round(x * scale_x), round(y * scale_y)
+    game = GAME_SIZE if game_size is None else game_size
     if not clamp:
         return game_x, game_y
     return max(0, min(game[0], game_x)), max(0, min(game[1], game_y))
@@ -716,9 +717,10 @@ class ObjectEditor:
     def placement_contains(self, index: int, x: int, y: int) -> bool:
         item = self.placements[index]
         try:
-            source = Image.open(PROJECT_DIR / item["image"])
+            with Image.open(PROJECT_DIR / item["image"]) as source:
+                source_size = source.size
             width = int(item["width"])
-            height = round(source.height * width / source.width)
+            height = round(source_size[1] * width / source_size[0])
             return (
                 abs(x - int(item["x"])) <= width / 2
                 and abs(y - int(item["y"])) <= height / 2
