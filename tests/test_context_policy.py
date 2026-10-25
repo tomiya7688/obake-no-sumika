@@ -12,18 +12,29 @@ class ContextPolicyTests(unittest.TestCase):
     def read(self, path: str) -> str:
         return (ROOT / path).read_text(encoding="utf-8")
 
+    # Cross-project policy blocks distributed by the owner and maintained outside
+    # this repository (see docs/ワークフロー/共同作業ルール.md). Add new names here
+    # deliberately; any other <!-- name:... --> block still counts as router text.
+    DISTRIBUTED_BLOCKS = ("review-procedure-required", "shared-review-operations", "post-work-formatter-policy")
+
+    def strip_distributed_blocks(self, text: str) -> str:
+        names = "|".join(map(re.escape, self.DISTRIBUTED_BLOCKS))
+        return re.sub(rf"<!-- ({names}):[^>]*-->.*?<!-- /\1 -->\n*", "", text, flags=re.S)
+
+    def test_only_listed_distributed_blocks_are_excluded_from_the_router(self) -> None:
+        listed = "<!-- shared-review-operations:v9 -->\nX\n<!-- /shared-review-operations -->\n"
+        unlisted = "<!-- my-notes:1 -->\nY\n<!-- /my-notes -->\n"
+        self.assertEqual(self.strip_distributed_blocks(listed + "router\n"), "router\n")
+        self.assertEqual(self.strip_distributed_blocks(unlisted), unlisted)
+
     def test_entrypoint_is_a_short_router_not_the_data_contract(self) -> None:
         entry = self.read("AGENTS.md")
-        # Cross-project policy blocks (<!-- name:date --> ... <!-- /name -->) are
-        # distributed and maintained outside this repository; keep them intact and
-        # measure only the project's own router.
-        managed = re.compile(r"<!-- ([a-z0-9-]+):[^>]*-->.*?<!-- /\1 -->\n*", re.S)
         self.assertIn("<!-- shared-review-operations:", entry)
-        router = managed.sub("", entry)
+        router = self.strip_distributed_blocks(entry)
         self.assertLessEqual(len(router.splitlines()), 50)
         self.assertLessEqual(len(router.encode("utf-8")), 4000)
-        self.assertIn("docs/context/project.md", entry)
-        self.assertIn("docs/ai-development-contract.md", entry)
+        self.assertIn("docs/context/project.md", router)
+        self.assertIn("docs/ai-development-contract.md", router)
         self.assertNotIn("```json", entry)
         self.assertNotIn("## Source map", entry)
 

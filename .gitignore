@@ -26,3 +26,6 @@ godot/.godot/
 .review-work/
 provider-keys.clixml
 provider-keys.clixml.tmp
+# Any other exported credential store (repository has no tracked .clixml files)
+*.clixml
+*.clixml.tmp
