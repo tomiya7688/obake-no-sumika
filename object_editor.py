@@ -70,6 +70,30 @@ def preview_to_game(
     return max(0, min(game[0], game_x)), max(0, min(game[1], game_y))
 
 
+def preview_rect(
+    center_x: float,
+    center_y: float,
+    width: float,
+    source_size: Size,
+    game_size: Size | None = None,
+    preview_size: Size | None = None,
+) -> tuple[int, int, int, int]:
+    """Preview pixel box (left, top, width, height) a placement is drawn in.
+
+    Drawing and click hit tests both use this box, so every visible pixel of a
+    sprite selects it, even for tiny objects whose size is rounded up.
+    """
+    box_width = max(2, round(game_length_to_preview(width, game_size, preview_size)))
+    box_height = max(1, round(source_size[1] * box_width / source_size[0]))
+    preview_x, preview_y = game_to_preview(center_x, center_y, game_size, preview_size)
+    return (
+        round(preview_x - box_width / 2),
+        round(preview_y - box_height / 2),
+        box_width,
+        box_height,
+    )
+
+
 EDITOR_PIXELS = 512
 CANVAS_SIZES = (16, 32, 64, 128)
 EXPORT_SIZE = 1024
@@ -676,15 +700,13 @@ class ObjectEditor:
             try:
                 image_path = PROJECT_DIR / item["image"]
                 source = Image.open(image_path).convert("RGBA")
-                width = max(2, round(game_length_to_preview(int(item["width"]))))
-                height = max(1, round(source.height * width / source.width))
+                x, y, width, height = preview_rect(
+                    int(item["x"]), int(item["y"]), int(item["width"]), source.size
+                )
                 sprite = source.resize((width, height), Image.Resampling.LANCZOS)
                 if not bool(item.get("visible", True)):
                     alpha = sprite.getchannel("A").point(lambda value: round(value * 0.28))
                     sprite.putalpha(alpha)
-                center_x, center_y = game_to_preview(int(item["x"]), int(item["y"]))
-                x = round(center_x - width / 2)
-                y = round(center_y - height / 2)
                 composite.alpha_composite(sprite, (x, y))
                 if index == selected:
                     ImageDraw.Draw(composite).rectangle(
@@ -697,12 +719,10 @@ class ObjectEditor:
 
         draft = self.current_preview_image()
         if draft is not None and selected is None:
-            width = max(2, round(game_length_to_preview(self.width_var.get())))
-            height = max(1, round(draft.height * width / draft.width))
+            x, y, width, height = preview_rect(
+                self.x_var.get(), self.y_var.get(), self.width_var.get(), draft.size
+            )
             draft = draft.resize((width, height), Image.Resampling.LANCZOS)
-            center_x, center_y = game_to_preview(self.x_var.get(), self.y_var.get())
-            x = round(center_x - width / 2)
-            y = round(center_y - height / 2)
             composite.alpha_composite(draft, (x, y))
             ImageDraw.Draw(composite).rectangle(
                 (x - 2, y - 2, x + width + 1, y + height + 1),
@@ -714,17 +734,16 @@ class ObjectEditor:
         self.preview_canvas.delete("all")
         self.preview_canvas.create_image(0, 0, image=self.preview_photo, anchor="nw")
 
-    def placement_contains(self, index: int, x: int, y: int) -> bool:
+    def placement_contains(self, index: int, preview_x: int, preview_y: int) -> bool:
+        """Whether a preview pixel lies inside the box the placement is drawn in."""
         item = self.placements[index]
         try:
             with Image.open(PROJECT_DIR / item["image"]) as source:
                 source_size = source.size
-            width = int(item["width"])
-            height = round(source_size[1] * width / source_size[0])
-            return (
-                abs(x - int(item["x"])) <= width / 2
-                and abs(y - int(item["y"])) <= height / 2
+            left, top, width, height = preview_rect(
+                int(item["x"]), int(item["y"]), int(item["width"]), source_size
             )
+            return left <= preview_x < left + width and top <= preview_y < top + height
         except (KeyError, OSError, TypeError, ValueError, ZeroDivisionError):
             return False
 
@@ -734,7 +753,7 @@ class ObjectEditor:
             (
                 index
                 for index in range(len(self.placements) - 1, -1, -1)
-                if self.placement_contains(index, game_x, game_y)
+                if self.placement_contains(index, event.x, event.y)
             ),
             None,
         )

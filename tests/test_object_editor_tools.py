@@ -246,8 +246,7 @@ class ObjectEditorToolTests(unittest.TestCase):
                 self.assertEqual(position, (220, 95))
 
     def test_click_hit_test_uses_real_image_and_room_scale(self):
-        # placement_contains compares in game coordinates, so a click is only a
-        # hit when preview_to_game maps it inside the object's scaled box.
+        # Clicks hit the same rounded preview box the sprite is drawn in.
         for room in self.ROOMS:
             with self.subTest(room=room):
                 scale = room[0] / 480
@@ -267,6 +266,26 @@ class ObjectEditorToolTests(unittest.TestCase):
                     outside.preview_press(SimpleNamespace(x=300, y=135))
                 self.assertEqual(inside.selected_placement, 0)
                 self.assertIsNone(outside.selected_placement)
+
+    def test_tiny_sprite_edge_pixel_is_selectable(self):
+        # 1280x720, width 8, center x=800 is drawn from preview x=298 (min 2 px wide);
+        # its first drawn pixel must select it (CodeRabbit on PR #109).
+        room = (1280, 720)
+        item = {"image": "assets/kadoka.png", "x": 800, "y": 360, "width": 8}
+        with (
+            mock.patch.object(object_editor, "GAME_SIZE", room),
+            mock.patch.object(object_editor, "PREVIEW_SIZE", (480, 270)),
+        ):
+            with Image.open(object_editor.PROJECT_DIR / item["image"]) as source:
+                left, top, width, height = object_editor.preview_rect(800, 360, 8, source.size)
+            self.assertEqual((left, width), (298, 3))
+            for x in (left, left + width - 1):
+                editor = self.make_preview_editor([item])
+                editor.preview_press(SimpleNamespace(x=x, y=top))
+                self.assertEqual(editor.selected_placement, 0, x)
+            editor = self.make_preview_editor([item])
+            editor.preview_press(SimpleNamespace(x=left + width, y=top))
+            self.assertIsNone(editor.selected_placement)
 
     def make_saving_editor(self, problems: list[str]) -> ObjectEditor:
         editor = ObjectEditor.__new__(ObjectEditor)
