@@ -21,6 +21,79 @@ ROOM_PATH = PROJECT_DIR / "room.json"
 ROOM = RoomRepository(ROOM_PATH).load()
 GAME_SIZE = (ROOM.width, ROOM.height)
 PREVIEW_SIZE = (480, round(480 * ROOM.height / ROOM.width))
+
+
+Size = tuple[int, int]
+
+
+def preview_scale(
+    game_size: Size | None = None, preview_size: Size | None = None
+) -> tuple[float, float]:
+    """Game pixels per preview pixel on each axis, derived from room.json.
+
+    Sizes default to the module constants at call time so tests and any later room
+    reload see the current values. RoomRepository enforces an exact 16:9 room, so
+    both axes always share the same scale.
+    """
+    game = GAME_SIZE if game_size is None else game_size
+    preview = PREVIEW_SIZE if preview_size is None else preview_size
+    return game[0] / preview[0], game[1] / preview[1]
+
+
+def game_to_preview(
+    x: float, y: float, game_size: Size | None = None, preview_size: Size | None = None
+) -> tuple[float, float]:
+    scale_x, scale_y = preview_scale(game_size, preview_size)
+    return x / scale_x, y / scale_y
+
+
+def game_length_to_preview(
+    length: float, game_size: Size | None = None, preview_size: Size | None = None
+) -> float:
+    return length / preview_scale(game_size, preview_size)[0]
+
+
+def preview_to_game(
+    x: float,
+    y: float,
+    game_size: Size | None = None,
+    preview_size: Size | None = None,
+    clamp: bool = True,
+) -> tuple[int, int]:
+    """Map a preview point to room coordinates, clamped inside the room by default."""
+    scale_x, scale_y = preview_scale(game_size, preview_size)
+    # round() may move a non-integer scale (e.g. 1280 / 480) by one game pixel.
+    game_x, game_y = round(x * scale_x), round(y * scale_y)
+    game = GAME_SIZE if game_size is None else game_size
+    if not clamp:
+        return game_x, game_y
+    return max(0, min(game[0], game_x)), max(0, min(game[1], game_y))
+
+
+def preview_rect(
+    center_x: float,
+    center_y: float,
+    width: float,
+    source_size: Size,
+    game_size: Size | None = None,
+    preview_size: Size | None = None,
+) -> tuple[int, int, int, int]:
+    """Preview pixel box (left, top, width, height) a placement is drawn in.
+
+    Drawing and click hit tests both use this box, so every visible pixel of a
+    sprite selects it, even for tiny objects whose size is rounded up.
+    """
+    box_width = max(2, round(game_length_to_preview(width, game_size, preview_size)))
+    box_height = max(1, round(source_size[1] * box_width / source_size[0]))
+    preview_x, preview_y = game_to_preview(center_x, center_y, game_size, preview_size)
+    return (
+        round(preview_x - box_width / 2),
+        round(preview_y - box_height / 2),
+        box_width,
+        box_height,
+    )
+
+
 EDITOR_PIXELS = 512
 CANVAS_SIZES = (16, 32, 64, 128)
 EXPORT_SIZE = 1024
@@ -627,14 +700,13 @@ class ObjectEditor:
             try:
                 image_path = PROJECT_DIR / item["image"]
                 source = Image.open(image_path).convert("RGBA")
-                width = max(2, round(int(item["width"]) / 2))
-                height = max(1, round(source.height * width / source.width))
+                x, y, width, height = preview_rect(
+                    int(item["x"]), int(item["y"]), int(item["width"]), source.size
+                )
                 sprite = source.resize((width, height), Image.Resampling.LANCZOS)
                 if not bool(item.get("visible", True)):
                     alpha = sprite.getchannel("A").point(lambda value: round(value * 0.28))
                     sprite.putalpha(alpha)
-                x = round(int(item["x"]) / 2 - width / 2)
-                y = round(int(item["y"]) / 2 - height / 2)
                 composite.alpha_composite(sprite, (x, y))
                 if index == selected:
                     ImageDraw.Draw(composite).rectangle(
@@ -647,11 +719,10 @@ class ObjectEditor:
 
         draft = self.current_preview_image()
         if draft is not None and selected is None:
-            width = max(2, round(self.width_var.get() / 2))
-            height = max(1, round(draft.height * width / draft.width))
+            x, y, width, height = preview_rect(
+                self.x_var.get(), self.y_var.get(), self.width_var.get(), draft.size
+            )
             draft = draft.resize((width, height), Image.Resampling.LANCZOS)
-            x = round(self.x_var.get() / 2 - width / 2)
-            y = round(self.y_var.get() / 2 - height / 2)
             composite.alpha_composite(draft, (x, y))
             ImageDraw.Draw(composite).rectangle(
                 (x - 2, y - 2, x + width + 1, y + height + 1),
@@ -663,27 +734,26 @@ class ObjectEditor:
         self.preview_canvas.delete("all")
         self.preview_canvas.create_image(0, 0, image=self.preview_photo, anchor="nw")
 
-    def placement_contains(self, index: int, x: int, y: int) -> bool:
+    def placement_contains(self, index: int, preview_x: int, preview_y: int) -> bool:
+        """Whether a preview pixel lies inside the box the placement is drawn in."""
         item = self.placements[index]
         try:
-            source = Image.open(PROJECT_DIR / item["image"])
-            width = int(item["width"])
-            height = round(source.height * width / source.width)
-            return (
-                abs(x - int(item["x"])) <= width / 2
-                and abs(y - int(item["y"])) <= height / 2
+            with Image.open(PROJECT_DIR / item["image"]) as source:
+                source_size = source.size
+            left, top, width, height = preview_rect(
+                int(item["x"]), int(item["y"]), int(item["width"]), source_size
             )
+            return left <= preview_x < left + width and top <= preview_y < top + height
         except (KeyError, OSError, TypeError, ValueError, ZeroDivisionError):
             return False
 
     def preview_press(self, event: tk.Event) -> None:
-        game_x = max(0, min(GAME_SIZE[0], event.x * 2))
-        game_y = max(0, min(GAME_SIZE[1], event.y * 2))
+        game_x, game_y = preview_to_game(event.x, event.y)
         hit = next(
             (
                 index
                 for index in range(len(self.placements) - 1, -1, -1)
-                if self.placement_contains(index, game_x, game_y)
+                if self.placement_contains(index, event.x, event.y)
             ),
             None,
         )
@@ -708,10 +778,10 @@ class ObjectEditor:
     def preview_drag(self, event: tk.Event) -> None:
         if not self.dragging_placement or self.selected_placement is None:
             return
-        self.move_selected_to(
-            max(0, min(GAME_SIZE[0], event.x * 2)) + self.drag_offset[0],
-            max(0, min(GAME_SIZE[1], event.y * 2)) + self.drag_offset[1],
-        )
+        # Add the grab offset before clamping so dragging past an edge keeps the
+        # object against that edge; move_selected_to() clamps to the room.
+        game_x, game_y = preview_to_game(event.x, event.y, clamp=False)
+        self.move_selected_to(game_x + self.drag_offset[0], game_y + self.drag_offset[1])
 
     def preview_release(self, _event: tk.Event) -> None:
         if self.dragging_placement and self.selected_placement is not None:
