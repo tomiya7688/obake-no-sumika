@@ -66,6 +66,7 @@ class ContextSelectionTests(unittest.TestCase):
                 "tests/test_evaluate_project.py",
                 "tests/test_python_security.py",
                 "tests/test_ruff_baseline.py",
+                "tests/test_format_changed.py",
             ],
         )
         self.assertNotIn("game.py", result["related_files"])
@@ -76,7 +77,9 @@ class ContextSelectionTests(unittest.TestCase):
         self.assertEqual(
             result["contexts"], ["docs/context/project.md", "docs/context/developer_tools.md"]
         )
-        self.assertEqual(result["tests"], ["tests/test_ruff_baseline.py"])
+        self.assertEqual(
+            result["tests"], ["tests/test_ruff_baseline.py", "tests/test_format_changed.py"]
+        )
         self.assertIn("tools/quality/README.md", result["related_files"])
         self.assertNotIn("game.py", result["related_files"])
         self.assertEqual(result["unmapped_files"], [])

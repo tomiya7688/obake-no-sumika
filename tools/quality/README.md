@@ -44,13 +44,23 @@ context/diff_summary/repo_syncの6入口は、ローカルimportの前に `__fil
 
 実装担当は、変更したPythonファイルをプロジェクトのvenvのRuffで整形し、書換えないcheck、関連テスト、自己レビュー、追加レビューの順に確認する。指摘を修正した場合も同じ順で再確認する。レビュアーには整形を依頼しない。
 
-リポジトリ直下で実行する。次はIssue #103の対象例で、別の作業では引数をその作業の変更ファイルへ置き換える。
+入口は `tools/quality/script/format_changed.py`（Issue #110）。対象の選び方を次の3つから1つだけ指定し、担当外の未コミット変更には触れない。
 
 ```powershell
-.\.venv\Scripts\python.exe -m ruff format engine/character_repository.py engine/conversation_repository.py engine/room_repository.py
-.\.venv\Scripts\python.exe -m ruff format --check engine/character_repository.py engine/conversation_repository.py engine/room_repository.py
+# 今回の変更だけを git add した後に整形（推奨）。整形後は同じファイルを再度 git add する
+.\.venv\Scripts\python.exe tools/quality/script/format_changed.py --staged
+# ブランチ全体の変更ファイルを書き換えずに確認（CIと同じ）
+.\.venv\Scripts\python.exe tools/quality/script/format_changed.py --base origin/work --check
+# ファイルを明示する
+.\.venv\Scripts\python.exe tools/quality/script/format_changed.py game.py tests/test_tagged_conversations.py
 ```
+
+`.py` 以外と削除されたファイルは対象外。終了コードは 0（整形済み・対象なし）、1（整形が必要、`--check` 時）、2（対象の指定誤り・ファイルなし・Ruff未導入）。変更したファイルはファイル全体を整形するので、未整形の旧ファイルに触れると差分が大きくなる。その整形も同じPRに含め、意味が変わっていないことを差分で確かめる。
+
+Work CI の `Ruff lint baseline (Python 3.10)` ジョブは、PR が変更したPythonファイルを `--base origin/<PRのベース> --check` で確認する（チェック名は互換性のため変えない）。PR以外（push・手動実行）では実行しない。
 
 既存の `ruff.toml`（Python 3.10、100桁、ダブルクォート、空白インデント、改行自動判定）を共有する。`.git`・`.venv`・`tmp` は除外設定を維持し、担当外のdirtyファイル、生成物、vendorは明示引数にも含めない。競合するformatterやグローバル版は使わない。準備は上記の品質依存の導入手順を使い、実行版を `-m ruff --version` で記録する（Issue #103の実行版: 0.17.2）。
 
-整形コマンドとcheckは別々の1コマンドである。対象限定checkの成功は、全Pythonのformat成功やformat CI導入を意味しない。全体ゲートはIssue #86で引き続き扱う。
+整形コマンドとcheckは別々の1コマンドである。対象限定checkの成功は、全Pythonのformat成功を意味しない。旧ソース全体の整形と全体ゲートはIssue #86で引き続き扱う。
+
+GDScript（`godot/`）にはformatterを導入していない（Godot 4.7.2 標準のCLI整形はなく、gdtoolkit等は未採用）。JSONは各repositoryの保存処理が `indent=2` で書き出す形式を正とし、手編集時もその形式に合わせる。
