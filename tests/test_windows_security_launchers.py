@@ -67,6 +67,10 @@ class LauncherContractTests(unittest.TestCase):
                 self.assertNotIn("-m pip install", source)
                 self.assertNotIn(app, source)
                 self.assertLess(source.index("goto :existing_venv"), source.index("where py"))
+                self.assertLess(
+                    source.index('if exist ".venv-setup.lock" goto :base_python'),
+                    source.index('if exist ".venv\\Scripts\\python.exe"'),
+                )
                 self.assertNotIn("--managed-runtime", source)
                 self.assertNotIn("--trusted-host", source)
         editor = (ROOT / "run_editor.bat").read_text(encoding="utf-8")
@@ -75,6 +79,10 @@ class LauncherContractTests(unittest.TestCase):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertNotIn("py -m pip install", readme)
         self.assertIn("launch.py game", readme)
+        self.assertLess(
+            readme.index("if (Test-Path .venv-setup.lock)"),
+            readme.index("elseif (Test-Path .venv\\Scripts\\python.exe)"),
+        )
         self.assertIn("if ($LASTEXITCODE -ne 0) { throw", readme)
 
     def test_launcher_changes_select_the_security_contract(self) -> None:

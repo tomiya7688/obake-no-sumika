@@ -26,7 +26,9 @@ Python 3.10 以上が必要です。初回の依存導入や古い/不足したp
 ## コマンドで起動する場合
 
 ```powershell
-if (Test-Path .venv\Scripts\python.exe) {
+if (Test-Path .venv-setup.lock) {
+    $sumikaPython = "py"
+} elseif (Test-Path .venv\Scripts\python.exe) {
     $sumikaPython = ".\.venv\Scripts\python.exe"
 } else {
     $sumikaPython = "py"
