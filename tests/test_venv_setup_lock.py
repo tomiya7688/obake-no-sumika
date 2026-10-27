@@ -174,6 +174,50 @@ class SetupLockTests(unittest.TestCase):
                     self.fail("interrupt must not start setup")
         self.assertTrue((self.root / launch.LOCK_NAME).exists())
 
+    def test_metadata_is_published_only_after_complete_serialization(self) -> None:
+        original = launch.json.dump
+
+        def dump(metadata, stream):
+            path = self.root / launch.LOCK_NAME
+            self.assertFalse((path / f"owner-{metadata['token']}.json").exists())
+            self.assertTrue((path / f"metadata-{metadata['token']}.tmp").is_file())
+            self.assertIsNone(launch.read_owner(self.root / launch.LOCK_NAME))
+            original(metadata, stream)
+            stream.flush()
+            self.assertFalse((path / f"owner-{metadata['token']}.json").exists())
+            self.assertIsNone(launch.read_owner(self.root / launch.LOCK_NAME))
+
+        with mock.patch.object(launch.json, "dump", side_effect=dump):
+            with launch.SetupLock(self.root) as holder:
+                self.assertEqual(launch.read_owner(holder.path), holder.owner)
+                self.assertFalse(list(holder.path.glob("*.tmp")))
+
+    def test_real_setup_timeout_retains_lock_without_application_launch(self) -> None:
+        with self.assertRaises(subprocess.TimeoutExpired):
+            with launch.SetupLock(self.root):
+                launch.run(
+                    [sys._base_executable, "-I", "-B", "-c", "import time; time.sleep(10)"],
+                    self.root,
+                    timeout=0.1,
+                )
+        self.assertIsNotNone(launch.read_owner(self.root / launch.LOCK_NAME))
+
+    def test_cli_reports_timeout_and_never_starts_application(self) -> None:
+        with (
+            mock.patch.object(launch, "ROOT", self.root),
+            mock.patch.object(
+                launch, "prepare", side_effect=subprocess.TimeoutExpired("setup fixture", 300)
+            ),
+            mock.patch.object(launch, "run") as run,
+            mock.patch.object(launch.subprocess, "Popen") as popen,
+            contextlib.redirect_stderr(io.StringIO()) as stderr,
+        ):
+            self.assertEqual(launch.main(["game"]), 1)
+        self.assertIn("Lock retained", stderr.getvalue())
+        self.assertIsNotNone(launch.read_owner(self.root / launch.LOCK_NAME))
+        run.assert_not_called()
+        popen.assert_not_called()
+
     def test_separate_projects_do_not_share_a_lock(self) -> None:
         other = self.root / "other"
         other.mkdir()
@@ -192,6 +236,7 @@ class SetupLockTests(unittest.TestCase):
         self.assertEqual(calls[0], [sys.executable, "-I", "-m", "venv", ".venv"])
         self.assertEqual(calls[1][-1], "--apply")
         self.assertEqual(calls[2][-5:], ["-m", "pip", "install", "-r", "requirements.txt"])
+        self.assertTrue(all(call.kwargs["timeout"] == 300 for call in run.call_args_list))
         python = launch.python_path(self.root)
         python.parent.mkdir(parents=True)
         python.touch()

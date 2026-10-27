@@ -157,20 +157,31 @@ class SetupLock:
         # A crash while writing also leaves the directory for manual investigation.
         metadata = {**self.owner, "created_utc": datetime.now(timezone.utc).isoformat()}
         own_file = self.path / f"owner-{self.owner['token']}.json"
+        temporary = self.path / f"metadata-{self.owner['token']}.tmp"
         try:
-            with own_file.open("x", encoding="utf-8") as stream:
+            with temporary.open("x", encoding="utf-8") as stream:
                 json.dump(metadata, stream)
-        except Exception:
+            temporary.replace(own_file)
+        except Exception as error:
             # No child has started. Remove only our partial metadata and empty directory.
             # BaseException (including Ctrl+C) deliberately leaves evidence intact.
-            retry_permission(lambda: own_file.unlink(missing_ok=True))
-            retry_permission(self.path.rmdir)
+            try:
+                retry_permission(lambda: temporary.unlink(missing_ok=True))
+                retry_permission(lambda: own_file.unlink(missing_ok=True))
+                retry_permission(self.path.rmdir)
+            except OSError as cleanup_error:
+                print(
+                    f"Metadata error: {error}; cleanup failed: {cleanup_error}; lock retained",
+                    file=sys.stderr,
+                )
             raise
         return self
 
     def __exit__(self, kind, value, traceback) -> None:
-        if kind is not None and not issubclass(kind, Exception):
-            return  # Ctrl+C/SystemExit: a child may remain; do not infer safe recovery.
+        if kind is not None and (
+            not issubclass(kind, Exception) or issubclass(kind, subprocess.TimeoutExpired)
+        ):
+            return  # Interrupt/timeout: a child may remain; do not infer safe recovery.
         release_lock(self.path, self.owner)
 
 
@@ -193,29 +204,34 @@ def python_path(root: Path, windowed: bool = False) -> Path:
     return root / ".venv" / "bin" / "python"
 
 
-def run(command: list[str], root: Path) -> None:
-    subprocess.run(command, cwd=root, check=True)
+def run(command: list[str], root: Path, *, timeout: float | None = None) -> None:
+    subprocess.run(command, cwd=root, check=True, timeout=timeout)
 
 
 def prepare(root: Path, entry: str) -> None:
     """Called only inside SetupLock; subprocess completion precedes normal unlock."""
     python = python_path(root)
     if not python.is_file():
-        run([sys.executable, "-I", "-m", "venv", ".venv"], root)
+        run([sys.executable, "-I", "-m", "venv", ".venv"], root, timeout=300)
     bootstrap = str(root / "tools" / "security" / "script" / "bootstrap.py")
-    run([str(python), "-I", "-B", bootstrap, "--apply"], root)
+    run([str(python), "-I", "-B", bootstrap, "--apply"], root, timeout=300)
     probe = subprocess.run(
         [str(python), "-I", "-B", "-c", ENTRIES[entry][1]],
         cwd=root,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
+        timeout=30,
     )
     if probe.returncode:
         if entry == "conversation-editor":
             raise RuntimeError(
                 "Tkinter is unavailable; repair the selected base Python installation"
             )
-        run([str(python), "-I", "-m", "pip", "install", "-r", "requirements.txt"], root)
+        run(
+            [str(python), "-I", "-m", "pip", "install", "-r", "requirements.txt"],
+            root,
+            timeout=300,
+        )
 
 
 def launch(root: Path, entry: str, timeout: float = 300, fullscreen: bool = False) -> None:
@@ -263,6 +279,13 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     except KeyboardInterrupt:
         print("Setup interrupted; inspect the retained lock before recovery.", file=sys.stderr)
+        return 1
+    except subprocess.TimeoutExpired as error:
+        print(
+            f"Setup command timed out: {error}. Lock retained; confirm all setup processes "
+            "stopped before manual recovery. See docs/venv起動機能説明書.md.",
+            file=sys.stderr,
+        )
         return 1
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
         print(f"Project launch failed: {error}", file=sys.stderr)
