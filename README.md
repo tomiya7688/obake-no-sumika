@@ -26,11 +26,22 @@ Python 3.10 以上が必要です。インターネット接続が必要なの�
 ## コマンドで起動する場合
 
 ```powershell
-py -m pip install -r requirements.txt
-py game.py
+if (!(Test-Path .venv\Scripts\python.exe)) {
+    py -m venv .venv
+    if ($LASTEXITCODE -ne 0) { throw "venv creation failed" }
+}
+.\.venv\Scripts\python.exe -I -B tools/security/script/bootstrap.py --apply
+if ($LASTEXITCODE -ne 0) { throw "Python tooling bootstrap failed" }
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+if ($LASTEXITCODE -ne 0) { throw "Dependency installation failed" }
+.\.venv\Scripts\python.exe -I -B tools/security/script/bootstrap.py
+if ($LASTEXITCODE -ne 0) { throw "Python tooling verification failed" }
+.\.venv\Scripts\python.exe game.py
 ```
 
-最初から全画面で起動する場合は `py game.py --fullscreen` を使います。
+エラーが出た場合は次のコマンドへ進まないでください。最初から全画面で起動する場合は、最後のコマンドに `--fullscreen` を追加します。
+
+Windowsの4起動バッチも、依存取得前と起動前にvenvのpip/certifiを検査し、失敗時は停止します。会話エディタもglobal Pythonへ切り替えず同じvenvを使います。検査の範囲・復旧手順は[Python取得基盤の手順](tools/security/README.md)を参照してください。
 
 `py` が使えない環境では、代わりに `python` を使ってください。
 
