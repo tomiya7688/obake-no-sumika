@@ -2,23 +2,44 @@
 setlocal
 cd /d "%~dp0"
 
-if exist ".venv\Scripts\pythonw.exe" (
-    start "" ".venv\Scripts\pythonw.exe" conversation_editor.py
-    exit /b 0
-)
-
-where pyw >nul 2>nul
-if not errorlevel 1 (
-    start "" pyw conversation_editor.py
-    exit /b 0
-)
+if exist ".venv\Scripts\python.exe" goto :verify_tooling
 
 where py >nul 2>nul
-if not errorlevel 1 (
-    py conversation_editor.py
-    exit /b %errorlevel%
+if errorlevel 1 (
+    where python >nul 2>nul
+    if errorlevel 1 (
+        echo Python 3 was not found. Install Python, then run this file again.
+        pause
+        exit /b 1
+    )
+    set "PYTHON_CMD=python"
+) else (
+    set "PYTHON_CMD=py"
 )
 
-echo Python 3 was not found. Install Python, then run this file again.
+if not exist ".venv\Scripts\python.exe" (
+    echo Preparing the conversation editor for its first launch...
+    %PYTHON_CMD% -m venv .venv
+    if errorlevel 1 goto :error
+)
+
+:verify_tooling
+".venv\Scripts\python.exe" -I -B "tools\security\script\bootstrap.py" --apply
+if errorlevel 1 goto :error
+
+".venv\Scripts\python.exe" -c "import tkinter" >nul 2>nul
+if errorlevel 1 goto :error
+
+".venv\Scripts\python.exe" -I -B "tools\security\script\bootstrap.py"
+if errorlevel 1 goto :error
+
+if not exist ".venv\Scripts\pythonw.exe" goto :error
+start "" ".venv\Scripts\pythonw.exe" conversation_editor.py
+if errorlevel 1 goto :error
+exit /b 0
+
+:error
+echo.
+echo The conversation editor could not start. See README.md for manual setup steps.
 pause
 exit /b 1

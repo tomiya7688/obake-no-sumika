@@ -2,6 +2,8 @@
 setlocal
 cd /d "%~dp0"
 
+if exist ".venv\Scripts\python.exe" goto :verify_tooling
+
 where py >nul 2>nul
 if errorlevel 1 (
     where python >nul 2>nul
@@ -21,6 +23,10 @@ if not exist ".venv\Scripts\python.exe" (
     if errorlevel 1 goto :error
 )
 
+:verify_tooling
+".venv\Scripts\python.exe" -I -B "tools\security\script\bootstrap.py" --apply
+if errorlevel 1 goto :error
+
 ".venv\Scripts\python.exe" -c "import pygame; import PIL" >nul 2>nul
 if errorlevel 1 (
     echo Installing the engine components...
@@ -28,7 +34,12 @@ if errorlevel 1 (
     if errorlevel 1 goto :error
 )
 
+".venv\Scripts\python.exe" -I -B "tools\security\script\bootstrap.py"
+if errorlevel 1 goto :error
+
+if not exist ".venv\Scripts\pythonw.exe" goto :error
 start "" ".venv\Scripts\pythonw.exe" engine_app.py
+if errorlevel 1 goto :error
 exit /b 0
 
 :error
