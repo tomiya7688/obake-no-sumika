@@ -27,7 +27,15 @@ base Pythonは暗黙に変更しない。CIの管理済みruntimeだけは明示
 
 回帰テスト: `python -m unittest tests.test_windows_security_launchers -v`。静的な契約/責務選択は全OSで実行し、実Windows CMDの34ケースはWindowsだけで実行する。空白・日本語パスと別cwd、既存依存/不足依存、初回検査/取得/再検査の失敗（終了1と2、依存導入成功後の再検査失敗も含む）、GUI用pythonw欠落、会話エディタでpygame/Pillow不要をfixtureで検証する（外部取得・実GUI操作の証拠ではない）。
 
-安全な版を満たす環境はbootstrapで再取得しない。旧版/不足の修復が必要な時は、オフラインなら失敗して起動しない。同じvenvを更新する処理はまだ直列化していないため（[Issue #113](https://github.com/tomiya7688/obake-no-sumika/issues/113)）、初回準備/修復中の複数バッチ同時起動は避ける。pip欠落や部分的に作られたvenvは上記ensurepipで手動復旧する。既存venvを自動削除することはない。
+安全な版を満たす環境はbootstrapで再取得しない。旧版/不足の修復が必要な時は、オフラインなら失敗して起動しない。pip欠落や部分的に作られたvenvは上記ensurepipで手動復旧する。既存venvを自動削除することはない。
+
+### 共有venvの準備ロック（Issue #113）
+
+4バッチとREADMEの手動起動は `launch.py` を使う。venv作成/apply/必要な依存導入の間だけproject内 `.venv-setup.lock/` を排他的に作成し、既定300秒まで待機する。通常は準備終了時に自分のtokenだけ解放し、その後の読取専用checkに成功した場合だけ起動する。アプリの終了待ちにはロックを持ち込まない。
+
+強制終了/Ctrl+Cのロックは残し、PID不在や経過時間だけで自動削除しない。子pipが残っている可能性があるため、利用者が該当projectの全準備プロセス終了を確認した後だけ、`python -I -B tools/security/script/launch.py --recover-lock <owner-token> --confirm-no-setup-processes` で明示回収する。稼働中/状態不明のPID、不一致token、壊れたmetadataは回収拒否。詳しくは[設計と復旧手順](../../docs/venv起動機能説明書.md)。
+
+手動pip/ensurepip・IDE・CIなど共通入口を通らない更新は調停しない。同時に実行しないこと。実行中アプリと依存の差替え、OS/全TLSの安全性、実GUI準備完了はこのロックの保証外。
 
 `-I` はPythonの隔離実行であり、pipの `PIP_*` 設定や `SSL_CERT_FILE` / `REQUESTS_CA_BUNDLE` 等のCA上書きを一律に無効化するものではない。取得先・CA上書き・OS信頼ストアを含む実際のTLS経路の検証は親Issue #99の残件とする。
 

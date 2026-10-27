@@ -26,22 +26,20 @@ Python 3.10 以上が必要です。初回の依存導入や古い/不足したp
 ## コマンドで起動する場合
 
 ```powershell
-if (!(Test-Path .venv\Scripts\python.exe)) {
-    py -m venv .venv
-    if ($LASTEXITCODE -ne 0) { throw "venv creation failed" }
+if (Test-Path .venv-setup.lock) {
+    $sumikaPython = "py"
+} elseif (Test-Path .venv\Scripts\python.exe) {
+    $sumikaPython = ".\.venv\Scripts\python.exe"
+} else {
+    $sumikaPython = "py"
 }
-.\.venv\Scripts\python.exe -I -B tools/security/script/bootstrap.py --apply
-if ($LASTEXITCODE -ne 0) { throw "Python tooling bootstrap failed" }
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-if ($LASTEXITCODE -ne 0) { throw "Dependency installation failed" }
-.\.venv\Scripts\python.exe -I -B tools/security/script/bootstrap.py
-if ($LASTEXITCODE -ne 0) { throw "Python tooling verification failed" }
-.\.venv\Scripts\python.exe game.py
+& $sumikaPython -I -B tools/security/script/launch.py game
+if ($LASTEXITCODE -ne 0) { throw "Project launch failed" }
 ```
 
-エラーが出た場合は次のコマンドへ進まないでください。最初から全画面で起動する場合は、最後のコマンドに `--fullscreen` を追加します。
+エラーが出た場合は次のコマンドへ進まないでください。最初から全画面で起動する場合は、`launch.py game` の後に `--fullscreen` を追加します。
 
-Windowsの4起動バッチも、依存取得前と起動前にvenvのpip/certifiを検査し、失敗時は停止します。会話エディタもglobal Pythonへ切り替えず同じvenvを使います。検査の範囲・復旧手順は[Python取得基盤の手順](tools/security/README.md)を参照してください。
+Windowsの4起動バッチも同じ共通入口を使い、依存取得前と起動前にvenvのpip/certifiを検査して失敗時は停止します。同じprojectの準備は直列化し、アプリ実行中はロックしません。会話エディタもglobal Pythonへ切り替えず同じvenvを使います。強制終了でロックが残った場合は自動削除せず、[Python取得基盤の手順](tools/security/README.md)に従って復旧してください。
 
 `py` が使えない環境では、代わりに `python` を使ってください。
 
