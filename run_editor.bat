@@ -27,17 +27,15 @@ if not exist ".venv\Scripts\python.exe" (
 ".venv\Scripts\python.exe" -I -B "tools\security\script\bootstrap.py" --apply
 if errorlevel 1 goto :error
 
-".venv\Scripts\python.exe" -c "import PIL" >nul 2>nul
-if errorlevel 1 (
-    echo Installing the editor components...
-    ".venv\Scripts\python.exe" -m pip install -r requirements.txt
-    if errorlevel 1 goto :error
-)
+".venv\Scripts\python.exe" -c "import tkinter" >nul 2>nul
+if errorlevel 1 goto :error
 
 ".venv\Scripts\python.exe" -I -B "tools\security\script\bootstrap.py"
 if errorlevel 1 goto :error
 
+if not exist ".venv\Scripts\pythonw.exe" goto :error
 start "" ".venv\Scripts\pythonw.exe" conversation_editor.py
+if errorlevel 1 goto :error
 exit /b 0
 
 :error

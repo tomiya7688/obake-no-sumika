@@ -43,12 +43,21 @@ class LauncherContractTests(unittest.TestCase):
             with self.subTest(name=name):
                 source = (ROOT / name).read_text(encoding="utf-8")
                 apply = source.index(GATE + " --apply\nif errorlevel 1 goto :error")
-                install = source.index('".venv\\Scripts\\python.exe" -m pip install')
                 check = source.index(GATE + "\nif errorlevel 1 goto :error")
                 launch = source.index(app)
-                self.assertLess(apply, install)
-                self.assertLess(install, check)
+                self.assertLess(apply, check)
+                if name == "run_editor.bat":
+                    self.assertNotIn("-m pip install", source)
+                    self.assertNotIn("import PIL", source)
+                    self.assertIn('".venv\\Scripts\\python.exe" -c "import tkinter"', source)
+                else:
+                    install = source.index('".venv\\Scripts\\python.exe" -m pip install')
+                    self.assertLess(apply, install)
+                    self.assertLess(install, check)
                 self.assertLess(check, launch)
+                if name != "run_game.bat":
+                    self.assertIn('if not exist ".venv\\Scripts\\pythonw.exe" goto :error', source)
+                    self.assertIn(app + "\nif errorlevel 1 goto :error", source)
                 self.assertLess(source.index("goto :verify_tooling"), source.index("where py"))
                 self.assertNotIn("--managed-runtime", source)
                 self.assertNotIn("--trusted-host", source)
@@ -134,6 +143,8 @@ class WindowsLauncherTests(unittest.TestCase):
         with self.fixture_directory() as directory:
             project = Path(directory)
             shutil.copytree(self.template, project / ".venv")
+            if options.get("missing_pythonw"):
+                (project / ".venv" / "Scripts" / "pythonw.exe").unlink()
             shutil.copyfile(ROOT / name, project / name)
             site = project / ".venv" / "Lib" / "site-packages"
             (site / "pip").mkdir()
@@ -181,17 +192,23 @@ class WindowsLauncherTests(unittest.TestCase):
                 self.assertFalse(marker.exists())
 
     def test_real_cmd_success_and_fail_closed_paths(self) -> None:
-        cases = [
-            ({}, ["apply", "check"], True),
-            ({"deps": False}, ["apply", "pip", "check"], True),
-            ({"apply": 2, "deps": False}, ["apply"], False),
-            ({"pip": 42, "deps": False}, ["apply", "pip"], False),
-            ({"check": 2}, ["apply", "check"], False),
-            ({"apply": 1, "deps": False}, ["apply"], False),
-            ({"check": 1}, ["apply", "check"], False),
-            ({"deps": False, "check": 1}, ["apply", "pip", "check"], False),
-        ]
         for name, app in LAUNCHERS.items():
+            installed = (
+                ["apply", "check"] if name == "run_editor.bat" else ["apply", "pip", "check"]
+            )
+            cases = [
+                ({}, ["apply", "check"], True),
+                ({"deps": False}, installed, True),
+                ({"apply": 2, "deps": False}, ["apply"], False),
+                ({"check": 2}, ["apply", "check"], False),
+                ({"apply": 1, "deps": False}, ["apply"], False),
+                ({"check": 1}, ["apply", "check"], False),
+                ({"deps": False, "check": 1}, installed, False),
+            ]
+            if name != "run_editor.bat":
+                cases.append(({"pip": 42, "deps": False}, ["apply", "pip"], False))
+            if name != "run_game.bat":
+                cases.append(({"missing_pythonw": True}, ["apply", "check"], False))
             for options, expected, success in cases:
                 with self.subTest(launcher=name, options=options):
                     self.run_case(name, app, options, expected, success)

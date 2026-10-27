@@ -37,7 +37,9 @@ if errorlevel 1 (
 ".venv\Scripts\python.exe" -I -B "tools\security\script\bootstrap.py"
 if errorlevel 1 goto :error
 
+if not exist ".venv\Scripts\pythonw.exe" goto :error
 start "" ".venv\Scripts\pythonw.exe" object_editor.py
+if errorlevel 1 goto :error
 exit /b 0
 
 :error

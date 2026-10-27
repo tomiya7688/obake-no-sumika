@@ -20,12 +20,14 @@ base Pythonは暗黙に変更しない。CIの管理済みruntimeだけは明示
 `run_game.bat` / `run_engine.bat` / `run_object_editor.bat` / `run_editor.bat` は、プロジェクトの `.venv` を準備した後、次の順で起動する。
 
 1. 上記bootstrapの `--apply`。古いpip/certifiだけを更新し、失敗したら依存取得もアプリ起動もしない。既存venvはglobal PythonがPATHになくても検査・起動できる（venvが参照するbase Pythonの実体は必要）。
-2. 必要なimportが不足した時だけ `requirements.txt` を導入。失敗したら停止。
+2. ゲーム/統合GUI/オブジェクトエディタは必要なimportが不足した時だけ `requirements.txt` を導入。会話エディタは標準ライブラリのTkinterを確認し、不要なpygame/Pillowは導入しない。いずれも失敗したら停止。
 3. bootstrapの読取専用checkで最低版/CAファイルを再確認し、成功時だけアプリを起動。
 
 会話エディタも同じvenvを使う。従来のglobal `pyw` / `py` へのフォールバックは行わず、global Pythonのパッケージは更新しない。エラー時はコンソールに原因を表示し、キー入力後に非0で終了する。pip欠落時は `.\.venv\Scripts\python.exe -m ensurepip` を実行し、**ほかの依存を取得する前に**冒頭のbootstrapを実行する。ゲーム/GUIの実行中監視やOS/全チェーンの検証を追加したものではない。
 
-回帰テスト: `python -m unittest tests.test_windows_security_launchers -v`。静的な契約/責務選択は全OSで実行し、実Windows CMDの32ケースはWindowsだけで実行する。空白・日本語パスと別cwd、既存依存/不足依存、初回検査/取得/再検査の失敗（終了1と2、依存導入成功後の再検査失敗も含む）をfixtureで検証する（外部取得・実GUI操作の証拠ではない）。
+回帰テスト: `python -m unittest tests.test_windows_security_launchers -v`。静的な契約/責務選択は全OSで実行し、実Windows CMDの34ケースはWindowsだけで実行する。空白・日本語パスと別cwd、既存依存/不足依存、初回検査/取得/再検査の失敗（終了1と2、依存導入成功後の再検査失敗も含む）、GUI用pythonw欠落、会話エディタでpygame/Pillow不要をfixtureで検証する（外部取得・実GUI操作の証拠ではない）。
+
+安全な版を満たす環境はbootstrapで再取得しない。旧版/不足の修復が必要な時は、オフラインなら失敗して起動しない。同じvenvを更新する処理はまだ直列化していないため（[Issue #113](https://github.com/tomiya7688/obake-no-sumika/issues/113)）、初回準備/修復中の複数バッチ同時起動は避ける。pip欠落や部分的に作られたvenvは上記ensurepipで手動復旧する。既存venvを自動削除することはない。
 
 `-I` はPythonの隔離実行であり、pipの `PIP_*` 設定や `SSL_CERT_FILE` / `REQUESTS_CA_BUNDLE` 等のCA上書きを一律に無効化するものではない。取得先・CA上書き・OS信頼ストアを含む実際のTLS経路の検証は親Issue #99の残件とする。
 
