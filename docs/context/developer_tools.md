@@ -12,7 +12,7 @@
 | `run_*.bat`, `tools/security/script/launch.py` | Windows4入口共通のvenv準備ロック・取得前/起動前検査・固定app起動。強制終了の残存ロックは所有token/明示確認付き復旧。[設計](../venv起動機能説明書.md) / [手順](../../tools/security/README.md) | `tests/test_venv_setup_lock.py`, `tests/test_windows_security_launchers.py`、起動対象の実行確認 |
 | `scripts/evaluate_project.py`, `.github/workflows/work-ci.yml` | ローカル/PR共通の構文・単体・通常版/special検証、Godot必須モード、JSON非破壊確認 | `tests/test_evaluate_project.py` |
 | `ruff.toml`, `tools/quality/` | 違反0必須のRuff lint、空baselineの維持、実行/設定失敗の検出 | `tests/test_ruff_baseline.py` |
-| `tools/security/script/bootstrap.py`, `tools/security/README.md` | 選択Pythonのpip/certifi最低版確認と明示更新。実PEM bundleの既知root DER指紋点検（公開fixtureは `tests/fixtures/security/`）。全TLS経路/OS信頼の検証とは区別する | `tests/test_python_security.py` |
+| `tools/security/script/bootstrap.py`, `tools/security/README.md` | 選択Pythonのpip/certifi最低版確認と明示更新。実PEM bundleとCAファイル環境上書きの取得前DER点検（値/パス非表示、公開fixtureは `tests/fixtures/security/`）。全TLS経路/OS信頼の検証とは区別する | `tests/test_python_security.py` |
 | context/diff_summary/repo_syncの6 CLI入口 | 別cwd・PYTHONPATHなしの直接起動、ファイル基準のPROJECT_ROOT | `tests/test_tool_bootstrap.py` |
 | `tools/context/responsibilities.json`, `tools/context/script/select_files.py` | 変更ファイルから読む文書・関連ファイル・テストを選択 | `tests/test_context_selection.py` |
 | `tools/context/script/snapshot.py` | 未stage/stage済み・未追跡・履歴を本文なし・上限付きで照会 | `tests/test_context_snapshot.py` |

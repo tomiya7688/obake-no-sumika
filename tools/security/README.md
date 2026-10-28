@@ -27,6 +27,14 @@ base Pythonは暗黙に変更しない。CIの管理済みruntimeだけは明示
 
 この1件が無いことを、失効した中間証明書のSPKI・別rootを経由するcross-sign・環境変数のCA上書き・OS信頼・すべてのTLS経路の安全証明として扱わない。公開fixtureの出典は [tests/fixtures/security](../../tests/fixtures/security/README.md)、回帰は `python -m unittest tests.test_python_security -v`。
 
+## CA環境上書きの取得前点検
+
+非空の `PIP_CERT` / `REQUESTS_CA_BUNDLE` / `CURL_CA_BUNDLE` / `SSL_CERT_FILE` は、更新より先に同じ8MiB上限・隔離DER指紋検査を全件実施する。正常なら従来の更新へ進み、既知rootがあれば `--apply` でも更新せず終了1。不正・欠落・非ファイルや解析不能は終了2。非空の `SSL_CERT_DIR` はディレクトリ実監査が未対応のため終了2。空/未設定は従来の動作を維持する。
+
+追加JSON `environment_bundles` は変数名から内容SHA/PEM数/CA数/既知対象結果への対応。追加項目と上書きエラーは値やパスを含めず、環境やファイルを変更しない（従来の `python` / `bundles` には既定のPython/CAパスが残る）。相対パスは実行時cwdから解決する。複数指定は、クライアントごとの優先順位を推測せず全件検査する保守的な条件であり、有効なTLS経路を特定したという意味ではない。点検時点のsnapshotであり、後続利用までファイルを固定するものではない。
+
+根拠: [pip HTTPS Certificates](https://pip.pypa.io/en/stable/topics/https-certificates/)、[Requests SSL Cert Verification](https://requests.readthedocs.io/en/latest/user/advanced/#ssl-cert-verification)、[Python SSL default paths](https://docs.python.org/3/library/ssl.html#ssl.get_default_verify_paths)。ディレクトリ指定を使う環境は、値を消して迂回せず実際の信頼元を手動点検する。pip設定ファイル/CLI指定、OS既定ストア、全TLSチェーン/中間SPKI/cross-signの点検は引き続き親#99に残る。`chains_verified:false` を維持する。
+
 ## Windowsの4起動バッチ
 
 `run_game.bat` / `run_engine.bat` / `run_object_editor.bat` / `run_editor.bat` は、プロジェクトの `.venv` を準備した後、次の順で起動する。
@@ -49,7 +57,7 @@ base Pythonは暗黙に変更しない。CIの管理済みruntimeだけは明示
 
 手動pip/ensurepip・IDE・CIなど共通入口を通らない更新は調停しない。同時に実行しないこと。実行中アプリと依存の差替え、OS/全TLSの安全性、実GUI準備完了はこのロックの保証外。
 
-`-I` はPythonの隔離実行であり、pipの `PIP_*` 設定や `SSL_CERT_FILE` / `REQUESTS_CA_BUNDLE` 等のCA上書きを一律に無効化するものではない。取得先・CA上書き・OS信頼ストアを含む実際のTLS経路の検証は親Issue #99の残件とする。
+`-I` はPythonの隔離実行であり、pipの `PIP_*` 設定やCA上書きを一律に無効化するものではない。上記4つのCAファイル環境指定は内容点検するが、取得先・その他の設定・OS信頼ストアを含む実際のTLS経路の検証は親Issue #99の残件とする。
 
 根拠と固定wheelの出典:
 
