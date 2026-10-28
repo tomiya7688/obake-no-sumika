@@ -3,12 +3,13 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import os
 import re
 import ssl
 import subprocess
 import tempfile
 import unittest
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -22,7 +23,29 @@ SAFE = {"pip": "26.2.2", "certifi": "2026.10.19"}
 FIXTURES = ROOT / "tests/fixtures/security"
 
 
+@contextmanager
+def working_directory(path):
+    previous = Path.cwd()
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(previous)
+
+
 class PythonSecurityTests(unittest.TestCase):
+    def setUp(self) -> None:
+        names = (
+            "PIP_CERT",
+            "REQUESTS_CA_BUNDLE",
+            "CURL_CA_BUNDLE",
+            "SSL_CERT_FILE",
+            "SSL_CERT_DIR",
+        )
+        self.environment = patch.dict(os.environ, dict.fromkeys(names, ""))
+        self.environment.start()
+        self.addCleanup(self.environment.stop)
+
     def test_version_boundaries_and_unknown_formats(self) -> None:
         for pip in ("26.2", "26.2.1", None):
             self.assertEqual(bootstrap.pending_updates({**SAFE, "pip": pip}), ["pip"])
@@ -302,6 +325,158 @@ class PythonSecurityTests(unittest.TestCase):
         ):
             result = bootstrap.inspect_ca_bundle(FIXTURES / "unaffected-emsign-c1.pem")
         self.assertEqual(result["distrusted_roots"], [])
+
+    def test_empty_ca_environment_is_compatible(self) -> None:
+        with patch.object(bootstrap, "inspect_ca_bundle") as inspect:
+            self.assertEqual(bootstrap.inspect_ca_environment(), {})
+            with patch.dict(os.environ, {}, clear=True):
+                self.assertEqual(bootstrap.inspect_ca_environment(), {})
+            inspect.assert_not_called()
+
+    def test_all_ca_environment_files_are_read_without_values_or_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, working_directory(directory):
+            path = Path(directory) / "個人情報のある CA.pem"
+            raw = (FIXTURES / "unaffected-emsign-c1.pem").read_bytes()
+            path.write_bytes(raw)
+            values = {name: str(path) for name in bootstrap.CA_FILE_ENV}
+            values["SSL_CERT_FILE"] = path.name
+            with (
+                patch.dict(os.environ, values),
+                patch("socket.create_connection", side_effect=AssertionError("network")),
+                patch.object(
+                    ssl.SSLContext, "load_default_certs", side_effect=AssertionError("OS")
+                ),
+                patch.object(
+                    ssl.SSLContext, "set_default_verify_paths", side_effect=AssertionError("OS")
+                ),
+            ):
+                result = bootstrap.inspect_ca_environment()
+                self.assertEqual({name: os.environ[name] for name in values}, values)
+            self.assertEqual(set(result), set(bootstrap.CA_FILE_ENV))
+            for item in result.values():
+                self.assertEqual(item["sha256"], hashlib.sha256(raw).hexdigest())
+                self.assertEqual(item["ca_count"], 1)
+                self.assertEqual(item["distrusted_roots"], [])
+                self.assertNotIn("path", item)
+            self.assertNotIn(path.name, json.dumps(result, ensure_ascii=False))
+            self.assertEqual(path.read_bytes(), raw)
+
+    def test_environment_bad_root_stops_before_updates(self) -> None:
+        path = FIXTURES / "emsign-ecc-g3.pem"
+        for name in ("PIP_CERT", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE", "SSL_CERT_FILE"):
+            for arguments in ([], ["--apply", "--managed-runtime"]):
+                with (
+                    self.subTest(name=name, arguments=arguments),
+                    patch.dict(os.environ, {name: str(path)}),
+                    patch.object(bootstrap, "installed_versions", return_value=OLD),
+                    patch.object(bootstrap, "ensure_tooling", return_value=SAFE) as ensure,
+                    patch.object(bootstrap, "inspect_bundles", return_value={}),
+                    patch.object(bootstrap.subprocess, "run") as run,
+                    redirect_stdout(io.StringIO()) as out,
+                ):
+                    self.assertEqual(bootstrap.main(arguments), 1)
+                    ensure.assert_not_called()
+                    run.assert_not_called()
+                    report = json.loads(out.getvalue())
+                    self.assertFalse(report["chains_verified"])
+                    self.assertEqual(
+                        len(report["environment_bundles"][name]["distrusted_roots"]), 1
+                    )
+                    self.assertNotIn(str(path), out.getvalue())
+                    self.assertNotIn(path.name, out.getvalue())
+                    self.assertNotIn("path", report["environment_bundles"][name])
+
+    def test_invalid_ca_environment_stops_before_updates_without_leaking_values(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            bad = Path(directory) / "private-secret.pem"
+            bad.write_bytes(b"not a certificate")
+            for name in (*bootstrap.CA_FILE_ENV, "SSL_CERT_DIR"):
+                for case, value in enumerate(
+                    (str(bad), str(bad.with_suffix(".missing")), directory)
+                ):
+                    for arguments in ([], ["--apply"]):
+                        with (
+                            self.subTest(name=name, case=case, arguments=arguments),
+                            patch.dict(os.environ, {name: value}),
+                            patch.object(bootstrap, "ensure_tooling") as ensure,
+                            patch.object(bootstrap.subprocess, "run") as run,
+                            redirect_stdout(io.StringIO()) as out,
+                            redirect_stderr(io.StringIO()) as err,
+                        ):
+                            self.assertEqual(bootstrap.main(arguments), 2)
+                            ensure.assert_not_called()
+                            run.assert_not_called()
+                            self.assertEqual(out.getvalue(), "")
+                            self.assertIn(name, err.getvalue())
+                            self.assertNotIn(value, err.getvalue())
+
+    def test_safe_environment_is_audited_before_allowing_updates(self) -> None:
+        path = FIXTURES / "unaffected-emsign-c1.pem"
+        inspect = bootstrap.inspect_ca_bundle
+        order = []
+
+        def audit(path):
+            order.append("audit")
+            return inspect(path)
+
+        def update(apply, managed):
+            self.assertTrue(apply)
+            self.assertFalse(managed)
+            order.append("update")
+            return SAFE
+
+        with (
+            patch.dict(os.environ, {name: str(path) for name in bootstrap.CA_FILE_ENV}),
+            patch.object(bootstrap, "inspect_ca_bundle", side_effect=audit),
+            patch.object(bootstrap, "ensure_tooling", side_effect=update),
+            patch.object(bootstrap, "inspect_bundles", return_value={}),
+            redirect_stdout(io.StringIO()) as out,
+        ):
+            self.assertEqual(bootstrap.main(["--apply"]), 0)
+            self.assertEqual(order, ["audit"] * 4 + ["update"])
+            self.assertEqual(len(json.loads(out.getvalue())["environment_bundles"]), 4)
+
+    def test_ca_environment_errors_redact_parser_details(self) -> None:
+        secret = "private-path-with-secret"
+        with (
+            patch.dict(os.environ, {"PIP_CERT": secret}),
+            patch.object(Path, "is_file", return_value=True),
+            patch.object(bootstrap, "inspect_ca_bundle", side_effect=OSError(secret)),
+            patch.object(bootstrap, "ensure_tooling") as ensure,
+            redirect_stdout(io.StringIO()),
+            redirect_stderr(io.StringIO()) as err,
+        ):
+            self.assertEqual(bootstrap.main(["--apply"]), 2)
+            self.assertIn("PIP_CERT", err.getvalue())
+            self.assertNotIn(secret, err.getvalue())
+            ensure.assert_not_called()
+
+    def test_mixed_or_whitespace_ca_environment_fails_before_updates(self) -> None:
+        for fixture in ("unaffected-emsign-c1.pem", "emsign-ecc-g3.pem"):
+            with (
+                self.subTest(fixture=fixture),
+                patch.dict(os.environ, {"PIP_CERT": str(FIXTURES / fixture), "SSL_CERT_FILE": " "}),
+                patch.object(bootstrap, "ensure_tooling") as ensure,
+                redirect_stdout(io.StringIO()) as out,
+                redirect_stderr(io.StringIO()) as err,
+            ):
+                self.assertEqual(bootstrap.main(["--apply"]), 2)
+                self.assertEqual(out.getvalue(), "")
+                self.assertIn("SSL_CERT_FILE", err.getvalue())
+                ensure.assert_not_called()
+
+    def test_ca_environment_path_resolution_errors_are_redacted(self) -> None:
+        with (
+            patch.dict(os.environ, {"PIP_CERT": "private-value"}),
+            patch.object(Path, "resolve", side_effect=RuntimeError("private-value")),
+            patch.object(bootstrap, "ensure_tooling") as ensure,
+            redirect_stdout(io.StringIO()),
+            redirect_stderr(io.StringIO()) as err,
+        ):
+            self.assertEqual(bootstrap.main(["--apply"]), 2)
+            self.assertIn("PIP_CERT", err.getvalue())
+            self.assertNotIn("private-value", err.getvalue())
+            ensure.assert_not_called()
 
     def test_ci_bootstraps_each_job_before_dependency_downloads(self) -> None:
         workflow = (ROOT / ".github/workflows/work-ci.yml").read_text(encoding="utf-8")

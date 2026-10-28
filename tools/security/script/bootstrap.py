@@ -7,6 +7,7 @@ import hashlib
 import importlib
 import importlib.metadata
 import json
+import os
 import re
 import ssl
 import subprocess
@@ -31,6 +32,7 @@ PACKAGES = {
     ),
 }
 MAX_BUNDLE_BYTES = 8 * 1024 * 1024
+CA_FILE_ENV = ("PIP_CERT", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE", "SSL_CERT_FILE")
 # certifi 69494a7..662df63 (2026.10.19): only this root remains removed.
 # Exact DER identity, not a name/SPKI/chain or OS trust-store guarantee.
 DISTRUSTED_ROOTS = {
@@ -79,6 +81,33 @@ def inspect_ca_bundle(path: Path) -> dict[str, object]:
             for digest in sorted(fingerprints & DISTRUSTED_ROOTS.keys())
         ],
     }
+
+
+def inspect_ca_environment() -> dict[str, dict[str, object]]:
+    """Audit every configured CA file before updates, without exposing its value.
+
+    This is a conservative superset, not resolution of client precedence or OS
+    trust. Directories need a separate audit and are deliberately unsupported.
+    """
+    if os.environ.get("SSL_CERT_DIR"):
+        raise ValueError("SSL_CERT_DIR requires a manual directory trust audit; value omitted")
+    bundles = {}
+    for name in CA_FILE_ENV:
+        value = os.environ.get(name)
+        if not value:
+            continue
+        try:
+            path = Path(value).resolve()
+            if not path.is_file():
+                raise ValueError("Not a regular CA file")
+            bundle = inspect_ca_bundle(path)
+        except (OSError, ValueError, RuntimeError):
+            raise ValueError(
+                f"Cannot inspect CA file configured by {name}; value omitted"
+            ) from None
+        # Neither valid paths nor exception text should leak private override values.
+        bundles[name] = {key: item for key, item in bundle.items() if key != "path"}
+    return bundles
 
 
 def installed_versions() -> dict[str, str | None]:
@@ -153,7 +182,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
     try:
-        versions = ensure_tooling(args.apply, args.managed_runtime)
+        environment_bundles = inspect_ca_environment()
+        environment_blocked = any(item["distrusted_roots"] for item in environment_bundles.values())
+        versions = (
+            installed_versions()
+            if environment_blocked
+            else ensure_tooling(args.apply, args.managed_runtime)
+        )
         bundles = inspect_bundles(versions)
         print(
             json.dumps(
@@ -161,13 +196,16 @@ def main(argv: list[str] | None = None) -> int:
                     "python": sys.executable,
                     "versions": versions,
                     "bundles": bundles,
+                    "environment_bundles": environment_bundles,
                     "chains_verified": False,
                 },
                 ensure_ascii=True,
                 indent=2,
             )
         )
-        blocked = any(bundle and bundle["distrusted_roots"] for bundle in bundles.values())
+        blocked = environment_blocked or any(
+            bundle and bundle["distrusted_roots"] for bundle in bundles.values()
+        )
         return 1 if pending_updates(versions) or blocked else 0
     except (OSError, ValueError, RuntimeError, ImportError, subprocess.SubprocessError) as exc:
         print(f"Python tooling check failed: {exc}", file=sys.stderr)
