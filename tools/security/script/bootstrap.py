@@ -8,6 +8,7 @@ import importlib
 import importlib.metadata
 import json
 import re
+import ssl
 import subprocess
 import sys
 from pathlib import Path
@@ -29,6 +30,55 @@ PACKAGES = {
         "#sha256=42d35340cc5b9ba78e818ddbff0c5b1c2b779de448a340fd1b989f5fa8670e1b",
     ),
 }
+MAX_BUNDLE_BYTES = 8 * 1024 * 1024
+# certifi 69494a7..662df63 (2026.10.19): only this root remains removed.
+# Exact DER identity, not a name/SPKI/chain or OS trust-store guarantee.
+DISTRUSTED_ROOTS = {
+    "86a1ecba089c4a8d3bbe2734c612ba341d813e043cf9e8a862cd5c57a36bbe6b": "emSign ECC Root CA - G3",
+}
+
+
+def inspect_ca_bundle(path: Path) -> dict[str, object]:
+    """Parse one bounded snapshot without OS roots, network or file changes."""
+    with path.open("rb") as stream:
+        raw = stream.read(MAX_BUNDLE_BYTES + 1)
+    if len(raw) > MAX_BUNDLE_BYTES:
+        raise ValueError(f"CA bundle exceeds {MAX_BUNDLE_BYTES} bytes: {path}")
+    begin, end = b"-----BEGIN CERTIFICATE-----", b"-----END CERTIFICATE-----"
+    if not raw.count(begin) or raw.count(begin) != raw.count(end):
+        raise ValueError(f"Empty or incomplete PEM CA bundle: {path}")
+    segments = raw.split(begin)
+    blocks, outside = [], [segments[0]]
+    for segment in segments[1:]:
+        body, marker, suffix = segment.partition(end)
+        if not marker:
+            raise ValueError(f"Incomplete PEM CA bundle: {path}")
+        if b"-----BEGIN " in body or b"-----END " in body:
+            raise ValueError(f"Nested PEM block in CA bundle: {path}")
+        blocks.append(begin + body + marker)
+        outside.append(suffix)
+    if any(b"-----BEGIN " in text or b"-----END " in text for text in outside):
+        raise ValueError(f"Unsupported PEM block in CA bundle: {path}")
+    # Validate X.509 data, not just base64. A new context does not load OS roots.
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    context.load_verify_locations(cadata=b"\n".join(blocks).decode("ascii"))
+    # Hash parsed CA DER: OpenSSL accepts trailing bytes inside a PEM payload,
+    # which must not disguise the same loaded root behind a different raw hash.
+    certificates = context.get_ca_certs(binary_form=True)
+    if not certificates:
+        raise ValueError(f"CA bundle contains no CA certificates: {path}")
+    fingerprints = {hashlib.sha256(der).hexdigest() for der in certificates}
+    return {
+        "path": str(path),
+        "sha256": hashlib.sha256(raw).hexdigest(),
+        "certificate_count": len(blocks),
+        "ca_count": len(certificates),
+        "known_roots_checked": len(DISTRUSTED_ROOTS),
+        "distrusted_roots": [
+            {"sha256": digest, "name": DISTRUSTED_ROOTS[digest]}
+            for digest in sorted(fingerprints & DISTRUSTED_ROOTS.keys())
+        ],
+    }
 
 
 def installed_versions() -> dict[str, str | None]:
@@ -84,14 +134,14 @@ def ensure_tooling(apply: bool = False, managed_runtime: bool = False) -> dict[s
     return versions
 
 
-def inspect_bundles(versions: dict[str, str | None]) -> dict[str, dict[str, str] | None]:
+def inspect_bundles(versions: dict[str, str | None]) -> dict[str, dict[str, object] | None]:
     bundles = {}
     for name, module in (("pip", "pip._vendor.certifi"), ("certifi", "certifi")):
         if versions[name] is None:
             bundles[name] = None
             continue
         path = Path(importlib.import_module(module).where()).resolve()
-        bundles[name] = {"path": str(path), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+        bundles[name] = inspect_ca_bundle(path)
     return bundles
 
 
@@ -104,19 +154,21 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         versions = ensure_tooling(args.apply, args.managed_runtime)
+        bundles = inspect_bundles(versions)
         print(
             json.dumps(
                 {
                     "python": sys.executable,
                     "versions": versions,
-                    "bundles": inspect_bundles(versions),
+                    "bundles": bundles,
                     "chains_verified": False,
                 },
                 ensure_ascii=True,
                 indent=2,
             )
         )
-        return 1 if pending_updates(versions) else 0
+        blocked = any(bundle and bundle["distrusted_roots"] for bundle in bundles.values())
+        return 1 if pending_updates(versions) or blocked else 0
     except (OSError, ValueError, RuntimeError, ImportError, subprocess.SubprocessError) as exc:
         print(f"Python tooling check failed: {exc}", file=sys.stderr)
         return 2

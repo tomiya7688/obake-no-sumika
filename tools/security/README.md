@@ -13,7 +13,19 @@ pip自体が欠落した場合は自動導入せず終了2にする。対象Pyth
 
 base Pythonは暗黙に変更しない。CIの管理済みruntimeだけは明示した `--managed-runtime` で更新を許可する。別のvenv・OS証明書・global Pythonを走査/更新する機能はない。TLS検証の無効化やtrusted-hostは使わない。
 
-出力の `bundles` は実際の `certifi.where()` とpip内蔵certifiのファイルパス/内容SHA256。**版とCAファイルの点検であり、全証明書チェーンの拒否やOS信頼ストアの更新確認ではない**（`chains_verified: false`）。Python本体、uv/sigstore、配布物、main側CIなどの全環境対応は親Issue #99に残る。
+出力の `bundles` は実際の `certifi.where()` とpip内蔵certifiのファイルパス/内容SHA256、PEM証明書数、既知の問題rootのDER指紋照合結果。**既知rootの内容点検であり、全証明書チェーンの拒否やOS信頼ストアの更新確認ではない**（`chains_verified: false`）。Python本体、uv/sigstore、配布物、main側CIなどの全環境対応は親Issue #99に残る。
+
+## 実CA bundleの内容点検（Issue #115）
+
+`ca_count` は重複や非CA証明書を除くため、PEMブロック数の `certificate_count` と異なり得る。既知rootの照合は解析済みCAに対して行い、両数の一致や全TLS検証を主張しない。
+
+選択Pythonが返す2つの実ファイルを各8MiB以下の同じ読取snapshotで検査する。標準ライブラリの独立したSSLContextでPEM/X.509を解析し、証明書のDER SHA256を照合する。OSのdefault CAやネットワークは使わず、ファイルも変更しない。PEMコメントや改行を変えてもDERの一致判定は変わらない。
+
+`certificate_count` はPEM証明書の数（重複も数える）、`ca_count` は独立contextに読み込まれたCA数、`known_roots_checked` は照合リストの件数、`distrusted_roots` は一致した名前/DER SHA256。OpenSSLが解析したCAのDERを照合するため、PEM内のDER末尾にデータを付けても同じrootを見逃さない。標準のCERTIFICATE以外のPEMブロックは、混在時も未対応として拒否する。現在の対象は `emSign ECC Root CA - G3` の1件。出典はcertifiの[修正前69494a7と復元662df63の差分](https://github.com/certifi/python-certifi/compare/69494a764d0a08f90838d53d4b0fefd3e84045d6...662df63d7906df66f1f07c0751a3dfe9da14d914)。影響のないemSign rootは名前だけで拒否しない。
+
+既知対象が残っていれば版を満たしていても終了1、空/不完全/解析不能/大きすぎるbundleは終了2。`--apply` でも安全な版の不正bundleを黙って上書きしない。診断後、全準備プロセスを止めて信頼できるwheelからの再導入を手動で検討する。既存の取得前/起動前ゲートも非0なら未起動になる。
+
+この1件が無いことを、失効した中間証明書のSPKI・別rootを経由するcross-sign・環境変数のCA上書き・OS信頼・すべてのTLS経路の安全証明として扱わない。公開fixtureの出典は [tests/fixtures/security](../../tests/fixtures/security/README.md)、回帰は `python -m unittest tests.test_python_security -v`。
 
 ## Windowsの4起動バッチ
 
