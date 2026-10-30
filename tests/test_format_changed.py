@@ -7,6 +7,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from tools.quality.script.format_changed import SelectionError, changed_python_files, main
 
@@ -45,10 +46,11 @@ class FormatChangedTests(unittest.TestCase):
         self.write("notes.md", "x\n")
         self.commit_all("base")
         git(self.repo, "checkout", "-q", "-b", "work-item")
-        for key, value in GIT_ENV.items():
-            if key.startswith("GIT_CONFIG_"):
-                self.addCleanup(os.environ.pop, key, None)
-                os.environ[key] = value
+        # main() runs git in-process; isolate it the same way and restore the
+        # caller's environment (including any original values) afterwards.
+        isolated = mock.patch.dict(os.environ, GIT_ENV, clear=True)
+        isolated.start()
+        self.addCleanup(isolated.stop)
 
     def write(self, name: str, text: str) -> None:
         (self.repo / name).write_text(text, encoding="utf-8")
@@ -124,9 +126,22 @@ class FormatChangedTests(unittest.TestCase):
         self.assertEqual(self.run_main("old.py", "--check"), 1)
         self.assertEqual(self.read("old.py"), UGLY)
         self.assertEqual(self.run_main("missing.py"), 2)
-        outside = Path(self.temp.name).parent / "outside_format_changed.py"
-        self.assertEqual(self.run_main(str(outside)), 2)
-        self.assertEqual(self.run_main("../outside_format_changed.py"), 2)
+        with tempfile.TemporaryDirectory() as other:
+            outside = Path(other).resolve() / "outside.py"
+            outside.write_text(UGLY, encoding="utf-8")
+            relative = Path("..") / outside.parent.name / outside.name
+            # Next to the repository so "../<dir>/outside.py" resolves to a real file.
+            sibling = self.repo.parent / outside.parent.name
+            for path in (str(outside), str(relative)):
+                with self.subTest(path=path):
+                    self.assertEqual(self.run_main(path), 2)
+            self.assertEqual(outside.read_text(encoding="utf-8"), UGLY)
+            self.assertEqual(sibling, outside.parent)
+
+    def test_missing_git_is_reported_not_raised(self) -> None:
+        with mock.patch("subprocess.run", side_effect=FileNotFoundError("git")):
+            with self.assertRaisesRegex(SelectionError, "cannot run git"):
+                changed_python_files(self.repo, staged=True)
 
     def test_unknown_base_reports_the_git_error(self) -> None:
         with self.assertRaisesRegex(SelectionError, "no-such-branch"):

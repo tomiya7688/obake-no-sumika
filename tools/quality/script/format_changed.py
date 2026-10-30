@@ -33,15 +33,17 @@ class SelectionError(Exception):
 
 def git_paths(repo: Path, command: str, *args: str) -> list[str]:
     """Run a git command that lists paths and return them (NUL separated)."""
-    result = subprocess.run(
-        ["git", command, "-z", *args],
-        cwd=repo,
-        capture_output=True,
-    )
+    try:
+        result = subprocess.run(["git", command, "-z", *args], cwd=repo, capture_output=True)
+    except OSError as exc:
+        raise SelectionError(f"cannot run git: {exc}") from None
     if result.returncode != 0:
         detail = result.stderr.decode("utf-8", "replace").strip()
         raise SelectionError(f"git {command} {' '.join(args)} failed: {detail}")
-    return [name for name in result.stdout.decode("utf-8").split("\0") if name]
+    try:
+        return [name for name in result.stdout.decode("utf-8").split("\0") if name]
+    except UnicodeDecodeError:
+        raise SelectionError("git returned a file name that is not UTF-8") from None
 
 
 def inside_repo(repo: Path, name: str) -> str:
