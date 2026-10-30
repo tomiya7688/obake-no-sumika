@@ -165,7 +165,10 @@ class RuffBaselineTests(unittest.TestCase):
             self.assertEqual(load_baseline(path), set())
             for code in ("I001", "E402", "F821"):
                 path.write_text(json.dumps(baseline([{**KNOWN, "code": code}])), encoding="utf-8")
-                with self.subTest(code=code), self.assertRaisesRegex(ValueError, "must remain empty"):
+                with (
+                    self.subTest(code=code),
+                    self.assertRaisesRegex(ValueError, "must remain empty"),
+                ):
                     load_baseline(path)
 
     def test_workflow_installs_latest_and_runs_an_independent_mandatory_gate(self) -> None:
@@ -174,6 +177,9 @@ class RuffBaselineTests(unittest.TestCase):
         self.assertIn("Ruff lint baseline (Python 3.10)", quality_job)
         self.assertIn("--upgrade -r tools/quality/requirements.txt", quality_job)
         self.assertIn("python tools/quality/script/check_ruff.py", quality_job)
+        # Changed-file formatting is part of the same mandatory job (Issue #110).
+        self.assertIn("tools/quality/script/format_changed.py --check --base", quality_job)
+        self.assertIn("fetch-depth: 0", quality_job)
         self.assertNotIn("continue-on-error", quality_job)
         self.assertNotIn("needs:", quality_job)
         self.assertNotIn("if:", quality_job)
@@ -216,7 +222,9 @@ class RuffBaselineTests(unittest.TestCase):
             self.assertEqual(result.returncode, 1, result.stderr)
             self.assertEqual(json.loads(result.stdout)["new"][0]["code"], "F821")
             self.assertEqual({path.name: path.read_bytes() for path in repo.iterdir()}, before)
-            saved.write_text(json.dumps(baseline(json.loads(result.stdout)["new"])), encoding="utf-8")
+            saved.write_text(
+                json.dumps(baseline(json.loads(result.stdout)["new"])), encoding="utf-8"
+            )
             result = run()
             self.assertEqual(result.returncode, 2)
             self.assertIn("must remain empty", result.stderr)

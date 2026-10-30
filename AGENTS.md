@@ -59,3 +59,9 @@ UIや描画を変えた場合は、最後に `run_game.bat` と該当エディ�
 各作業の実装後、今回変更したファイル/モジュールにformatterを自動的に実行し、その後にformat/check・関連テスト・自己レビュー・追加レビューを行う。指摘修正後も必要な再整形と再検証をする。担当外のdirty変更、生成物、vendor、原文保持が必要な教材/サンプルを一括整形しない。整形は実装担当が行い、レビュー専任AIには編集させない。
 既存の開発/CI手順に適合する整形確認を整え、実行コマンド・バージョン・対象・結果を完了報告に残す。未実行は理由と残件を記録し、導入済み/設定済みだけで整形済みとしない。詳細は `E:/projects/FORMATTER_OPERATIONS.md`。Learning languageもこの整形指示の対象（複数AIレビューの除外とは別）。
 <!-- /post-work-formatter-policy -->
+
+<!-- extra-free-review-policy:2026-10-26 -->
+## 追加無料レビュアーの利用と節約
+
+既存7者・PR時2者は維持する。追加導入したMistral Vibe、OpenCodeのGLM/DeepSeek、OpenRouterのCohere/Inkling系は通常1者、重要変更で最大2者を選ぶ。起動口は `E:/projects/.review-tools/Invoke-ExtraFreeReview.ps1`、実体確認は `Get-ExtraFreeReviewClients.ps1`。手順・無料条件・初回認証は `E:/projects/EXTRA_FREE_REVIEW.md` を実際に読む。同一資料を再送せず、差分と必要な根拠に絞る。出力上限2048トークン、OpenRouter追加枠の独自の回数制限・残10回温存は撤廃し、無料モデルのみ利用する。未認証・枠切れ・無料終了・未応答は記録して省略し、課金・昇格・連続再試行をしない。最低限の既知バグ検出を未確認のモデルを検証済みと報告しない。全レビュアーは編集/ツール/秘密読取禁止。Learning languageの複数AIレビュー除外を維持する。
+<!-- /extra-free-review-policy -->

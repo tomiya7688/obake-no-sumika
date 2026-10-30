@@ -15,7 +15,12 @@ class ContextPolicyTests(unittest.TestCase):
     # Cross-project policy blocks distributed by the owner and maintained outside
     # this repository (see docs/ワークフロー/共同作業ルール.md). Add new names here
     # deliberately; any other <!-- name:... --> block still counts as router text.
-    DISTRIBUTED_BLOCKS = ("review-procedure-required", "shared-review-operations", "post-work-formatter-policy")
+    DISTRIBUTED_BLOCKS = (
+        "review-procedure-required",
+        "shared-review-operations",
+        "post-work-formatter-policy",
+        "extra-free-review-policy",
+    )
 
     def strip_distributed_blocks(self, text: str) -> str:
         names = "|".join(map(re.escape, self.DISTRIBUTED_BLOCKS))
@@ -46,7 +51,13 @@ class ContextPolicyTests(unittest.TestCase):
 
     def test_search_stops_only_after_scope_and_acceptance_are_known(self) -> None:
         router = self.read("docs/context/project.md")
-        for marker in ("Search first, read second", "Goal:", "Required:", "Acceptance:", "Working set:"):
+        for marker in (
+            "Search first, read second",
+            "Goal:",
+            "Required:",
+            "Acceptance:",
+            "Working set:",
+        ):
             with self.subTest(marker=marker):
                 self.assertIn(marker, router)
         self.assertIn("不足が実装・検証中に見つかった時だけ再開", router)
@@ -55,18 +66,44 @@ class ContextPolicyTests(unittest.TestCase):
 
     def test_detail_keeps_game_data_and_source_contracts(self) -> None:
         detail = self.read("docs/ai-development-contract.md")
-        for heading in ("Required roadmap", "Project contract", "Source map", "Data contracts", "Safe workflow", "Verification"):
+        for heading in (
+            "Required roadmap",
+            "Project contract",
+            "Source map",
+            "Data contracts",
+            "Safe workflow",
+            "Verification",
+        ):
             with self.subTest(heading=heading):
                 self.assertIn(f"## {heading}", detail)
-        for marker in ("960x540", "native_facing=-1", "別々の乱数ストリーム", "behavior_weights", "water_stop",
-                       "回転・宙返りを完了", "会話と水浴び中", "1〜999", "required_tag", "1024x1024", "obakeno_sumika_special"):
+        for marker in (
+            "960x540",
+            "native_facing=-1",
+            "別々の乱数ストリーム",
+            "behavior_weights",
+            "water_stop",
+            "回転・宙返りを完了",
+            "会話と水浴び中",
+            "1〜999",
+            "required_tag",
+            "1024x1024",
+            "obakeno_sumika_special",
+        ):
             with self.subTest(marker=marker):
                 self.assertIn(marker, detail)
 
     def test_validation_and_release_boundaries_stay_mandatory(self) -> None:
         entry = self.read("AGENTS.md")
-        for marker in (".venv", "--require-godot --frames 900", "Work CI", "実画面で確認", "未確認を明記",
-                       "無関係の変更を保持", "失敗した必須チェック", "main反映・タグ・リリースは本人の承認後"):
+        for marker in (
+            ".venv",
+            "--require-godot --frames 900",
+            "Work CI",
+            "実画面で確認",
+            "未確認を明記",
+            "無関係の変更を保持",
+            "失敗した必須チェック",
+            "main反映・タグ・リリースは本人の承認後",
+        ):
             with self.subTest(marker=marker):
                 self.assertIn(marker, entry)
 
@@ -100,10 +137,17 @@ class ContextPolicyTests(unittest.TestCase):
                     self.assertTrue((ROOT / doc).is_file())
 
     def test_policy_markdown_links_stay_inside_repo_and_exist(self) -> None:
-        for path in ("AGENTS.md", "docs/context/project.md", "docs/ai-development-contract.md",
-                     "docs/context/game.md", "docs/context/godot.md", "docs/ワークフロー/ワークフロー.md",
-                     "docs/ワークフロー/共同作業ルール.md", "docs/ワークフロー/役割別ワークフロー.md",
-                     "docs/ワークフロー/レビュー基準.md"):
+        for path in (
+            "AGENTS.md",
+            "docs/context/project.md",
+            "docs/ai-development-contract.md",
+            "docs/context/game.md",
+            "docs/context/godot.md",
+            "docs/ワークフロー/ワークフロー.md",
+            "docs/ワークフロー/共同作業ルール.md",
+            "docs/ワークフロー/役割別ワークフロー.md",
+            "docs/ワークフロー/レビュー基準.md",
+        ):
             for link in re.findall(r"\[[^\]]+\]\(([^)]+)\)", self.read(path)):
                 with self.subTest(path=path, link=link):
                     parsed = urlsplit(link)

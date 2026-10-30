@@ -24,6 +24,8 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # The format check compares the pull request against its base branch.
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -43,6 +45,22 @@ jobs:
         run: python -I -B tools/security/script/bootstrap.py
       - name: Reject new and stale lint baseline entries
         run: python tools/quality/script/check_ruff.py
+      - name: Check formatting of changed Python files
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          # Pull requests compare with their base branch, pushes with the previous
+          # tip. A manual run has no change set, so there is nothing to check.
+          if [ -n "$BASE_REF" ]; then
+            base="origin/$BASE_REF"
+          elif [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
+            base="$BEFORE"
+          else
+            echo "No change set to compare (manual run); changed-file format check not applicable."
+            exit 0
+          fi
+          python tools/quality/script/format_changed.py --check --base "$base"
 
   validate:
     name: Work validation (Python 3.10 / Godot 4.7.2)
