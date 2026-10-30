@@ -46,13 +46,23 @@ def git_paths(repo: Path, command: str, *args: str) -> list[str]:
         raise SelectionError("git returned a file name that is not UTF-8") from None
 
 
+PYTHON_SUFFIXES = (".py", ".pyi")
+
+
 def inside_repo(repo: Path, name: str) -> str:
-    path = (repo / name).resolve()
+    """Validate one selected name and return it repository-relative."""
+    if any(ord(char) < 32 or ord(char) == 127 for char in name):
+        # Refuse rather than print: a newline could forge CI log commands.
+        raise SelectionError(f"file name contains control characters: {name!r}")
+    candidate = repo / name
+    if candidate.is_symlink():
+        # Formatting through a link would rewrite the file it points to.
+        raise SelectionError(f"symbolic link: {name}")
     try:
-        relative = path.relative_to(repo)
+        relative = candidate.parent.resolve().relative_to(repo) / candidate.name
     except ValueError:
         raise SelectionError(f"outside the repository: {name}") from None
-    if not path.is_file():
+    if not (repo / relative).is_file():
         raise SelectionError(f"not a file: {name}")
     return relative.as_posix()
 
@@ -68,16 +78,18 @@ def changed_python_files(
         names = paths
         pending: set[str] = set()
     elif staged:
-        names = git_paths(repo, "diff", "--cached", "--name-only", "--diff-filter=ACMR")
+        names = git_paths(repo, "diff", "--cached", "--name-only", "--diff-filter=ACMRT")
         # Unstaged edits on top of the staged version would be reformatted too.
         pending = set(git_paths(repo, "diff", "--name-only"))
     else:
         names = git_paths(
-            repo, "diff", "--name-only", "--diff-filter=ACMR", "--end-of-options", f"{base}...HEAD"
+            repo, "diff", "--name-only", "--diff-filter=ACMRT", "--end-of-options", f"{base}...HEAD"
         )
         # Anything not committed (staged or not) is outside the branch diff.
         pending = set(git_paths(repo, "diff", "HEAD", "--name-only"))
-    selected = sorted({inside_repo(repo, name) for name in names if Path(name).suffix == ".py"})
+    selected = sorted(
+        {inside_repo(repo, name) for name in names if Path(name).suffix in PYTHON_SUFFIXES}
+    )
     blocked = [name for name in selected if name in pending]
     if blocked:
         raise SelectionError(

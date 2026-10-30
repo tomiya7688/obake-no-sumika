@@ -138,6 +138,24 @@ class FormatChangedTests(unittest.TestCase):
             self.assertEqual(outside.read_text(encoding="utf-8"), UGLY)
             self.assertEqual(sibling, outside.parent)
 
+    def test_stub_files_and_type_changes_are_selected(self) -> None:
+        self.write("types.pyi", UGLY)
+        self.commit_all("stub")
+        self.assertEqual(changed_python_files(self.repo, base="base"), ["types.pyi"])
+        self.assertEqual(self.run_main("--base", "base", "--check"), 1)
+
+    def test_symlinks_and_control_characters_are_refused(self) -> None:
+        link = self.repo / "alias.py"
+        try:
+            link.symlink_to("old.py")
+        except OSError:
+            link = None
+        if link is not None:
+            self.assertEqual(self.run_main("alias.py"), 2)
+            self.assertEqual(self.read("old.py"), UGLY)
+        with self.assertRaisesRegex(SelectionError, "control characters"):
+            changed_python_files(self.repo, paths=["bad\n::warning::x.py"])
+
     def test_missing_git_is_reported_not_raised(self) -> None:
         with mock.patch("subprocess.run", side_effect=FileNotFoundError("git")):
             with self.assertRaisesRegex(SelectionError, "cannot run git"):
