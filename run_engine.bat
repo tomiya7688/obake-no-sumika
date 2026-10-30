@@ -2,6 +2,10 @@
 setlocal
 cd /d "%~dp0"
 
+if exist ".venv-setup.lock" goto :base_python
+if exist ".venv\Scripts\python.exe" goto :existing_venv
+
+:base_python
 where py >nul 2>nul
 if errorlevel 1 (
     where python >nul 2>nul
@@ -15,24 +19,17 @@ if errorlevel 1 (
     set "PYTHON_CMD=py"
 )
 
-if not exist ".venv\Scripts\python.exe" (
-    echo Preparing the engine for its first launch...
-    %PYTHON_CMD% -m venv .venv
-    if errorlevel 1 goto :error
-)
+%PYTHON_CMD% -I -B "tools\security\script\launch.py" engine
+if errorlevel 1 goto :error
+exit /b 0
 
-".venv\Scripts\python.exe" -c "import pygame; import PIL" >nul 2>nul
-if errorlevel 1 (
-    echo Installing the engine components...
-    ".venv\Scripts\python.exe" -m pip install -r requirements.txt
-    if errorlevel 1 goto :error
-)
-
-start "" ".venv\Scripts\pythonw.exe" engine_app.py
+:existing_venv
+".venv\Scripts\python.exe" -I -B "tools\security\script\launch.py" engine
+if errorlevel 1 goto :error
 exit /b 0
 
 :error
 echo.
-echo The engine could not start. See README.md for manual setup steps.
+echo The application could not start. See tools/security/README.md for recovery steps.
 pause
 exit /b 1

@@ -2,23 +2,34 @@
 setlocal
 cd /d "%~dp0"
 
-if exist ".venv\Scripts\pythonw.exe" (
-    start "" ".venv\Scripts\pythonw.exe" conversation_editor.py
-    exit /b 0
-)
+if exist ".venv-setup.lock" goto :base_python
+if exist ".venv\Scripts\python.exe" goto :existing_venv
 
-where pyw >nul 2>nul
-if not errorlevel 1 (
-    start "" pyw conversation_editor.py
-    exit /b 0
-)
-
+:base_python
 where py >nul 2>nul
-if not errorlevel 1 (
-    py conversation_editor.py
-    exit /b %errorlevel%
+if errorlevel 1 (
+    where python >nul 2>nul
+    if errorlevel 1 (
+        echo Python 3 was not found. Install Python, then run this file again.
+        pause
+        exit /b 1
+    )
+    set "PYTHON_CMD=python"
+) else (
+    set "PYTHON_CMD=py"
 )
 
-echo Python 3 was not found. Install Python, then run this file again.
+%PYTHON_CMD% -I -B "tools\security\script\launch.py" conversation-editor
+if errorlevel 1 goto :error
+exit /b 0
+
+:existing_venv
+".venv\Scripts\python.exe" -I -B "tools\security\script\launch.py" conversation-editor
+if errorlevel 1 goto :error
+exit /b 0
+
+:error
+echo.
+echo The application could not start. See tools/security/README.md for recovery steps.
 pause
 exit /b 1

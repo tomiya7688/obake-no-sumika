@@ -19,18 +19,27 @@
 3. `F11` または `Alt + Enter` で全画面表示を切り替えられます。
 4. ゲームを閉じるときは、ウィンドウを閉じるか `Esc` キーを押します。
 
-Python 3.10 以上が必要です。インターネット接続が必要なのは、pygame が未導入の初回起動時だけです。
+Python 3.10 以上が必要です。初回の依存導入や古い/不足したpip・certifiの修復にはインターネット接続が必要です。起動バッチでは必要な依存と安全な版のpip/certifiが既に揃っている場合だけオフライン起動できます。検査・修復に失敗した場合は、依存が導入済みでも起動しません。
 
 ベータ版の変更内容は `CHANGELOG.md`、公開時の説明文は `RELEASE_NOTES.md`、利用条件は `LICENSE.md` を参照してください。
 
 ## コマンドで起動する場合
 
 ```powershell
-py -m pip install -r requirements.txt
-py game.py
+if (Test-Path .venv-setup.lock) {
+    $sumikaPython = "py"
+} elseif (Test-Path .venv\Scripts\python.exe) {
+    $sumikaPython = ".\.venv\Scripts\python.exe"
+} else {
+    $sumikaPython = "py"
+}
+& $sumikaPython -I -B tools/security/script/launch.py game
+if ($LASTEXITCODE -ne 0) { throw "Project launch failed" }
 ```
 
-最初から全画面で起動する場合は `py game.py --fullscreen` を使います。
+エラーが出た場合は次のコマンドへ進まないでください。最初から全画面で起動する場合は、`launch.py game` の後に `--fullscreen` を追加します。
+
+Windowsの4起動バッチも同じ共通入口を使い、依存取得前と起動前にvenvのpip/certifiを検査して失敗時は停止します。同じprojectの準備は直列化し、アプリ実行中はロックしません。会話エディタもglobal Pythonへ切り替えず同じvenvを使います。強制終了でロックが残った場合は自動削除せず、[Python取得基盤の手順](tools/security/README.md)に従って復旧してください。
 
 `py` が使えない環境では、代わりに `python` を使ってください。
 
