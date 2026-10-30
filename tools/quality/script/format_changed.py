@@ -9,6 +9,12 @@ shared checkout are never touched:
 
 Add --check to report files that need formatting without rewriting them.
 Ruff runs from the current interpreter with the repository's ruff.toml.
+
+Ruff rewrites whole files in the working tree. With --staged or --base a
+selected file must therefore have no other pending edits (unstaged changes, or
+for --base anything not committed); otherwise someone else's work could be
+reformatted, and the check would not describe what gets committed. Such files
+are refused with exit code 2.
 """
 
 from __future__ import annotations
@@ -21,16 +27,32 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
-def git_lines(repo: Path, *args: str) -> list[str]:
+class SelectionError(Exception):
+    """The requested files cannot be formatted safely."""
+
+
+def git_paths(repo: Path, command: str, *args: str) -> list[str]:
+    """Run a git command that lists paths and return them (NUL separated)."""
     result = subprocess.run(
-        ["git", "-c", "core.quotepath=false", *args],
+        ["git", command, "-z", *args],
         cwd=repo,
         capture_output=True,
-        text=True,
-        encoding="utf-8",
-        check=True,
     )
-    return [line for line in result.stdout.splitlines() if line.strip()]
+    if result.returncode != 0:
+        detail = result.stderr.decode("utf-8", "replace").strip()
+        raise SelectionError(f"git {command} {' '.join(args)} failed: {detail}")
+    return [name for name in result.stdout.decode("utf-8").split("\0") if name]
+
+
+def inside_repo(repo: Path, name: str) -> str:
+    path = (repo / name).resolve()
+    try:
+        relative = path.relative_to(repo)
+    except ValueError:
+        raise SelectionError(f"outside the repository: {name}") from None
+    if not path.is_file():
+        raise SelectionError(f"not a file: {name}")
+    return relative.as_posix()
 
 
 def changed_python_files(
@@ -39,21 +61,29 @@ def changed_python_files(
     """Return repository-relative .py files from exactly one source, deleted files excluded."""
     if sum((staged, base is not None, bool(paths))) != 1:
         raise ValueError("choose exactly one of: paths, --staged, --base")
+    repo = repo.resolve()
     if paths:
         names = paths
+        pending: set[str] = set()
     elif staged:
-        names = git_lines(repo, "diff", "--cached", "--name-only", "--diff-filter=ACMR")
+        names = git_paths(repo, "diff", "--cached", "--name-only", "--diff-filter=ACMR")
+        # Unstaged edits on top of the staged version would be reformatted too.
+        pending = set(git_paths(repo, "diff", "--name-only"))
     else:
-        names = git_lines(repo, "diff", "--name-only", "--diff-filter=ACMR", f"{base}...HEAD")
-    selected = []
-    for name in names:
-        path = Path(name)
-        if path.suffix != ".py":
-            continue
-        if not (repo / path).is_file():
-            raise FileNotFoundError(f"not a file: {name}")
-        selected.append(path.as_posix())
-    return sorted(set(selected))
+        names = git_paths(
+            repo, "diff", "--name-only", "--diff-filter=ACMR", "--end-of-options", f"{base}...HEAD"
+        )
+        # Anything not committed (staged or not) is outside the branch diff.
+        pending = set(git_paths(repo, "diff", "HEAD", "--name-only"))
+    selected = sorted({inside_repo(repo, name) for name in names if Path(name).suffix == ".py"})
+    blocked = [name for name in selected if name in pending]
+    if blocked:
+        raise SelectionError(
+            "uncommitted edits outside the selection in: "
+            + ", ".join(blocked)
+            + " (stage or commit your own edits; leave others' edits alone)"
+        )
+    return selected
 
 
 def run_ruff_format(repo: Path, files: list[str], *, check: bool) -> int:
@@ -76,7 +106,7 @@ def main(argv: list[str] | None = None) -> int:
     repo = args.repo.resolve()
     try:
         files = changed_python_files(repo, staged=args.staged, base=args.base, paths=args.paths)
-    except (ValueError, FileNotFoundError, subprocess.CalledProcessError) as exc:
+    except (ValueError, SelectionError) as exc:
         print(f"format_changed: {exc}", file=sys.stderr)
         return 2
     version = subprocess.run(

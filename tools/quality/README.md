@@ -47,15 +47,20 @@ context/diff_summary/repo_syncの6入口は、ローカルimportの前に `__fil
 入口は `tools/quality/script/format_changed.py`（Issue #110）。対象の選び方を次の3つから1つだけ指定し、担当外の未コミット変更には触れない。
 
 ```powershell
-# 今回の変更だけを git add した後に整形（推奨）。整形後は同じファイルを再度 git add する
+# 1) 今回の変更だけを git add してから整形（推奨）
 .\.venv\Scripts\python.exe tools/quality/script/format_changed.py --staged
-# ブランチ全体の変更ファイルを書き換えずに確認（CIと同じ）
+# 2) 整形した同じファイルを再度 git add し、コミットされる内容を確認
+.\.venv\Scripts\python.exe tools/quality/script/format_changed.py --staged --check
+# ブランチ全体の変更ファイルを書き換えずに確認（CIと同じ。先に git fetch origin）
 .\.venv\Scripts\python.exe tools/quality/script/format_changed.py --base origin/work --check
 # ファイルを明示する
 .\.venv\Scripts\python.exe tools/quality/script/format_changed.py game.py tests/test_tagged_conversations.py
 ```
 
-`.py` 以外と削除されたファイルは対象外。終了コードは 0（整形済み・対象なし）、1（整形が必要、`--check` 時）、2（対象の指定誤り・ファイルなし・Ruff未導入）。変更したファイルはファイル全体を整形するので、未整形の旧ファイルに触れると差分が大きくなる。その整形も同じPRに含め、意味が変わっていないことを差分で確かめる。
+- `--base` はこのリポジトリの標準ベース `origin/work` との merge-base からの差分（`BASE...HEAD`）を使う。ベースが進んでも他者のファイルは対象にならない。
+- Ruff はファイル全体を書き換えるので、`--staged` では未 stage の変更が残るファイル、`--base` ではコミットしていない変更が残るファイルを整形せず止める。同じファイルに他者の変更が混ざっていても巻き込まない。`--staged` で整形した直後は整形分が未 stage なので、再度 `git add` するまで `--staged --check` も止まる。
+- 明示パスはリポジトリ内の既存ファイルだけを受け付ける。`.py` 以外と削除されたファイルは対象外。
+- 終了コード: 0（整形した、または整形済み、または対象なし）、1（`--check` で未整形ファイルあり）、2（指定誤り・リポジトリ外・ファイルなし・未コミット変更の混在・git失敗・Ruff未導入）。変更したファイルはファイル全体を整形するので、未整形の旧ファイルに触れると差分が大きくなる。その整形も同じPRに含め、意味が変わっていないことを差分で確かめる。
 
 Work CI の `Ruff lint baseline (Python 3.10)` ジョブは、PR が変更したPythonファイルを `--base origin/<PRのベース> --check` で確認する（チェック名は互換性のため変えない）。PR以外（push・手動実行）では実行しない。
 

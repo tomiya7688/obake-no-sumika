@@ -32,6 +32,7 @@ PowerShellでリポジトリのルートから実行する。Pythonはこのプ�
 .\.venv\Scripts\python.exe -m pip install --upgrade -r tools/quality/requirements.txt
 .\.venv\Scripts\python.exe tools/quality/script/check_ruff.py --json
 .\.venv\Scripts\python.exe tools/quality/script/format_changed.py --staged
+.\.venv\Scripts\python.exe tools/quality/script/format_changed.py --staged --check
 .\.venv\Scripts\python.exe tools/quality/script/format_changed.py --base origin/work --check
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 .\.venv\Scripts\python.exe scripts/evaluate_project.py
