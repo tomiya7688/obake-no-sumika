@@ -152,15 +152,22 @@ class ManualCheckTests(unittest.TestCase):
         self.assertEqual(first["head"], "abc123")
 
     def test_copy_uses_the_given_commit(self) -> None:
-        parent = subprocess.run(
-            ["git", "rev-parse", "HEAD~1"], cwd=ROOT, capture_output=True, text=True, check=True
-        ).stdout.strip()
-        scenario = self.scenario("object-load-errors")
-        folder = kit.prepare_check(scenario, ROOT, self.base, parent)
-        expected = subprocess.run(
-            ["git", "show", f"{parent}:room.json"], cwd=ROOT, capture_output=True, check=True
-        ).stdout
-        self.assertEqual((folder / "room.json").read_bytes(), expected)
+        # CI checks out a single commit, so pin to HEAD's SHA and check that exact
+        # SHA (not the symbolic HEAD) is what git archive receives.
+        sha = kit.head_sha(ROOT)
+        real_run = subprocess.run
+        calls = []
+
+        def recording_run(command, *args, **kwargs):
+            calls.append(command)
+            return real_run(command, *args, **kwargs)
+
+        with mock.patch.object(kit.subprocess, "run", side_effect=recording_run):
+            folder = kit.prepare_check(self.scenario("object-load-errors"), ROOT, self.base, sha)
+        archive = next(command for command in calls if "archive" in command)
+        self.assertIn(sha, archive)
+        self.assertNotIn("HEAD", archive)
+        self.assertEqual((folder / "room.json").read_bytes(), committed("room.json"))
 
     def test_archive_entries_outside_the_copy_are_refused(self) -> None:
         import io
