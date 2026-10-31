@@ -374,6 +374,7 @@ class PythonSecurityTests(unittest.TestCase):
                         patch.dict(os.environ, {"PIP_CONFIG_FILE": value}),
                         patch.object(bootstrap, "ensure_tooling") as ensure,
                         patch.object(Path, "open", side_effect=AssertionError("must not read")),
+                        patch("builtins.open", side_effect=AssertionError("must not read")),
                         patch.object(bootstrap.subprocess, "run") as run,
                         redirect_stdout(io.StringIO()) as out,
                         redirect_stderr(io.StringIO()) as err,
