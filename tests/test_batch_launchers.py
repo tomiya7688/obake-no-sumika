@@ -39,6 +39,7 @@ class BatchLauncherTests(unittest.TestCase):
                 data = path.read_bytes()
                 # UTF-8 text is split mid-character by cmd.exe; keep messages ASCII.
                 self.assertTrue(data.isascii(), "non-ASCII bytes")
+                self.assertTrue(data.endswith(b"\r\n"), "last line must end with CRLF")
                 lines = data.split(b"\r\n")
                 self.assertFalse(any(b"\n" in line or b"\r" in line for line in lines), "not CRLF")
 

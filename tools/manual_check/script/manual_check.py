@@ -351,6 +351,14 @@ class CheckWindow:
         self.scenario, self.folder, self.head, self.saved = scenario, None, None, True
         for child in self.right.winfo_children():
             child.destroy()
+        ttk.Label(
+            self.right,
+            text="使い方: ① 左の一覧から項目を選ぶ　② 「エディターを開く」を押す（別ウィンドウでエディターが開く）"
+            "　③ 下の手順を上から順に、そのエディターで操作する　④ 手順ごとに「できた」か「違った」を選ぶ"
+            "　⑤ 最後に「結果を保存」を押す",
+            wraplength=560,
+            foreground="#475e68",
+        ).pack(anchor="w", pady=(0, 8))
         ttk.Label(self.right, text=scenario.title, font=("Yu Gothic UI", 13, "bold")).pack(
             anchor="w"
         )
