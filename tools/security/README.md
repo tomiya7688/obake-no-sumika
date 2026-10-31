@@ -31,6 +31,8 @@ base Pythonは暗黙に変更しない。CIの管理済みruntimeだけは明示
 
 非空の `PIP_CERT` / `REQUESTS_CA_BUNDLE` / `CURL_CA_BUNDLE` / `SSL_CERT_FILE` は、更新より先に同じ8MiB上限・隔離DER指紋検査を全件実施する。正常なら従来の更新へ進み、既知rootがあれば `--apply` でも更新せず終了1。不正・欠落・非ファイルや解析不能は終了2。非空の `SSL_CERT_DIR` はディレクトリ実監査が未対応のため終了2。空/未設定は従来の動作を維持する。
 
+非空の `PIP_CONFIG_FILE` はpip設定ファイルの監査が未対応のため、`--apply` を含め更新前に終了2で停止する（Issue #124）。通常パス・欠落パス・空白・設定読込を無効化する `os.devnull` 指定も含め、一律に手動点検を要求する保守的な制限。値・パス・内容は出力せず、指定ファイルを読み書きしない。空/未設定は従来動作を維持する。停止を解くためだけに環境変数を消さず、指定先と既定global/site設定の信頼元を手動確認する。確認後、指定が不要と判断できる場合に限って操作者が指定を外して再実行する。設定が必要な環境は自動更新を使わず、監査済みの環境で手動復旧する。読取専用checkもこの条件では版/CAのJSONを出さず終了2になる。global/site設定を含む全pip設定の監査や実効TLS経路の特定は未対応。根拠: [pip設定](https://pip.pypa.io/en/stable/topics/configuration/#pip-config-file)。
+
 追加JSON `environment_bundles` は変数名から内容SHA/PEM数/CA数/既知対象結果への対応。追加項目と上書きエラーは値やパスを含めず、環境やファイルを変更しない（従来の `python` / `bundles` には既定のPython/CAパスが残る）。相対パスは実行時cwdから解決する。複数指定は、クライアントごとの優先順位を推測せず全件検査する保守的な条件であり、有効なTLS経路を特定したという意味ではない。点検時点のsnapshotであり、後続利用までファイルを固定するものではない。
 
 根拠: [pip HTTPS Certificates](https://pip.pypa.io/en/stable/topics/https-certificates/)、[Requests SSL Cert Verification](https://requests.readthedocs.io/en/latest/user/advanced/#ssl-cert-verification)、[Python SSL default paths](https://docs.python.org/3/library/ssl.html#ssl.get_default_verify_paths)。ディレクトリ指定を使う環境は、値を消して迂回せず実際の信頼元を手動点検する。pip設定ファイル/CLI指定、OS既定ストア、全TLSチェーン/中間SPKI/cross-signの点検は引き続き親#99に残る。`chains_verified:false` を維持する。

@@ -41,6 +41,7 @@ class PythonSecurityTests(unittest.TestCase):
             "CURL_CA_BUNDLE",
             "SSL_CERT_FILE",
             "SSL_CERT_DIR",
+            "PIP_CONFIG_FILE",
         )
         self.environment = patch.dict(os.environ, dict.fromkeys(names, ""))
         self.environment.start()
@@ -360,6 +361,48 @@ class PythonSecurityTests(unittest.TestCase):
                 self.assertNotIn("path", item)
             self.assertNotIn(path.name, json.dumps(result, ensure_ascii=False))
             self.assertEqual(path.read_bytes(), raw)
+
+    def test_pip_config_override_stops_without_reading_or_exposing_value(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory) / "private-pip.ini"
+            raw = b"[global]\ncert = secret-ca.pem\nindex-url = https://private.invalid\n"
+            config.write_bytes(raw)
+            for value in (str(config), str(config.with_suffix(".missing")), " ", os.devnull):
+                for arguments in ([], ["--apply"], ["--apply", "--managed-runtime"]):
+                    with (
+                        self.subTest(value=value, arguments=arguments),
+                        patch.dict(os.environ, {"PIP_CONFIG_FILE": value}),
+                        patch.object(bootstrap, "ensure_tooling") as ensure,
+                        patch.object(Path, "open", side_effect=AssertionError("must not read")),
+                        patch.object(bootstrap.subprocess, "run") as run,
+                        redirect_stdout(io.StringIO()) as out,
+                        redirect_stderr(io.StringIO()) as err,
+                    ):
+                        self.assertEqual(bootstrap.main(arguments), 2)
+                        ensure.assert_not_called()
+                        run.assert_not_called()
+                        self.assertEqual(out.getvalue(), "")
+                        self.assertEqual(
+                            err.getvalue(),
+                            "Python tooling check failed: PIP_CONFIG_FILE requires a manual "
+                            "pip configuration audit; value omitted\n",
+                        )
+            self.assertEqual(config.read_bytes(), raw)
+
+    def test_empty_or_unset_pip_config_keeps_existing_update_path(self) -> None:
+        for value in (None, ""):
+            with (
+                self.subTest(value=value),
+                patch.dict(os.environ),
+                patch.object(bootstrap, "ensure_tooling", return_value=SAFE) as ensure,
+                patch.object(bootstrap, "inspect_bundles", return_value={}),
+                redirect_stdout(io.StringIO()),
+            ):
+                os.environ.pop("PIP_CONFIG_FILE", None)
+                if value is not None:
+                    os.environ["PIP_CONFIG_FILE"] = value
+                self.assertEqual(bootstrap.main(["--apply"]), 0)
+                ensure.assert_called_once_with(True, False)
 
     def test_environment_bad_root_stops_before_updates(self) -> None:
         path = FIXTURES / "emsign-ecc-g3.pem"
