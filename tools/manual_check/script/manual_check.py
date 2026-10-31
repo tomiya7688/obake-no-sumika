@@ -15,8 +15,8 @@ import json
 import os
 import subprocess
 import sys
+import shutil
 import tarfile
-import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -29,14 +29,32 @@ COPY_PATTERNS = (":(glob)*.py", ":(glob)*.json", "engine", "assets", "objects")
 PREFERRED_WORK_ROOT = Path("E:/program_files/soft/claude/tmp")
 
 
+class CheckError(Exception):
+    """A check cannot be prepared; the message is shown to the person checking."""
+
+
 def work_root() -> Path:
-    """Where check folders go: OBAKE_MANUAL_CHECK_DIR, else E: scratch, else temp."""
+    """Where check folders go: OBAKE_MANUAL_CHECK_DIR, else the E: scratch folder.
+
+    There is deliberately no fallback to the system temp folder, which is on the
+    nearly full C: drive on this project's machine.
+    """
     configured = os.environ.get("OBAKE_MANUAL_CHECK_DIR")
     if configured:
         return Path(configured)
     if PREFERRED_WORK_ROOT.is_dir():
         return PREFERRED_WORK_ROOT / "obake_manual_check"
-    return Path(tempfile.gettempdir()) / "obake_manual_check"
+    raise CheckError(
+        f"確認用の置き場がありません。{PREFERRED_WORK_ROOT} を作るか、"
+        "環境変数 OBAKE_MANUAL_CHECK_DIR に置き場のフォルダーを設定してください。"
+    )
+
+
+def head_sha(repo: Path) -> str:
+    result = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise CheckError(f"git の HEAD を読めません: {result.stderr.strip()}")
+    return result.stdout.strip()
 
 
 def read_json(path: Path):
@@ -44,7 +62,10 @@ def read_json(path: Path):
 
 
 def write_json(path: Path, data) -> None:
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    # LF like the repository's own JSON, also on Windows.
+    path.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n"
+    )
 
 
 def break_conversations(folder: Path) -> None:
@@ -57,6 +78,8 @@ def break_conversations(folder: Path) -> None:
 
 def use_generic_ids(folder: Path) -> None:
     characters = read_json(folder / "characters.json")
+    if not characters.get("characters"):
+        raise CheckError("この確認にはキャラクターが1件以上必要です（characters.json）。")
     player = dict(characters["characters"][0], id="player", display_name="プレイヤー")
     characters["characters"] = [player]
     write_json(folder / "characters.json", characters)
@@ -74,6 +97,8 @@ def use_generic_ids(folder: Path) -> None:
 def break_placements(folder: Path) -> None:
     path = folder / "placed_objects.json"
     data = read_json(path)
+    if len(data.get("objects", [])) < 2:
+        raise CheckError("この確認には配置が2件以上必要です（placed_objects.json）。")
     first, second = data["objects"][0], data["objects"][1]
     data["objects"].append(dict(first, name="重複IDの配置", x=100))
     data["objects"].append(dict(second, id="far_away", tag="far_away", x=5000))
@@ -162,9 +187,18 @@ SCENARIOS = (
 
 def prepare_check(scenario: Scenario, repo: Path, root: Path) -> Path:
     """Copy committed files into a fresh folder for the scenario and apply its change."""
-    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
     folder = root / f"{stamp}-{scenario.id}"
     folder.mkdir(parents=True)
+    try:
+        _fill(scenario, repo, folder)
+    except BaseException:
+        shutil.rmtree(folder, ignore_errors=True)
+        raise
+    return folder
+
+
+def _fill(scenario: Scenario, repo: Path, folder: Path) -> None:
     # One git call: starting git is slow on some machines, so avoid one per file.
     archive = subprocess.run(
         [
@@ -179,30 +213,40 @@ def prepare_check(scenario: Scenario, repo: Path, root: Path) -> Path:
         ],
         cwd=repo,
         capture_output=True,
-        check=True,
-    ).stdout
-    with tarfile.open(fileobj=io.BytesIO(archive)) as tar:
+    )
+    if archive.returncode != 0:
+        raise CheckError(
+            f"git からデータを取り出せません: {archive.stderr.decode(errors='replace')}"
+        )
+    with tarfile.open(fileobj=io.BytesIO(archive.stdout)) as tar:
         for member in tar.getmembers():
             if member.isfile():
                 target = folder / member.name
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(tar.extractfile(member).read())
     scenario.prepare(folder)
-    return folder
 
 
 def open_editor(scenario: Scenario, folder: Path) -> subprocess.Popen:
     return subprocess.Popen([sys.executable, str(folder / scenario.editor)], cwd=folder)
 
 
-def save_results(path: Path, scenario: Scenario, folder: Path | None, answers: list) -> None:
-    """Record answers ("ok"/"ng"/None and a note per step) in results.json."""
+def save_results(
+    path: Path, scenario: Scenario, folder: Path | None, answers: list, head: str | None = None
+) -> None:
+    """Record answers ("ok"/"ng"/None and a note per step) in results.json.
+
+    head is the commit the copy was taken from; agents should only trust the
+    latest entry whose head matches the commit they are checking.
+    """
     results = read_json(path) if path.exists() else {"schema_version": 1, "checks": []}
     results["checks"].append(
         {
             "scenario": scenario.id,
             "issue": scenario.issue,
+            "head": head,
             "saved_at": datetime.now().isoformat(timespec="seconds"),
+            "editor_opened": folder is not None,
             "folder": str(folder) if folder else None,
             "steps": [
                 {"action": step.action, "expected": step.expected, "result": result, "note": note}
@@ -217,11 +261,13 @@ def save_results(path: Path, scenario: Scenario, folder: Path | None, answers: l
 class CheckWindow:
     def __init__(self, root, repo: Path = PROJECT_ROOT, base: Path | None = None) -> None:
         import tkinter as tk
-        from tkinter import ttk
+        from tkinter import messagebox, ttk
 
-        self.tk, self.ttk = tk, ttk
+        self.tk, self.ttk, self.messagebox = tk, ttk, messagebox
         self.root, self.repo = root, repo
         self.base = base or work_root()
+        self.head: str | None = None
+        self.saved = True
         self.results_path = self.base / "results.json"
         self.folder: Path | None = None
         self.scenario = SCENARIOS[0]
@@ -244,12 +290,19 @@ class CheckWindow:
 
     def on_select(self, _event=None) -> None:
         picked = self.listbox.curselection()
-        if picked:
-            self.show(SCENARIOS[picked[0]])
+        if not picked or SCENARIOS[picked[0]] is self.scenario:
+            return
+        if not self.saved and not self.messagebox.askyesno(
+            "未保存の回答", "保存していない回答があります。保存せずに切り替えますか？"
+        ):
+            self.listbox.selection_clear(0, "end")
+            self.listbox.selection_set(SCENARIOS.index(self.scenario))
+            return
+        self.show(SCENARIOS[picked[0]])
 
     def show(self, scenario: Scenario) -> None:
         ttk, tk = self.ttk, self.tk
-        self.scenario, self.folder = scenario, None
+        self.scenario, self.folder, self.head, self.saved = scenario, None, None, True
         for child in self.right.winfo_children():
             child.destroy()
         ttk.Label(self.right, text=scenario.title, font=("Yu Gothic UI", 13, "bold")).pack(
@@ -257,11 +310,15 @@ class CheckWindow:
         )
         ttk.Label(
             self.right,
-            text="本物のデータは変わりません。確認用のコピーを開きます。上から順に操作し、"
+            text="確認用のコピーだけを開きます。上から順に操作し、"
             "期待どおりなら「できた」、違ったら「違った」を選んでください。",
             wraplength=560,
         ).pack(anchor="w", pady=(4, 8))
-        ttk.Button(self.right, text="エディターを開く", command=self.open).pack(anchor="w")
+        # Both buttons stay at the top so they remain visible however long the steps are.
+        buttons = ttk.Frame(self.right)
+        buttons.pack(anchor="w")
+        ttk.Button(buttons, text="エディターを開く", command=self.open).pack(side="left")
+        ttk.Button(buttons, text="結果を保存", command=self.save).pack(side="left", padx=8)
         self.answers = []
         for number, step in enumerate(scenario.steps, 1):
             box = ttk.Frame(self.right, padding=(0, 6))
@@ -271,23 +328,46 @@ class CheckWindow:
                 anchor="w"
             )
             choice, note = tk.StringVar(value=""), tk.StringVar()
+            note.trace_add("write", lambda *_: self.mark_changed())
             row = ttk.Frame(box)
             row.pack(anchor="w")
-            ttk.Radiobutton(row, text="できた", variable=choice, value="ok").pack(side="left")
-            ttk.Radiobutton(row, text="違った", variable=choice, value="ng").pack(side="left")
+            for label, value in (("できた", "ok"), ("違った", "ng")):
+                ttk.Radiobutton(
+                    row, text=label, variable=choice, value=value, command=self.mark_changed
+                ).pack(side="left")
             ttk.Label(row, text="  メモ:").pack(side="left")
             ttk.Entry(row, textvariable=note, width=40).pack(side="left")
             self.answers.append((choice, note))
-        ttk.Button(self.right, text="結果を保存", command=self.save).pack(anchor="w", pady=8)
+
+    def mark_changed(self) -> None:
+        self.saved = False
 
     def open(self) -> None:
-        self.folder = prepare_check(self.scenario, self.repo, self.base)
-        open_editor(self.scenario, self.folder)
+        try:
+            self.head = head_sha(self.repo)
+            self.folder = prepare_check(self.scenario, self.repo, self.base)
+            open_editor(self.scenario, self.folder)
+        except (CheckError, OSError, ValueError, KeyError) as exc:
+            self.messagebox.showerror(
+                "開けませんでした", f"{exc}\n\nこの画面のままエージェントに伝えてください。"
+            )
+            self.status.set(f"開けませんでした: {exc}")
+            return
         self.status.set(f"確認用のコピーを開きました: {self.folder}")
 
     def save(self) -> None:
+        if self.folder is None and not self.messagebox.askyesno(
+            "エディターを開いていません",
+            "この項目ではまだ「エディターを開く」を押していません。このまま保存しますか？",
+        ):
+            return
         answers = [(choice.get() or None, note.get().strip()) for choice, note in self.answers]
-        save_results(self.results_path, self.scenario, self.folder, answers)
+        try:
+            save_results(self.results_path, self.scenario, self.folder, answers, self.head)
+        except (OSError, ValueError) as exc:
+            self.messagebox.showerror("保存できませんでした", str(exc))
+            return
+        self.saved = True
         self.status.set(f"保存しました: {self.results_path}")
 
 
@@ -295,7 +375,13 @@ def main() -> int:
     import tkinter as tk
 
     root = tk.Tk()
-    CheckWindow(root)
+    try:
+        CheckWindow(root)
+    except CheckError as exc:
+        from tkinter import messagebox
+
+        messagebox.showerror("確認キット", str(exc))
+        return 1
     root.mainloop()
     return 0
 
