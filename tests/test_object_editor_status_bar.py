@@ -29,7 +29,8 @@ class ObjectEditorStatusBarTests(unittest.TestCase):
                 root.update()
                 label = editor.status_label
                 self.assertTrue(label.winfo_ismapped())
-                self.assertGreater(label.winfo_height(), 1)
+                # The whole text row must fit, not just a sliver of the label.
+                self.assertGreaterEqual(label.winfo_height(), label.winfo_reqheight())
                 self.assertLessEqual(label.winfo_y() + label.winfo_height(), root.winfo_height())
 
 
