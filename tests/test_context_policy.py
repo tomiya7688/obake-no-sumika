@@ -16,6 +16,7 @@ class ContextPolicyTests(unittest.TestCase):
     # this repository (see docs/ワークフロー/共同作業ルール.md). Add new names here
     # deliberately; any other <!-- name:... --> block still counts as router text.
     DISTRIBUTED_BLOCKS = (
+        "no-haiku-review",
         "review-procedure-required",
         "shared-review-operations",
         "post-work-formatter-policy",
@@ -24,10 +25,16 @@ class ContextPolicyTests(unittest.TestCase):
 
     def strip_distributed_blocks(self, text: str) -> str:
         names = "|".join(map(re.escape, self.DISTRIBUTED_BLOCKS))
-        return re.sub(rf"<!-- ({names}):[^>]*-->.*?<!-- /\1 -->\n*", "", text, flags=re.S)
+        return re.sub(
+            rf"<!-- ({names}):[^>]*-->.*?<!-- /\1(?::[^>]*)? -->\n*", "", text, flags=re.S
+        )
 
     def test_only_listed_distributed_blocks_are_excluded_from_the_router(self) -> None:
         listed = "<!-- shared-review-operations:v9 -->\nX\n<!-- /shared-review-operations -->\n"
+        dated_close = (
+            "<!-- no-haiku-review:2026-11-01 -->\nY\n<!-- /no-haiku-review:2026-11-01 -->\n"
+        )
+        self.assertEqual(self.strip_distributed_blocks(dated_close), "")
         unlisted = "<!-- my-notes:1 -->\nY\n<!-- /my-notes -->\n"
         self.assertEqual(self.strip_distributed_blocks(listed + "router\n"), "router\n")
         self.assertEqual(self.strip_distributed_blocks(unlisted), unlisted)

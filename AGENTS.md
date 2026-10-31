@@ -1,3 +1,8 @@
+<!-- no-haiku-review:2026-11-01 -->
+## 最新指示: Haikuレビュー依頼を停止
+Claudeの利用枠節約のため、作業・PRでHaikuへのレビューを依頼せず、Haiku欄や省略証跡も要求しない。必須の残りはCodex Luna low、Antigravity、Jules、Continue、Qwen Code、Grok。PR時のCopilot・CodeRabbit、追加無料レビュアー、秘密除外・編集禁止・期限と利用不可時の省略は維持する。旧7者・Haiku必須記述よりこの指示と E:/projects/REVIEW_OPERATIONS.md の最新版を優先する。Claudeを主担当とする作業は制限しない。ユーザーが個別にHaikuを明示依頼した場合はその指示に従う。
+<!-- /no-haiku-review:2026-11-01 -->
+
 <!-- review-procedure-required:2026-10-26 -->
 ## レビュー手順の確認・実行証跡を必須にする
 
