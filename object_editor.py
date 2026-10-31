@@ -194,8 +194,10 @@ class ObjectEditor:
 
     def load_preview_base(self) -> Image.Image:
         if PREVIEW_PATH.exists():
-            return Image.open(PREVIEW_PATH).convert("RGBA").resize(
-                PREVIEW_SIZE, Image.Resampling.LANCZOS
+            return (
+                Image.open(PREVIEW_PATH)
+                .convert("RGBA")
+                .resize(PREVIEW_SIZE, Image.Resampling.LANCZOS)
             )
         image = Image.new("RGBA", PREVIEW_SIZE, "#080b15")
         draw = ImageDraw.Draw(image)
@@ -207,6 +209,17 @@ class ObjectEditor:
     def build_ui(self) -> None:
         style = ttk.Style()
         style.configure("Title.TLabel", font=("Yu Gothic UI", 13, "bold"))
+        # Pack the status bar before the panels so it keeps its row when the
+        # window is shorter than the panels (Issue #128).
+        self.status_label = ttk.Label(
+            self.root, textvariable=self.status_var, foreground="#475e68", padding=(12, 4)
+        )
+        self.status_label.pack(side="bottom", fill="x")
+        # Wrap long messages (e.g. saved file names) instead of cutting them off.
+        self.status_label.bind(
+            "<Configure>",
+            lambda event: self.status_label.configure(wraplength=max(200, event.width - 24)),
+        )
         outer = ttk.Frame(self.root, padding=12)
         outer.pack(fill="both", expand=True)
         outer.columnconfigure(0, weight=0)
@@ -228,8 +241,12 @@ class ObjectEditor:
             highlightbackground="#6f747c",
             cursor="crosshair",
         )
-        draw_scroll_y = ttk.Scrollbar(draw_holder, orient="vertical", command=self.draw_canvas.yview)
-        draw_scroll_x = ttk.Scrollbar(draw_holder, orient="horizontal", command=self.draw_canvas.xview)
+        draw_scroll_y = ttk.Scrollbar(
+            draw_holder, orient="vertical", command=self.draw_canvas.yview
+        )
+        draw_scroll_x = ttk.Scrollbar(
+            draw_holder, orient="horizontal", command=self.draw_canvas.xview
+        )
         self.draw_canvas.configure(
             xscrollcommand=draw_scroll_x.set,
             yscrollcommand=draw_scroll_y.set,
@@ -294,18 +311,18 @@ class ObjectEditor:
             command=self.choose_color,
         )
         self.color_button.grid(row=7, column=0, sticky="ew", pady=(0, 8))
-        ttk.Radiobutton(
-            tools, text="えんぴつ", variable=self.tool_var, value="pencil"
-        ).grid(row=8, column=0, sticky="w")
-        ttk.Radiobutton(
-            tools, text="透明消しゴム", variable=self.tool_var, value="eraser"
-        ).grid(row=9, column=0, sticky="w")
-        ttk.Radiobutton(
-            tools, text="スポイト", variable=self.tool_var, value="eyedropper"
-        ).grid(row=10, column=0, sticky="w")
-        ttk.Radiobutton(
-            tools, text="塗りつぶし", variable=self.tool_var, value="fill"
-        ).grid(row=11, column=0, sticky="w")
+        ttk.Radiobutton(tools, text="えんぴつ", variable=self.tool_var, value="pencil").grid(
+            row=8, column=0, sticky="w"
+        )
+        ttk.Radiobutton(tools, text="透明消しゴム", variable=self.tool_var, value="eraser").grid(
+            row=9, column=0, sticky="w"
+        )
+        ttk.Radiobutton(tools, text="スポイト", variable=self.tool_var, value="eyedropper").grid(
+            row=10, column=0, sticky="w"
+        )
+        ttk.Radiobutton(tools, text="塗りつぶし", variable=self.tool_var, value="fill").grid(
+            row=11, column=0, sticky="w"
+        )
         ttk.Button(tools, text="1つ戻す", command=self.undo).grid(
             row=12, column=0, sticky="ew", pady=(12, 4)
         )
@@ -368,11 +385,23 @@ class ObjectEditor:
         settings.grid(row=3, column=0, sticky="ew", pady=(10, 8))
         settings.columnconfigure(1, weight=1)
         ttk.Label(settings, text="横位置").grid(row=0, column=0, sticky="w")
-        ttk.Spinbox(settings, from_=0, to=GAME_SIZE[0], textvariable=self.x_var, width=7,
-                    command=self.redraw_preview).grid(row=0, column=1, sticky="w")
+        ttk.Spinbox(
+            settings,
+            from_=0,
+            to=GAME_SIZE[0],
+            textvariable=self.x_var,
+            width=7,
+            command=self.redraw_preview,
+        ).grid(row=0, column=1, sticky="w")
         ttk.Label(settings, text="縦位置").grid(row=0, column=2, padx=(14, 0), sticky="w")
-        ttk.Spinbox(settings, from_=0, to=GAME_SIZE[1], textvariable=self.y_var, width=7,
-                    command=self.redraw_preview).grid(row=0, column=3, sticky="w")
+        ttk.Spinbox(
+            settings,
+            from_=0,
+            to=GAME_SIZE[1],
+            textvariable=self.y_var,
+            width=7,
+            command=self.redraw_preview,
+        ).grid(row=0, column=3, sticky="w")
         ttk.Label(settings, text="ゲーム内の幅").grid(row=1, column=0, sticky="w", pady=(8, 0))
         scale = ttk.Scale(
             settings,
@@ -397,15 +426,13 @@ class ObjectEditor:
         ttk.Label(
             settings,
             text="タグは配置ごとに一意。会話エディタから移動・取り出す・しまう対象にできます。\n"
-                 "縦横比は固定。保存画像の1024pxとは別の表示サイズです。",
+            "縦横比は固定。保存画像の1024pxとは別の表示サイズです。",
             foreground="#666666",
         ).grid(row=4, column=0, columnspan=4, sticky="w", pady=(5, 0))
 
         buttons = ttk.Frame(placement)
         buttons.grid(row=4, column=0, sticky="ew")
-        ttk.Button(buttons, text="新しく住処に置く", command=self.add_to_habitat).pack(
-            side="left"
-        )
+        ttk.Button(buttons, text="新しく住処に置く", command=self.add_to_habitat).pack(side="left")
         ttk.Button(buttons, text="選択中の位置・大きさを更新", command=self.update_placement).pack(
             side="left", padx=6
         )
@@ -416,14 +443,16 @@ class ObjectEditor:
         ttk.Label(placement, text="住処に置かれているもの").grid(
             row=5, column=0, sticky="w", pady=(12, 3)
         )
-        self.placement_list = tk.Listbox(placement, height=7, exportselection=False)
+        # Keep the right panel short enough to fit the 860px window above the
+        # status bar; the lists scroll (Issue #128).
+        self.placement_list = tk.Listbox(placement, height=5, exportselection=False)
         self.placement_list.grid(row=6, column=0, sticky="ew")
         self.placement_list.bind("<<ListboxSelect>>", self.select_placement)
 
         ttk.Label(placement, text="保存済みオブジェクト（何度でも挿入できます）").grid(
             row=7, column=0, sticky="w", pady=(10, 3)
         )
-        self.library_list = tk.Listbox(placement, height=5, exportselection=False)
+        self.library_list = tk.Listbox(placement, height=4, exportselection=False)
         self.library_list.grid(row=8, column=0, sticky="ew")
         library_buttons = ttk.Frame(placement)
         library_buttons.grid(row=9, column=0, sticky="w", pady=(4, 0))
@@ -437,9 +466,6 @@ class ObjectEditor:
             text="編集キャンバスへ読み込む",
             command=self.load_library_object,
         ).pack(side="left", padx=6)
-        ttk.Label(placement, textvariable=self.status_var, foreground="#475e68").grid(
-            row=10, column=0, sticky="w", pady=(8, 0)
-        )
 
     def snapshot(self) -> None:
         self.undo_stack.append([row[:] for row in self.pixels])
@@ -617,7 +643,9 @@ class ObjectEditor:
         return filled
 
     @staticmethod
-    def brush_cells(center_x: int, center_y: int, size: int, canvas_size: int) -> list[tuple[int, int]]:
+    def brush_cells(
+        center_x: int, center_y: int, size: int, canvas_size: int
+    ) -> list[tuple[int, int]]:
         """Return clipped cells covered by an odd-sized square brush."""
         size = max(1, int(size))
         if size % 2 == 0:
@@ -635,9 +663,7 @@ class ObjectEditor:
             return
         self.last_cell = (x, y)
         value = None if erase else self.color
-        for cell_x, cell_y in self.brush_cells(
-            x, y, self.brush_size_var.get(), self.canvas_size
-        ):
+        for cell_x, cell_y in self.brush_cells(x, y, self.brush_size_var.get(), self.canvas_size):
             self.pixels[cell_y][cell_x] = value
             self.draw_editor_cell(cell_x, cell_y)
 
@@ -877,7 +903,9 @@ class ObjectEditor:
         if self.selected_placement is None:
             return
         item = self.placements[self.selected_placement]
-        if not messagebox.askyesno("住処から外す", f"「{item.get('name', 'オブジェクト')}」を外しますか？"):
+        if not messagebox.askyesno(
+            "住処から外す", f"「{item.get('name', 'オブジェクト')}」を外しますか？"
+        ):
             return
         del self.placements[self.selected_placement]
         self.selected_placement = None
