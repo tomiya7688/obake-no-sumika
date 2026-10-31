@@ -1,0 +1,69 @@
+name: Release artifacts
+
+# Builds the game and editors zips with SHA256SUMS. Tags and manual runs also
+# attest them (GitHub Artifact Attestation, keyless OIDC) and verify the
+# attestations. Publishing to a GitHub Release stays manual and needs Kadoka's
+# confirmation; this workflow never creates or edits a release.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+  pull_request:
+    branches: [work]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-artifacts-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  package:
+    name: Build release zips (attest on tag / manual run)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.10"
+      - name: Build the zips and SHA256SUMS from the checked-out commit
+        run: python tools/release/script/package.py --ref HEAD --out dist
+      - name: Check the build is reproducible
+        run: |
+          python tools/release/script/package.py --ref HEAD --out dist-again
+          diff dist/SHA256SUMS dist-again/SHA256SUMS
+          cd dist && sha256sum --check SHA256SUMS
+      - name: Attest the zips and SHA256SUMS
+        if: github.event_name != 'pull_request'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            dist/*.zip
+            dist/SHA256SUMS
+      - name: Verify the attestations
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          for file in dist/*.zip dist/SHA256SUMS; do
+            gh attestation verify "$file" --repo "$REPO"
+          done
+      - name: Keep the artifacts with the run
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-artifacts
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30

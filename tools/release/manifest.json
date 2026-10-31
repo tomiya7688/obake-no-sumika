@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "name": "obake-no-sumika",
+  "packages": {
+    "game": {
+      "description": "Game only: run_game.bat starts the observation game.",
+      "include": [
+        "game.py",
+        "engine/*.py",
+        "assets/*",
+        "objects/*",
+        "characters.json",
+        "conversations.json",
+        "events.json",
+        "placed_objects.json",
+        "room.json",
+        "requirements.txt",
+        "run_game.bat",
+        "tools/security/README.md",
+        "tools/security/script/*.py",
+        "README.md",
+        "LICENSE.md",
+        "RELEASE_NOTES.md",
+        "CHANGELOG.md",
+        "VERSION"
+      ]
+    },
+    "editors": {
+      "description": "Editors and the integrated engine, with the game data they edit.",
+      "include": [
+        "game.py",
+        "engine/*.py",
+        "assets/*",
+        "objects/*",
+        "projects/*",
+        "characters.json",
+        "conversations.json",
+        "events.json",
+        "placed_objects.json",
+        "room.json",
+        "engine_project.json",
+        "game_content.json",
+        "engine_app.py",
+        "character_editor.py",
+        "conversation_editor.py",
+        "object_editor.py",
+        "requirements.txt",
+        "run_game.bat",
+        "run_engine.bat",
+        "run_editor.bat",
+        "run_object_editor.bat",
+        "tools/security/README.md",
+        "tools/security/script/*.py",
+        "README.md",
+        "LICENSE.md",
+        "RELEASE_NOTES.md",
+        "CHANGELOG.md",
+        "VERSION"
+      ]
+    }
+  }
+}

@@ -34,6 +34,7 @@ PowerShellでリポジトリのルートから実行する。Pythonはこのプ�
 .\.venv\Scripts\python.exe tools/quality/script/format_changed.py --staged
 .\.venv\Scripts\python.exe tools/quality/script/format_changed.py --staged --check
 .\.venv\Scripts\python.exe tools/quality/script/format_changed.py --base origin/work --check
+.\.venv\Scripts\python.exe tools/release/script/package.py --ref HEAD --out dist
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 .\.venv\Scripts\python.exe scripts/evaluate_project.py
 ```
