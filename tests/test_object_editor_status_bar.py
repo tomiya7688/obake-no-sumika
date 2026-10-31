@@ -48,6 +48,15 @@ class ObjectEditorStatusBarTests(unittest.TestCase):
                 self.assertGreaterEqual(label.winfo_height(), label.winfo_reqheight())
                 self.assertLessEqual(label.winfo_y() + label.winfo_height(), height)
 
+    def test_long_status_wraps_inside_the_window(self) -> None:
+        self.resize(1380, 860)
+        self.editor.status_var.set("1024×1024で保存しました: " + "とても長い名前" * 60 + ".png")
+        self.root.update()
+        label = self.editor.status_label
+        self.assertLessEqual(int(str(label.cget("wraplength"))), label.winfo_width())
+        self.assertGreaterEqual(label.winfo_height(), label.winfo_reqheight())
+        self.assertLessEqual(label.winfo_y() + label.winfo_height(), 860)
+
     # Font metrics differ by platform (Linux CI renders the panel a few px
     # taller), and the editor's layout is tuned for the Windows it runs on.
     @unittest.skipUnless(sys.platform == "win32", "layout is tuned for Windows font metrics")

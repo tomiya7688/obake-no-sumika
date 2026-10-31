@@ -215,6 +215,11 @@ class ObjectEditor:
             self.root, textvariable=self.status_var, foreground="#475e68", padding=(12, 4)
         )
         self.status_label.pack(side="bottom", fill="x")
+        # Wrap long messages (e.g. saved file names) instead of cutting them off.
+        self.status_label.bind(
+            "<Configure>",
+            lambda event: self.status_label.configure(wraplength=max(200, event.width - 24)),
+        )
         outer = ttk.Frame(self.root, padding=12)
         outer.pack(fill="both", expand=True)
         outer.columnconfigure(0, weight=0)
