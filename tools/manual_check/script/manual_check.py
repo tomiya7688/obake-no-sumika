@@ -17,6 +17,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -27,6 +28,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 # (git pathspecs, matched against HEAD).
 COPY_PATTERNS = (":(glob)*.py", ":(glob)*.json", "engine", "assets", "objects")
 PREFERRED_WORK_ROOT = Path("E:/program_files/soft/claude/tmp")
+GIT_TIMEOUT = 120  # seconds; git can be slow to start on this project's machine
+KEEP_COPIES_DAYS = 14
 
 
 class CheckError(Exception):
@@ -51,7 +54,13 @@ def work_root() -> Path:
 
 
 def head_sha(repo: Path) -> str:
-    result = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True)
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        timeout=GIT_TIMEOUT,
+    )
     if result.returncode != 0:
         raise CheckError(f"git の HEAD を読めません: {result.stderr.strip()}")
     return result.stdout.strip()
@@ -62,10 +71,13 @@ def read_json(path: Path):
 
 
 def write_json(path: Path, data) -> None:
-    # LF like the repository's own JSON, also on Windows.
-    path.write_text(
+    # LF like the repository's own JSON, also on Windows; replace atomically so an
+    # interrupted write never leaves a truncated file.
+    temporary = path.with_name(f"{path.name}.{uuid.uuid4().hex}.tmp")
+    temporary.write_text(
         json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n"
     )
+    os.replace(temporary, path)
 
 
 def break_conversations(folder: Path) -> None:
@@ -185,21 +197,34 @@ SCENARIOS = (
 )
 
 
-def prepare_check(scenario: Scenario, repo: Path, root: Path) -> Path:
-    """Copy committed files into a fresh folder for the scenario and apply its change."""
-    stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
-    folder = root / f"{stamp}-{scenario.id}"
+def prepare_check(scenario: Scenario, repo: Path, root: Path, head: str | None = None) -> Path:
+    """Copy the files of commit head (default HEAD) into a fresh folder and apply the change."""
+    head = head or head_sha(repo)
+    remove_old_copies(root)
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    folder = root / f"{stamp}-{uuid.uuid4().hex[:8]}-{scenario.id}"
     folder.mkdir(parents=True)
     try:
-        _fill(scenario, repo, folder)
+        _fill(scenario, repo, folder, head)
     except BaseException:
         shutil.rmtree(folder, ignore_errors=True)
         raise
     return folder
 
 
-def _fill(scenario: Scenario, repo: Path, folder: Path) -> None:
-    # One git call: starting git is slow on some machines, so avoid one per file.
+def remove_old_copies(root: Path, days: int = KEEP_COPIES_DAYS) -> None:
+    """Delete check copies older than days; results.json stays."""
+    if not root.is_dir():
+        return
+    limit = datetime.now().timestamp() - days * 86400
+    for child in root.iterdir():
+        if child.is_dir() and child.stat().st_mtime < limit:
+            shutil.rmtree(child, ignore_errors=True)
+
+
+def _fill(scenario: Scenario, repo: Path, folder: Path, head: str) -> None:
+    # One git call for the exact commit that is recorded with the answers.
+    # (Starting git is slow on some machines, so avoid one call per file.)
     archive = subprocess.run(
         [
             "git",
@@ -207,28 +232,39 @@ def _fill(scenario: Scenario, repo: Path, folder: Path) -> None:
             "core.autocrlf=false",
             "archive",
             "--format=tar",
-            "HEAD",
+            head,
             "--",
             *COPY_PATTERNS,
         ],
         cwd=repo,
         capture_output=True,
+        timeout=GIT_TIMEOUT,
     )
     if archive.returncode != 0:
         raise CheckError(
             f"git からデータを取り出せません: {archive.stderr.decode(errors='replace')}"
         )
+    inside = folder.resolve()
     with tarfile.open(fileobj=io.BytesIO(archive.stdout)) as tar:
         for member in tar.getmembers():
-            if member.isfile():
-                target = folder / member.name
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_bytes(tar.extractfile(member).read())
+            if not member.isfile():
+                continue
+            target = (folder / member.name).resolve()
+            if not target.is_relative_to(inside):
+                raise CheckError(f"コピー先の外を指すファイル名です: {member.name!r}")
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(tar.extractfile(member).read())
     scenario.prepare(folder)
 
 
-def open_editor(scenario: Scenario, folder: Path) -> subprocess.Popen:
-    return subprocess.Popen([sys.executable, str(folder / scenario.editor)], cwd=folder)
+def open_editor(scenario: Scenario, folder: Path, settle: float = 2.0) -> subprocess.Popen:
+    """Start the editor on the copy; fail if it exits during the first seconds."""
+    process = subprocess.Popen([sys.executable, str(folder / scenario.editor)], cwd=folder)
+    try:
+        code = process.wait(timeout=settle)
+    except subprocess.TimeoutExpired:
+        return process
+    raise CheckError(f"エディターがすぐに終了しました（終了コード {code}）。")
 
 
 def save_results(
@@ -240,6 +276,8 @@ def save_results(
     latest entry whose head matches the commit they are checking.
     """
     results = read_json(path) if path.exists() else {"schema_version": 1, "checks": []}
+    if not isinstance(results, dict) or not isinstance(results.get("checks"), list):
+        raise CheckError(f"結果ファイルの形が想定と違うため保存できません: {path}")
     results["checks"].append(
         {
             "scenario": scenario.id,
@@ -351,11 +389,21 @@ class CheckWindow:
         self.saved = False
 
     def open(self) -> None:
+        if not self.saved:
+            if not self.messagebox.askyesno(
+                "未保存の回答",
+                "保存していない回答があります。破棄して新しいコピーを開きますか？",
+            ):
+                return
+            self.show(self.scenario)
+        folder = None
         try:
             head = head_sha(self.repo)
-            folder = prepare_check(self.scenario, self.repo, self.base)
+            folder = prepare_check(self.scenario, self.repo, self.base, head)
             open_editor(self.scenario, folder)
         except Exception as exc:  # noqa: BLE001 - UI boundary: show every failure on screen
+            if folder is not None:
+                shutil.rmtree(folder, ignore_errors=True)
             self.messagebox.showerror(
                 "開けませんでした", f"{exc}\n\nこの画面のままエージェントに伝えてください。"
             )
@@ -374,7 +422,7 @@ class CheckWindow:
         answers = [(choice.get() or None, note.get().strip()) for choice, note in self.answers]
         try:
             save_results(self.results_path, self.scenario, self.folder, answers, self.head)
-        except (OSError, ValueError) as exc:
+        except (CheckError, OSError, ValueError) as exc:
             self.messagebox.showerror("保存できませんでした", str(exc))
             return
         self.saved = True

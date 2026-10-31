@@ -151,6 +151,60 @@ class ManualCheckTests(unittest.TestCase):
         self.assertEqual(last["steps"][0]["result"], "ok")
         self.assertEqual(first["head"], "abc123")
 
+    def test_copy_uses_the_given_commit(self) -> None:
+        parent = subprocess.run(
+            ["git", "rev-parse", "HEAD~1"], cwd=ROOT, capture_output=True, text=True, check=True
+        ).stdout.strip()
+        scenario = self.scenario("object-load-errors")
+        folder = kit.prepare_check(scenario, ROOT, self.base, parent)
+        expected = subprocess.run(
+            ["git", "show", f"{parent}:room.json"], cwd=ROOT, capture_output=True, check=True
+        ).stdout
+        self.assertEqual((folder / "room.json").read_bytes(), expected)
+
+    def test_archive_entries_outside_the_copy_are_refused(self) -> None:
+        import io
+        import tarfile
+
+        buffer = io.BytesIO()
+        with tarfile.open(fileobj=buffer, mode="w") as tar:
+            info = tarfile.TarInfo("../escaped.json")
+            info.size = 2
+            tar.addfile(info, io.BytesIO(b"{}"))
+        archive = subprocess.CompletedProcess([], 0, buffer.getvalue(), b"")
+        folder = self.base / "copy"
+        folder.mkdir()
+        with mock.patch.object(kit.subprocess, "run", return_value=archive):
+            with self.assertRaisesRegex(kit.CheckError, "コピー先の外"):
+                kit._fill(kit.SCENARIOS[0], ROOT, folder, "HEAD")
+        self.assertFalse((self.base / "escaped.json").exists())
+
+    def test_malformed_results_file_is_reported(self) -> None:
+        path = self.base / "results.json"
+        path.write_text('{"checks": "not a list"}', encoding="utf-8")
+        with self.assertRaisesRegex(kit.CheckError, "結果ファイル"):
+            kit.save_results(path, kit.SCENARIOS[0], None, [], "abc")
+        self.assertEqual(path.read_text(encoding="utf-8"), '{"checks": "not a list"}')
+
+    def test_editor_that_exits_at_once_is_an_error(self) -> None:
+        process = mock.Mock()
+        process.wait.return_value = 1
+        with mock.patch.object(kit.subprocess, "Popen", return_value=process):
+            with self.assertRaisesRegex(kit.CheckError, "すぐに終了"):
+                kit.open_editor(kit.SCENARIOS[0], self.base, settle=0)
+
+    def test_old_copies_are_removed_but_results_kept(self) -> None:
+        old, recent = self.base / "old-copy", self.base / "recent-copy"
+        old.mkdir()
+        recent.mkdir()
+        (self.base / "results.json").write_text("{}", encoding="utf-8")
+        past = os.path.getmtime(recent) - (kit.KEEP_COPIES_DAYS + 1) * 86400
+        os.utime(old, (past, past))
+        kit.remove_old_copies(self.base)
+        self.assertFalse(old.exists())
+        self.assertTrue(recent.exists())
+        self.assertTrue((self.base / "results.json").exists())
+
     def test_work_root_never_falls_back_to_the_system_temp(self) -> None:
         with mock.patch.dict(os.environ, {"OBAKE_MANUAL_CHECK_DIR": str(self.base)}):
             self.assertEqual(kit.work_root(), self.base)
