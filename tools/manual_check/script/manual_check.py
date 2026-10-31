@@ -287,6 +287,14 @@ class CheckWindow:
         ttk.Label(root, textvariable=self.status, foreground="#475e68").pack(side="bottom")
         self.listbox.selection_set(0)
         self.show(SCENARIOS[0])
+        root.protocol("WM_DELETE_WINDOW", self.close)
+
+    def close(self) -> None:
+        if not self.saved and not self.messagebox.askyesno(
+            "未保存の回答", "保存していない回答があります。保存せずに閉じますか？"
+        ):
+            return
+        self.root.destroy()
 
     def on_select(self, _event=None) -> None:
         picked = self.listbox.curselection()
@@ -344,15 +352,17 @@ class CheckWindow:
 
     def open(self) -> None:
         try:
-            self.head = head_sha(self.repo)
-            self.folder = prepare_check(self.scenario, self.repo, self.base)
-            open_editor(self.scenario, self.folder)
-        except (CheckError, OSError, ValueError, KeyError) as exc:
+            head = head_sha(self.repo)
+            folder = prepare_check(self.scenario, self.repo, self.base)
+            open_editor(self.scenario, folder)
+        except Exception as exc:  # noqa: BLE001 - UI boundary: show every failure on screen
             self.messagebox.showerror(
                 "開けませんでした", f"{exc}\n\nこの画面のままエージェントに伝えてください。"
             )
             self.status.set(f"開けませんでした: {exc}")
             return
+        # Only a successful open replaces the copy and commit the answers refer to.
+        self.head, self.folder = head, folder
         self.status.set(f"確認用のコピーを開きました: {self.folder}")
 
     def save(self) -> None:

@@ -146,8 +146,10 @@ class ManualCheckTests(unittest.TestCase):
         first, last = saved["checks"]
         self.assertEqual((first["editor_opened"], last["editor_opened"]), (False, True))
         self.assertEqual(last["head"], "def456")
-        self.assertEqual(last["steps"][-1], {**last["steps"][-1], "result": "ng"})
+        self.assertEqual(last["steps"][-1]["result"], "ng")
         self.assertEqual(last["steps"][-1]["note"], "保存できなかった")
+        self.assertEqual(last["steps"][0]["result"], "ok")
+        self.assertEqual(first["head"], "abc123")
 
     def test_work_root_never_falls_back_to_the_system_temp(self) -> None:
         with mock.patch.dict(os.environ, {"OBAKE_MANUAL_CHECK_DIR": str(self.base)}):
@@ -185,7 +187,23 @@ class ManualCheckTests(unittest.TestCase):
         window.save()
         saved = json.loads((self.base / "results.json").read_text(encoding="utf-8"))
         self.assertEqual(saved["checks"][0]["steps"][0]["result"], "ok")
+        self.assertFalse(saved["checks"][0]["editor_opened"])
         self.assertTrue(window.saved)
+
+        # A failed open is shown on screen and keeps the previous copy and commit.
+        window.head, window.folder = "previous", self.base
+        with mock.patch.object(kit, "prepare_check", side_effect=RuntimeError("tar broken")):
+            window.open()
+        window.messagebox.showerror.assert_called_once()
+        self.assertIn("tar broken", window.messagebox.showerror.call_args.args[1])
+        self.assertEqual((window.head, window.folder), ("previous", self.base))
+
+        # Closing with unsaved answers asks first.
+        window.mark_changed()
+        window.messagebox.askyesno.return_value = False
+        with mock.patch.object(root, "destroy") as destroy:
+            window.close()
+        destroy.assert_not_called()
 
 
 if __name__ == "__main__":
