@@ -24,6 +24,8 @@
 
 プロジェクト内の `.venv` を使う。venvの参照先が移動した場合は `.\.venv\Scripts\python.exe --version` と `.\.venv\pyvenv.cfg` を確認する。GUIの見た目や操作を変えた場合は、単体テストに加えて実画面で確認する。
 
+Windowsの起動用 `.bat` は ASCII・CRLF で書く（cmd.exe は LF だけの行や UTF-8 の日本語を正しく読めない）。`.gitattributes` が `*.bat` を CRLF で取り出し、`tests/test_batch_launchers.py` が確認する。`.gitattributes` より前に取り出したチェックアウトで bat が LF のまま残りテストが失敗したら、`git status` で bat に自分の変更がないことを確かめてから `git checkout -- "*.bat" "*.cmd"` で取り出し直す（変更がある場合は先にコミットか退避する）。
+
 Tkエディターを実際に生成するテストでは、モジュールの `messagebox` を `mock` で置き換える。本物のモーダルダイアログ（保存エラー・確認）が出るとheadless実行が終わらなくなるため、呼び出しを記録して検証する。
 
 品質依存は `python -m pip install --upgrade -r tools/quality/requirements.txt` で導入する。全体単体テストにもRuff実CLIテストがあるため必須。`tools/quality/script/check_ruff.py` は選択ルールの違反0を必須とし、baselineへの診断追加も拒否する。format/型/性能ゲートは未移植。互換性を保つCI名と空baselineの運用は [tools/quality/README.md](../../tools/quality/README.md)。
