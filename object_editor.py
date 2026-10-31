@@ -438,14 +438,16 @@ class ObjectEditor:
         ttk.Label(placement, text="住処に置かれているもの").grid(
             row=5, column=0, sticky="w", pady=(12, 3)
         )
-        self.placement_list = tk.Listbox(placement, height=7, exportselection=False)
+        # Keep the right panel short enough to fit the 860px window above the
+        # status bar; the lists scroll (Issue #128).
+        self.placement_list = tk.Listbox(placement, height=5, exportselection=False)
         self.placement_list.grid(row=6, column=0, sticky="ew")
         self.placement_list.bind("<<ListboxSelect>>", self.select_placement)
 
         ttk.Label(placement, text="保存済みオブジェクト（何度でも挿入できます）").grid(
             row=7, column=0, sticky="w", pady=(10, 3)
         )
-        self.library_list = tk.Listbox(placement, height=5, exportselection=False)
+        self.library_list = tk.Listbox(placement, height=4, exportselection=False)
         self.library_list.grid(row=8, column=0, sticky="ew")
         library_buttons = ttk.Frame(placement)
         library_buttons.grid(row=9, column=0, sticky="w", pady=(4, 0))
