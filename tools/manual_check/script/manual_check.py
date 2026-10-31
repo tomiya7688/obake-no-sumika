@@ -1,0 +1,448 @@
+"""One-click real-screen checks for Kadoka (Issue #123).
+
+run_manual_check.bat opens a window listing checks. Choosing one shows plain
+steps and the expected result; "エディターを開く" copies the committed game data
+(from git HEAD, never the working tree) into a separate folder, changes that
+copy for the check, and opens the editor on it. The real project data is never
+modified. Answers are saved to results.json in the check folder so agents can
+read them.
+"""
+
+from __future__ import annotations
+
+import io
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tarfile
+import uuid
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+# Copied for every check: the editors and the data and assets they read
+# (git pathspecs, matched against HEAD).
+COPY_PATTERNS = (":(glob)*.py", ":(glob)*.json", "engine", "assets", "objects")
+PREFERRED_WORK_ROOT = Path("E:/program_files/soft/claude/tmp")
+GIT_TIMEOUT = 120  # seconds; git can be slow to start on this project's machine
+KEEP_COPIES_DAYS = 14
+
+
+class CheckError(Exception):
+    """A check cannot be prepared; the message is shown to the person checking."""
+
+
+def work_root() -> Path:
+    """Where check folders go: OBAKE_MANUAL_CHECK_DIR, else the E: scratch folder.
+
+    There is deliberately no fallback to the system temp folder, which is on the
+    nearly full C: drive on this project's machine.
+    """
+    configured = os.environ.get("OBAKE_MANUAL_CHECK_DIR")
+    if configured:
+        return Path(configured)
+    if PREFERRED_WORK_ROOT.is_dir():
+        return PREFERRED_WORK_ROOT / "obake_manual_check"
+    raise CheckError(
+        f"確認用の置き場がありません。{PREFERRED_WORK_ROOT} を作るか、"
+        "環境変数 OBAKE_MANUAL_CHECK_DIR に置き場のフォルダーを設定してください。"
+    )
+
+
+def head_sha(repo: Path) -> str:
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        timeout=GIT_TIMEOUT,
+    )
+    if result.returncode != 0:
+        raise CheckError(f"git の HEAD を読めません: {result.stderr.strip()}")
+    return result.stdout.strip()
+
+
+def read_json(path: Path):
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def write_json(path: Path, data) -> None:
+    # LF like the repository's own JSON, also on Windows; replace atomically so an
+    # interrupted write never leaves a truncated file.
+    temporary = path.with_name(f"{path.name}.{uuid.uuid4().hex}.tmp")
+    temporary.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n"
+    )
+    os.replace(temporary, path)
+
+
+def break_conversations(folder: Path) -> None:
+    path = folder / "conversations.json"
+    deck = read_json(path)
+    deck.append({"weight": 1, "steps": [{"type": "say", "speaker": "nobody", "text": "x"}]})
+    deck.append("これは会話ではない")
+    write_json(path, deck)
+
+
+def use_generic_ids(folder: Path) -> None:
+    characters = read_json(folder / "characters.json")
+    if not characters.get("characters"):
+        raise CheckError("この確認にはキャラクターが1件以上必要です（characters.json）。")
+    player = dict(characters["characters"][0], id="player", display_name="プレイヤー")
+    characters["characters"] = [player]
+    write_json(folder / "characters.json", characters)
+    write_json(
+        folder / "events.json",
+        {"schema_version": 1, "events": [{"id": "idle", "label": "待機", "terminal": True}]},
+    )
+    say = {"type": "say", "speaker": "player", "text": "ひとりだ"}
+    write_json(
+        folder / "conversations.json",
+        [{"weight": 1, "steps": [say, {"type": "event", "event": "idle"}]}],
+    )
+
+
+def break_placements(folder: Path) -> None:
+    path = folder / "placed_objects.json"
+    data = read_json(path)
+    if len(data.get("objects", [])) < 2:
+        raise CheckError("この確認には配置が2件以上必要です（placed_objects.json）。")
+    first, second = data["objects"][0], data["objects"][1]
+    data["objects"].append(dict(first, name="重複IDの配置", x=100))
+    data["objects"].append(dict(second, id="far_away", tag="far_away", x=5000))
+    write_json(path, data)
+
+
+@dataclass(frozen=True)
+class Step:
+    action: str
+    expected: str
+
+
+@dataclass(frozen=True)
+class Scenario:
+    id: str
+    issue: int
+    title: str
+    editor: str
+    prepare: Callable[[Path], None]
+    steps: tuple[Step, ...] = field(default_factory=tuple)
+
+
+SCENARIOS = (
+    Scenario(
+        "conversation-load-errors",
+        30,
+        "会話エディター: 読めない会話があるとき",
+        "conversation_editor.py",
+        break_conversations,
+        (
+            Step(
+                "「エディターを開く」を押す",
+                "「読込エラー」の警告が出て、読めない会話が2件並んでいる",
+            ),
+            Step("警告を閉じる", "下の欄に「読込エラーがあります」と出ている"),
+            Step(
+                "どれかのセリフを少し変えて「JSONへ保存」を押す",
+                "「破棄して保存しますか？」と聞かれる",
+            ),
+            Step("「いいえ」を押す", "保存されない（何も起きない）"),
+            Step("もう一度「JSONへ保存」→「はい」を押す", "「保存しました」と出る"),
+        ),
+    ),
+    Scenario(
+        "conversation-generic-ids",
+        26,
+        "会話エディター: かどか・水浴びがないプロジェクト",
+        "conversation_editor.py",
+        use_generic_ids,
+        (
+            Step(
+                "「エディターを開く」を押す",
+                "エラーなしで開き、話者は「プレイヤー」だけ（「ふたり」は無い）",
+            ),
+            Step(
+                "「この会話の順番」の2番目（待機）を選び、次に1番目を選ぶ",
+                "セリフ欄に「ひとりだ」と出ている（空にならない）",
+            ),
+            Step("「手順追加」「会話追加」を押してから「JSONへ保存」", "「保存しました」と出る"),
+        ),
+    ),
+    Scenario(
+        "object-load-errors",
+        24,
+        "オブジェクトエディター: 読めない配置があるとき",
+        "object_editor.py",
+        break_placements,
+        (
+            Step(
+                "「エディターを開く」を押す",
+                "「読込エラー」の警告が出て、読めない配置が2件並んでいる",
+            ),
+            Step(
+                "「2. おばけの住処に置く」の住処の絵で、置いてある物を少しドラッグして離す",
+                "「破棄して保存しますか？」と聞かれる",
+            ),
+            Step("「いいえ」を押す", "下の欄に「読込エラーがあるため保存していません」と出る"),
+            Step(
+                "もう一度ドラッグして離し、「はい」を押す",
+                "「ドラッグした位置を保存しました」と出る",
+            ),
+        ),
+    ),
+)
+
+
+def prepare_check(scenario: Scenario, repo: Path, root: Path, head: str | None = None) -> Path:
+    """Copy the files of commit head (default HEAD) into a fresh folder and apply the change."""
+    head = head or head_sha(repo)
+    remove_old_copies(root)
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    folder = root / f"{stamp}-{uuid.uuid4().hex[:8]}-{scenario.id}"
+    folder.mkdir(parents=True)
+    try:
+        _fill(scenario, repo, folder, head)
+    except BaseException:
+        shutil.rmtree(folder, ignore_errors=True)
+        raise
+    return folder
+
+
+def remove_old_copies(root: Path, days: int = KEEP_COPIES_DAYS) -> None:
+    """Delete check copies older than days; results.json stays."""
+    if not root.is_dir():
+        return
+    limit = datetime.now().timestamp() - days * 86400
+    for child in root.iterdir():
+        if child.is_dir() and child.stat().st_mtime < limit:
+            shutil.rmtree(child, ignore_errors=True)
+
+
+def _fill(scenario: Scenario, repo: Path, folder: Path, head: str) -> None:
+    # One git call for the exact commit that is recorded with the answers.
+    # (Starting git is slow on some machines, so avoid one call per file.)
+    archive = subprocess.run(
+        [
+            "git",
+            "-c",
+            "core.autocrlf=false",
+            "archive",
+            "--format=tar",
+            head,
+            "--",
+            *COPY_PATTERNS,
+        ],
+        cwd=repo,
+        capture_output=True,
+        timeout=GIT_TIMEOUT,
+    )
+    if archive.returncode != 0:
+        raise CheckError(
+            f"git からデータを取り出せません: {archive.stderr.decode(errors='replace')}"
+        )
+    inside = folder.resolve()
+    with tarfile.open(fileobj=io.BytesIO(archive.stdout)) as tar:
+        for member in tar.getmembers():
+            if not member.isfile():
+                continue
+            target = (folder / member.name).resolve()
+            if not target.is_relative_to(inside):
+                raise CheckError(f"コピー先の外を指すファイル名です: {member.name!r}")
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(tar.extractfile(member).read())
+    scenario.prepare(folder)
+
+
+def open_editor(scenario: Scenario, folder: Path, settle: float = 2.0) -> subprocess.Popen:
+    """Start the editor on the copy; fail if it exits during the first seconds."""
+    process = subprocess.Popen([sys.executable, str(folder / scenario.editor)], cwd=folder)
+    try:
+        code = process.wait(timeout=settle)
+    except subprocess.TimeoutExpired:
+        return process
+    raise CheckError(f"エディターがすぐに終了しました（終了コード {code}）。")
+
+
+def save_results(
+    path: Path, scenario: Scenario, folder: Path | None, answers: list, head: str | None = None
+) -> None:
+    """Record answers ("ok"/"ng"/None and a note per step) in results.json.
+
+    head is the commit the copy was taken from; agents should only trust the
+    latest entry whose head matches the commit they are checking.
+    """
+    results = read_json(path) if path.exists() else {"schema_version": 1, "checks": []}
+    if not isinstance(results, dict) or not isinstance(results.get("checks"), list):
+        raise CheckError(f"結果ファイルの形が想定と違うため保存できません: {path}")
+    results["checks"].append(
+        {
+            "scenario": scenario.id,
+            "issue": scenario.issue,
+            "head": head,
+            "saved_at": datetime.now().isoformat(timespec="seconds"),
+            "editor_opened": folder is not None,
+            "folder": str(folder) if folder else None,
+            "steps": [
+                {"action": step.action, "expected": step.expected, "result": result, "note": note}
+                for step, (result, note) in zip(scenario.steps, answers)
+            ],
+        }
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    write_json(path, results)
+
+
+class CheckWindow:
+    def __init__(self, root, repo: Path = PROJECT_ROOT, base: Path | None = None) -> None:
+        import tkinter as tk
+        from tkinter import messagebox, ttk
+
+        self.tk, self.ttk, self.messagebox = tk, ttk, messagebox
+        self.root, self.repo = root, repo
+        self.base = base or work_root()
+        self.head: str | None = None
+        self.saved = True
+        self.results_path = self.base / "results.json"
+        self.folder: Path | None = None
+        self.scenario = SCENARIOS[0]
+        root.title("おばけの住処・実画面確認")
+        root.geometry("900x560")
+        left = ttk.Frame(root, padding=8)
+        left.pack(side="left", fill="y")
+        ttk.Label(left, text="確認すること").pack(anchor="w")
+        self.listbox = tk.Listbox(left, width=34, height=12, exportselection=False)
+        for scenario in SCENARIOS:
+            self.listbox.insert("end", f"#{scenario.issue} {scenario.title}")
+        self.listbox.pack(fill="y", expand=True)
+        self.listbox.bind("<<ListboxSelect>>", self.on_select)
+        self.right = ttk.Frame(root, padding=8)
+        self.right.pack(side="left", fill="both", expand=True)
+        self.status = tk.StringVar(value=f"結果の保存先: {self.results_path}")
+        ttk.Label(root, textvariable=self.status, foreground="#475e68").pack(side="bottom")
+        self.listbox.selection_set(0)
+        self.show(SCENARIOS[0])
+        root.protocol("WM_DELETE_WINDOW", self.close)
+
+    def close(self) -> None:
+        if not self.saved and not self.messagebox.askyesno(
+            "未保存の回答", "保存していない回答があります。保存せずに閉じますか？"
+        ):
+            return
+        self.root.destroy()
+
+    def on_select(self, _event=None) -> None:
+        picked = self.listbox.curselection()
+        if not picked or SCENARIOS[picked[0]] is self.scenario:
+            return
+        if not self.saved and not self.messagebox.askyesno(
+            "未保存の回答", "保存していない回答があります。保存せずに切り替えますか？"
+        ):
+            self.listbox.selection_clear(0, "end")
+            self.listbox.selection_set(SCENARIOS.index(self.scenario))
+            return
+        self.show(SCENARIOS[picked[0]])
+
+    def show(self, scenario: Scenario) -> None:
+        ttk, tk = self.ttk, self.tk
+        self.scenario, self.folder, self.head, self.saved = scenario, None, None, True
+        for child in self.right.winfo_children():
+            child.destroy()
+        ttk.Label(self.right, text=scenario.title, font=("Yu Gothic UI", 13, "bold")).pack(
+            anchor="w"
+        )
+        ttk.Label(
+            self.right,
+            text="確認用のコピーだけを開きます。上から順に操作し、"
+            "期待どおりなら「できた」、違ったら「違った」を選んでください。",
+            wraplength=560,
+        ).pack(anchor="w", pady=(4, 8))
+        # Both buttons stay at the top so they remain visible however long the steps are.
+        buttons = ttk.Frame(self.right)
+        buttons.pack(anchor="w")
+        ttk.Button(buttons, text="エディターを開く", command=self.open).pack(side="left")
+        ttk.Button(buttons, text="結果を保存", command=self.save).pack(side="left", padx=8)
+        self.answers = []
+        for number, step in enumerate(scenario.steps, 1):
+            box = ttk.Frame(self.right, padding=(0, 6))
+            box.pack(fill="x")
+            ttk.Label(box, text=f"{number}. {step.action}", wraplength=560).pack(anchor="w")
+            ttk.Label(box, text=f"→ {step.expected}", foreground="#2f6b3a", wraplength=560).pack(
+                anchor="w"
+            )
+            choice, note = tk.StringVar(value=""), tk.StringVar()
+            note.trace_add("write", lambda *_: self.mark_changed())
+            row = ttk.Frame(box)
+            row.pack(anchor="w")
+            for label, value in (("できた", "ok"), ("違った", "ng")):
+                ttk.Radiobutton(
+                    row, text=label, variable=choice, value=value, command=self.mark_changed
+                ).pack(side="left")
+            ttk.Label(row, text="  メモ:").pack(side="left")
+            ttk.Entry(row, textvariable=note, width=40).pack(side="left")
+            self.answers.append((choice, note))
+
+    def mark_changed(self) -> None:
+        self.saved = False
+
+    def open(self) -> None:
+        if not self.saved:
+            if not self.messagebox.askyesno(
+                "未保存の回答",
+                "保存していない回答があります。破棄して新しいコピーを開きますか？",
+            ):
+                return
+            self.show(self.scenario)
+        folder = None
+        try:
+            head = head_sha(self.repo)
+            folder = prepare_check(self.scenario, self.repo, self.base, head)
+            open_editor(self.scenario, folder)
+        except Exception as exc:  # noqa: BLE001 - UI boundary: show every failure on screen
+            if folder is not None:
+                shutil.rmtree(folder, ignore_errors=True)
+            self.messagebox.showerror(
+                "開けませんでした", f"{exc}\n\nこの画面のままエージェントに伝えてください。"
+            )
+            self.status.set(f"開けませんでした: {exc}")
+            return
+        # Only a successful open replaces the copy and commit the answers refer to.
+        self.head, self.folder = head, folder
+        self.status.set(f"確認用のコピーを開きました: {self.folder}")
+
+    def save(self) -> None:
+        if self.folder is None and not self.messagebox.askyesno(
+            "エディターを開いていません",
+            "この項目ではまだ「エディターを開く」を押していません。このまま保存しますか？",
+        ):
+            return
+        answers = [(choice.get() or None, note.get().strip()) for choice, note in self.answers]
+        try:
+            save_results(self.results_path, self.scenario, self.folder, answers, self.head)
+        except (CheckError, OSError, ValueError) as exc:
+            self.messagebox.showerror("保存できませんでした", str(exc))
+            return
+        self.saved = True
+        self.status.set(f"保存しました: {self.results_path}")
+
+
+def main() -> int:
+    import tkinter as tk
+
+    root = tk.Tk()
+    try:
+        CheckWindow(root)
+    except CheckError as exc:
+        from tkinter import messagebox
+
+        messagebox.showerror("確認キット", str(exc))
+        return 1
+    root.mainloop()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

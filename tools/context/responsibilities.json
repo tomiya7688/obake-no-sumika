@@ -32,6 +32,7 @@
     {"paths": ["engine/main_window.py", "tests/test_main_window.py"], "context": "docs/context/developer_tools.md", "related": ["engine/process_launcher.py"], "tests": ["tests/test_main_window.py", "tests/test_process_launcher.py"]},
     {"paths": ["engine/evaluation_logger.py"], "context": "docs/context/engine.md", "related": ["game.py"], "tests": ["tests/test_evaluation_logger.py"]},
     {"paths": ["character_editor.py"], "context": "docs/context/developer_tools.md", "related": ["engine/character_repository.py"], "tests": ["tests/test_character_repository.py"]},
+    {"paths": ["run_manual_check.bat", "tools/manual_check/*", "tests/test_manual_check.py"], "context": "docs/context/developer_tools.md", "related": ["tools/manual_check/README.md", "docs/ワークフロー/役割別ワークフロー.md"], "tests": ["tests/test_manual_check.py"]},
     {"paths": ["conversation_editor.py", "tests/test_conversation_editor_generic_ids.py"], "context": "docs/context/developer_tools.md", "related": ["engine/conversation_repository.py"], "tests": ["tests/test_tagged_conversations.py", "tests/test_conversation_editor_generic_ids.py"]},
     {"paths": ["object_editor.py"], "context": "docs/context/developer_tools.md", "related": ["engine/pixel_object_repository.py"], "tests": ["tests/test_object_editor_tools.py"]},
     {"paths": ["engine_app.py", "engine/main_window.py", "run_*.bat"], "context": "docs/context/developer_tools.md", "related": ["engine_project.json"], "tests": ["tests/test_main_window.py", "tests/test_engine_manifest.py", "tests/test_godot_runner.py"]},

@@ -7,6 +7,7 @@
 | `character_editor.py` | キャラクターJSONの編集 | `tests/test_character_repository.py` |
 | `conversation_editor.py` | 会話・イベントJSONの編集。話者・イベントの既定値は読み込んだ定義から選び、特定IDに依存しない | `tests/test_tagged_conversations.py`, `tests/test_conversation_editor_generic_ids.py` |
 | `object_editor.py` | ドット絵作成と住処への配置 | `tests/test_object_editor_tools.py` |
+| `run_manual_check.bat`, `tools/manual_check/` | 本人に頼む実画面確認のキット。確認用データのコピーでエディターを開き、手順と結果を記録 | `tests/test_manual_check.py` |
 | `engine_app.py`, `engine/main_window.py` | 統合GUI、プロジェクト切替、検証・Godot CLIプレイテスト入口 | `tests/test_main_window.py`, `tests/test_engine_manifest.py`, `tests/test_godot_runner.py` |
 | `engine/process_launcher.py` | 非同期のゲーム・エディター起動、終了コードとUTF-8ログの取得 | `tests/test_process_launcher.py`, `tests/test_main_window.py` |
 | `run_*.bat`, `tools/security/script/launch.py` | Windows4入口共通のvenv準備ロック・取得前/起動前検査・固定app起動。強制終了の残存ロックは所有token/明示確認付き復旧。[設計](../venv起動機能説明書.md) / [手順](../../tools/security/README.md) | `tests/test_venv_setup_lock.py`, `tests/test_windows_security_launchers.py`、起動対象の実行確認 |
