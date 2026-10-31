@@ -89,6 +89,8 @@ def inspect_ca_environment() -> dict[str, dict[str, object]]:
     This is a conservative superset, not resolution of client precedence or OS
     trust. Directories need a separate audit and are deliberately unsupported.
     """
+    if os.environ.get("PIP_CONFIG_FILE"):
+        raise ValueError("PIP_CONFIG_FILE requires a manual pip configuration audit; value omitted")
     if os.environ.get("SSL_CERT_DIR"):
         raise ValueError("SSL_CERT_DIR requires a manual directory trust audit; value omitted")
     bundles = {}
