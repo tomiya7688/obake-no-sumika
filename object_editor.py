@@ -687,9 +687,9 @@ class ObjectEditor:
         x1, y1 = round((x + 1) * cell), round((y + 1) * cell)
         value = self.pixels[y][x]
         fill = (
-            value if value else (ui_theme.CHECKER_LIGHT if (x + y) % 2 else ui_theme.CHECKER_DARK)
+            value if value else (ui_theme.CHECKER_DARK if (x + y) % 2 else ui_theme.CHECKER_LIGHT)
         )
-        outline = "#50545a" if self.show_grid_var.get() and cell >= 6 else ""
+        outline = ui_theme.GRID_LINE if self.show_grid_var.get() and cell >= 6 else ""
         self.draw_canvas.create_rectangle(
             x0, y0, x1 + 1, y1 + 1, fill=fill, outline=outline, tags=tag
         )

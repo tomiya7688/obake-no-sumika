@@ -26,7 +26,7 @@
 
 Windowsの起動用 `.bat` は ASCII・CRLF で書く（cmd.exe は LF だけの行や UTF-8 の日本語を正しく読めない）。`.gitattributes` が `*.bat` を CRLF で取り出し、`tests/test_batch_launchers.py` が確認する。`.gitattributes` より前に取り出したチェックアウトで bat が LF のまま残りテストが失敗したら、`git status` で bat に自分の変更がないことを確かめてから `git checkout -- "*.bat" "*.cmd"` で取り出し直す（変更がある場合は先にコミットか退避する）。
 
-Tkの全ウィンドウ（メインウィンドウ・各エディター・確認キット）は、作成直後に `engine/ui_theme.py` の `apply()` を呼び、黒基調の共通テーマを使う。色は `room.json` の部屋（夜空の青黒・漂う粒の青灰・おばけの白・水の青緑・目印の金）から取っている。各ファイルに `foreground="#..."` などの色を直書きせず、`MUTED_LABEL`（補足）・`STATUS_LABEL`（状態表示）・`EXPECTED_LABEL`（期待結果）・`TITLE_LABEL`（見出し）のスタイルを使う。部品を大きくするとオブジェクトエディターが 860px に収まらなくなるので、余白を変えたら `tests/test_object_editor_status_bar.py` で確認する。`tests/test_ui_theme.py` が全ウィンドウの黒基調と文字のコントラスト（4.5:1以上）を確認する。
+Tkの全ウィンドウ（メインウィンドウ・各エディター・確認キット）は、作成直後に `engine/ui_theme.py` の `apply()` を呼び、黒基調の共通テーマを使う。色は `room.json` の部屋（夜空の青黒・漂う粒の青灰・おばけの白・水の青緑・目印の金）から取っている。各ファイルに `foreground="#..."` などの色を直書きせず、`MUTED_LABEL`（補足）・`STATUS_LABEL`（状態表示）・`EXPECTED_LABEL`（期待結果）・`TITLE_LABEL`（見出し）のスタイルを使う。部品を大きくするとオブジェクトエディターが 860px に収まらなくなるので、余白を変えたら `tests/test_object_editor_status_bar.py` で確認する。`tests/test_ui_theme.py` が全ウィンドウの黒基調と文字のコントラスト（4.5:1以上。無効状態の文字は WCAG の対象外なので 3:1 以上）を確認する。確認キットの「使い方」は本人に必ず読んでほしい案内なので、目立つ `STATUS_LABEL`（金）にしている。
 
 Tkエディターを実際に生成するテストでは、モジュールの `messagebox` を `mock` で置き換える。本物のモーダルダイアログ（保存エラー・確認）が出るとheadless実行が終わらなくなるため、呼び出しを記録して検証する。
 

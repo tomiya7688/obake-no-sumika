@@ -18,6 +18,7 @@ HOVER = "#27324a"
 BORDER = "#2e384d"
 TEXT = "#ebece5"
 MUTED = "#92a0af"
+# Disabled text is meant to recede: WCAG exempts it from 4.5:1, and it keeps 3:1.
 DISABLED = "#5c6675"
 SELECTION = "#1d5664"
 ACCENT = "#6fc3bd"
@@ -34,6 +35,7 @@ TITLE_LABEL = "Title.TLabel"
 # The transparent-cell checker of the pixel editor, dark to match the room.
 CHECKER_LIGHT = "#323947"
 CHECKER_DARK = "#262c38"
+GRID_LINE = "#50545a"
 
 
 def apply(root: tk.Misc) -> ttk.Style:
@@ -82,7 +84,7 @@ def apply(root: tk.Misc) -> ttk.Style:
         style.map(
             toggle,
             background=[("active", BACKGROUND)],
-            indicatorbackground=[("pressed", SELECTION), ("selected", SURFACE)],
+            indicatorbackground=[("pressed", SELECTION), ("selected", SELECTION)],
         )
     style.configure("TScrollbar", background=RAISED, troughcolor=BACKGROUND)
     style.map("TScrollbar", background=[("active", HOVER)])
@@ -129,6 +131,7 @@ def _set_tk_defaults(root: tk.Misc) -> None:
         "*Menu.foreground": TEXT,
         "*Menu.activeBackground": SELECTION,
         "*Menu.activeForeground": TEXT,
+        "*Menu.disabledForeground": DISABLED,
         "*TCombobox*Listbox.background": SURFACE,
         "*TCombobox*Listbox.foreground": TEXT,
         "*TCombobox*Listbox.selectBackground": SELECTION,
@@ -140,7 +143,11 @@ def _set_tk_defaults(root: tk.Misc) -> None:
 
 
 def readable_text(background: str) -> str:
-    """The theme's light or dark text, whichever reads better on ``background``."""
+    """The theme's light or dark text, whichever reads better on ``background``.
+
+    For a mid-grey ``background`` neither may reach 4.5:1; this picks the
+    better one, which is all the colour button needs.
+    """
     if contrast_ratio(TEXT, background) >= contrast_ratio(BACKGROUND, background):
         return TEXT
     return BACKGROUND
@@ -155,6 +162,7 @@ def contrast_ratio(foreground: str, background: str) -> float:
 
 
 def relative_luminance(color: str) -> float:
+    """WCAG relative luminance of a ``#rrggbb`` colour (the only form used here)."""
     channels = [int(color[index : index + 2], 16) / 255 for index in (1, 3, 5)]
     linear = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in channels]
     return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]

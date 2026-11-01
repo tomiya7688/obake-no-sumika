@@ -45,6 +45,9 @@ class PaletteTests(unittest.TestCase):
         for name, (foreground, background) in pairs.items():
             with self.subTest(name):
                 self.assertGreaterEqual(ui_theme.contrast_ratio(foreground, background), 4.5)
+        # Disabled text may recede (WCAG exempts it) but must stay visible.
+        self.assertGreaterEqual(ui_theme.contrast_ratio(ui_theme.DISABLED, ui_theme.BACKGROUND), 3)
+        self.assertGreaterEqual(ui_theme.contrast_ratio(ui_theme.ACCENT, ui_theme.SELECTION), 3)
 
     def test_backgrounds_are_dark(self) -> None:
         for colour in (ui_theme.BACKGROUND, ui_theme.SURFACE, ui_theme.RAISED):
@@ -70,6 +73,11 @@ class WindowThemeTests(unittest.TestCase):
         window_root.update_idletasks()
         style = ttk.Style(window_root)
         self.assertEqual(style.theme_use(), "clam")
+
+        def resolve(widget: tk.Misc, value: str) -> str:
+            rgb = widget.winfo_rgb(value)
+            return "#" + "".join(f"{channel >> 8:02x}" for channel in rgb)
+
         checked = 0
         for widget in all_widgets(window_root):
             if widget in skip:
@@ -78,13 +86,28 @@ class WindowThemeTests(unittest.TestCase):
                 if isinstance(widget, ttk.Widget):
                     name = str(widget.cget("style")) or widget.winfo_class()
                     background = style.lookup(name, "background") or style.lookup(".", "background")
+                    # Entry-like widgets draw their text area with fieldbackground.
+                    field = style.lookup(name, "fieldbackground")
+                    if field:
+                        self.assertLess(
+                            ui_theme.relative_luminance(resolve(widget, field)), DARK_LUMINANCE
+                        )
                     if isinstance(widget, ttk.Label):
-                        # Colours come from the named styles, not hard-coded values.
+                        # Colours come from the named styles, not hard-coded values,
+                        # and the style's text must read on its background.
                         self.assertEqual(str(widget.cget("foreground")), "")
+                        foreground = style.lookup(name, "foreground") or style.lookup(
+                            ".", "foreground"
+                        )
+                        self.assertGreaterEqual(
+                            ui_theme.contrast_ratio(
+                                resolve(widget, foreground), resolve(widget, background)
+                            ),
+                            4.5,
+                        )
                 else:
                     background = str(widget.cget("background"))
-                rgb = widget.winfo_rgb(background)
-                colour = "#" + "".join(f"{channel >> 8:02x}" for channel in rgb)
+                colour = resolve(widget, background)
                 self.assertLess(ui_theme.relative_luminance(colour), DARK_LUMINANCE, background)
                 checked += 1
         self.assertGreater(checked, 10)
@@ -92,15 +115,27 @@ class WindowThemeTests(unittest.TestCase):
     def test_disabled_fields_look_disabled(self) -> None:
         style = ui_theme.apply(self.root)
         for field in ("TCombobox", "TEntry", "TSpinbox"):
-            with self.subTest(field):
-                disabled = ["disabled", "readonly"]
-                self.assertEqual(style.lookup(field, "foreground", disabled), ui_theme.DISABLED)
-                self.assertEqual(
-                    style.lookup(field, "fieldbackground", disabled), ui_theme.BACKGROUND
-                )
+            # Disabled alone, and disabled read-only (how the editors disable combo boxes).
+            for disabled in (["disabled"], ["disabled", "readonly"]):
+                with self.subTest(field=field, state=disabled):
+                    self.assertEqual(style.lookup(field, "foreground", disabled), ui_theme.DISABLED)
+                    self.assertEqual(
+                        style.lookup(field, "fieldbackground", disabled), ui_theme.BACKGROUND
+                    )
+            with self.subTest(field=field, state="readonly"):
+                self.assertEqual(style.lookup(field, "foreground", ["readonly"]), ui_theme.TEXT)
                 self.assertEqual(
                     style.lookup(field, "fieldbackground", ["readonly"]), ui_theme.RAISED
                 )
+
+    def test_selected_toggle_indicator_stands_out(self) -> None:
+        style = ui_theme.apply(self.root)
+        for toggle in ("TCheckbutton", "TRadiobutton"):
+            with self.subTest(toggle):
+                self.assertEqual(
+                    style.lookup(toggle, "indicatorbackground", ["selected"]), ui_theme.SELECTION
+                )
+                self.assertEqual(style.lookup(toggle, "indicatorbackground"), ui_theme.SURFACE)
 
     def test_main_window(self) -> None:
         manifest = load_project_manifest(PROJECT_DIR / "engine_project.json")
