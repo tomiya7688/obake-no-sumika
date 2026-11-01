@@ -4,6 +4,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, simpledialog, ttk
 
+from . import ui_theme
 from .manifest_loader import load_project_manifest
 from .process_launcher import LaunchedProcess, ProcessLauncher
 from .project_creator import ProjectCreator
@@ -26,6 +27,7 @@ class MainWindow:
         self.project_creator = project_creator or ProjectCreator()
         self.status = tk.StringVar(value="準備できました")
         self._launch_poll_ids: set[str] = set()
+        ui_theme.apply(self.root)
         self.root.bind("<Destroy>", self._cancel_launch_polls, add="+")
         self._build()
 
@@ -34,18 +36,16 @@ class MainWindow:
         self.root.minsize(460, 300)
         frame = ttk.Frame(self.root, padding=24)
         frame.pack(fill="both", expand=True)
-        ttk.Label(frame, text=self.manifest.name, font=("Yu Gothic UI", 18, "bold")).pack(
+        ttk.Label(frame, text=self.manifest.name, style=ui_theme.TITLE_LABEL).pack(
             anchor="w", pady=(0, 4)
         )
-        ttk.Label(frame, text=f"type: {self.manifest.project_type}", foreground="#666666").pack(
-            anchor="w", pady=(0, 4)
-        )
-        ttk.Label(frame, text=str(self.manifest.root), foreground="#666666").pack(
+        ttk.Label(
+            frame, text=f"type: {self.manifest.project_type}", style=ui_theme.MUTED_LABEL
+        ).pack(anchor="w", pady=(0, 4))
+        ttk.Label(frame, text=str(self.manifest.root), style=ui_theme.MUTED_LABEL).pack(
             anchor="w", pady=(0, 20)
         )
-        ttk.Button(frame, text="ゲームを実行", command=self._launch_game).pack(
-            fill="x", pady=4
-        )
+        ttk.Button(frame, text="ゲームを実行", command=self._launch_game).pack(fill="x", pady=4)
         for editor in self.manifest.editors:
             ttk.Button(
                 frame,
@@ -60,7 +60,7 @@ class MainWindow:
             fill="x", pady=4
         )
         ttk.Separator(frame).pack(fill="x", pady=16)
-        ttk.Label(frame, textvariable=self.status).pack(anchor="w")
+        ttk.Label(frame, textvariable=self.status, style=ui_theme.STATUS_LABEL).pack(anchor="w")
 
     def _launch_game(self) -> None:
         self._run("ゲーム", self.launcher.launch_game)

@@ -6,6 +6,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
 
+from engine import ui_theme
 from engine.character_repository import CharacterRepository
 from engine.conversation_repository import ConversationRepository
 from engine.event_repository import EventRepository
@@ -73,6 +74,7 @@ class ConversationEditor:
         self.root.title("おばけの住処・会話エディタ")
         self.root.geometry("1180x680")
         self.root.minsize(960, 560)
+        ui_theme.apply(self.root)
         self.data = CONVERSATION_REPOSITORY.load_editable()
         self.load_problems = CONVERSATION_REPOSITORY.load_problems()
         self.tags = PLACEMENT_REPOSITORY.tags()
@@ -137,7 +139,7 @@ class ConversationEditor:
         ttk.Label(
             weight_frame,
             text="大きいほど選ばれやすい",
-            foreground="#666666",
+            style=ui_theme.MUTED_LABEL,
         ).pack(side="left", padx=(7, 0))
 
         steps = ttk.LabelFrame(outer, text="この会話の順番", padding=8)
@@ -155,9 +157,7 @@ class ConversationEditor:
             ("↑", lambda: self.move_step(-1)),
             ("↓", lambda: self.move_step(1)),
         ):
-            ttk.Button(step_buttons, text=label, command=command).pack(
-                side="left", padx=(0, 4)
-            )
+            ttk.Button(step_buttons, text=label, command=command).pack(side="left", padx=(0, 4))
         fields = ttk.LabelFrame(outer, text="選択した手順を編集", padding=12)
         fields.grid(row=0, column=2, sticky="nsew")
         fields.columnconfigure(0, weight=1)
@@ -190,7 +190,7 @@ class ConversationEditor:
         ttk.Label(
             fields,
             text="タグはオブジェクトエディタで設定します。取り出す＝表示、しまう＝非表示です。",
-            foreground="#666666",
+            style=ui_theme.MUTED_LABEL,
             wraplength=420,
         ).grid(row=8, column=0, sticky="w", pady=(0, 10))
 
@@ -203,7 +203,9 @@ class ConversationEditor:
 
         footer = ttk.Frame(fields)
         footer.grid(row=11, column=0, sticky="ew")
-        ttk.Label(footer, textvariable=self.status_var).pack(side="left")
+        ttk.Label(footer, textvariable=self.status_var, style=ui_theme.STATUS_LABEL).pack(
+            side="left"
+        )
         ttk.Button(footer, text="JSONへ保存", command=self.save).pack(side="right")
         self.update_field_states()
 
@@ -347,10 +349,15 @@ class ConversationEditor:
 
     def add_conversation(self) -> None:
         self.commit_step()
-        self.data.append({"weight": 1, "steps": [
-            {"type": "say", "speaker": speaker, "text": "新しいセリフ"}
-            for speaker in SPEAKER_IDS[:2]
-        ]})
+        self.data.append(
+            {
+                "weight": 1,
+                "steps": [
+                    {"type": "say", "speaker": speaker, "text": "新しいセリフ"}
+                    for speaker in SPEAKER_IDS[:2]
+                ],
+            }
+        )
         self.refresh_conversations(len(self.data) - 1)
         self.status_var.set("未保存の変更があります")
 
@@ -371,7 +378,10 @@ class ConversationEditor:
         destination = self.current_conversation + amount
         if not 0 <= destination < len(self.data):
             return
-        self.data[self.current_conversation], self.data[destination] = self.data[destination], self.data[self.current_conversation]
+        self.data[self.current_conversation], self.data[destination] = (
+            self.data[destination],
+            self.data[self.current_conversation],
+        )
         self.refresh_conversations(destination)
         self.status_var.set("未保存の変更があります")
 

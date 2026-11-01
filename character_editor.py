@@ -8,6 +8,7 @@ from tkinter import filedialog, messagebox, ttk
 
 from PIL import Image, ImageTk
 
+from engine import ui_theme
 from engine.character_definition import CharacterDefinition
 from engine.character_repository import CharacterRepository
 from engine.room_repository import RoomRepository
@@ -27,6 +28,7 @@ class CharacterEditor:
         self.root.title("おばけの住処・キャラクターエディター")
         self.root.geometry("920x620")
         self.root.minsize(820, 560)
+        ui_theme.apply(self.root)
         self.repository = CharacterRepository(
             PROJECT_DIR,
             CHARACTER_PATH,
@@ -118,13 +120,11 @@ class CharacterEditor:
 
         buttons = ttk.Frame(form)
         buttons.grid(row=preview_row + 1, column=0, columnspan=2, sticky="ew")
-        ttk.Button(buttons, text="変更を反映", command=self._apply_fields).pack(
-            side="left"
-        )
+        ttk.Button(buttons, text="変更を反映", command=self._apply_fields).pack(side="left")
         ttk.Button(buttons, text="characters.jsonへ保存", command=self._save).pack(
             side="left", padx=(8, 0)
         )
-        ttk.Label(outer, textvariable=self.status_var).grid(
+        ttk.Label(outer, textvariable=self.status_var, style=ui_theme.STATUS_LABEL).grid(
             row=1, column=0, columnspan=2, sticky="w", pady=(12, 0)
         )
 
@@ -146,7 +146,11 @@ class CharacterEditor:
         self.start_y_var.set(str(definition.start_y))
         self.height_var.set(str(definition.display_height))
         self.personality_var.set(str(definition.personality))
-        self.facing_var.set(next(label for label, value in FACING_LABELS.items() if value == definition.native_facing))
+        self.facing_var.set(
+            next(
+                label for label, value in FACING_LABELS.items() if value == definition.native_facing
+            )
+        )
         self.bubble_y_var.set(str(definition.bubble_y_offset))
         self.behavior_weights_var.set(
             ", ".join(f"{action}={weight:g}" for action, weight in definition.behavior_weights)
