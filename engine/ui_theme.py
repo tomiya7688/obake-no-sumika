@@ -1,0 +1,160 @@
+"""Shared dark look for every Tk window, taken from the ghosts' room (Issue #132).
+
+The colours come from ``room.json``: the night gradient (#080a14 to #0f121e),
+the drifting motes (#92a0af), the ghosts' white, the spring's teal (#1d5664)
+and the gold of the cursor marker. Windows call :func:`apply` before they
+create widgets, and use the named styles below instead of hard-coded colours.
+"""
+
+from __future__ import annotations
+
+import tkinter as tk
+from tkinter import ttk
+
+BACKGROUND = "#0b0e19"
+SURFACE = "#141a28"
+RAISED = "#1d2536"
+HOVER = "#27324a"
+BORDER = "#2e384d"
+TEXT = "#ebece5"
+MUTED = "#92a0af"
+DISABLED = "#5c6675"
+SELECTION = "#1d5664"
+ACCENT = "#6fc3bd"
+GOLD = "#cac27e"
+
+TITLE_FONT = ("Yu Gothic UI", 13, "bold")
+
+# Named label styles: use these instead of foreground="#..." in windows.
+MUTED_LABEL = "Muted.TLabel"
+STATUS_LABEL = "Status.TLabel"
+EXPECTED_LABEL = "Expected.TLabel"
+TITLE_LABEL = "Title.TLabel"
+
+# The transparent-cell checker of the pixel editor, dark to match the room.
+CHECKER_LIGHT = "#323947"
+CHECKER_DARK = "#262c38"
+
+
+def apply(root: tk.Misc) -> ttk.Style:
+    """Give ``root`` and every widget created after this call the dark look."""
+    root.configure(background=BACKGROUND)
+    _set_tk_defaults(root)
+    style = ttk.Style(root)
+    # "clam" draws every part itself, so it honours colours on Windows too.
+    style.theme_use("clam")
+    style.configure(
+        ".",
+        background=BACKGROUND,
+        foreground=TEXT,
+        fieldbackground=SURFACE,
+        bordercolor=BORDER,
+        darkcolor=BACKGROUND,
+        lightcolor=RAISED,
+        troughcolor=SURFACE,
+        selectbackground=SELECTION,
+        selectforeground=TEXT,
+        insertcolor=TEXT,
+        focuscolor=ACCENT,
+        arrowcolor=MUTED,
+    )
+    style.map(".", foreground=[("disabled", DISABLED)])
+    # Paddings stay close to the platform theme so the editors' layouts still fit.
+    style.configure("TButton", background=RAISED, padding=(8, 1))
+    style.map(
+        "TButton",
+        background=[("disabled", BACKGROUND), ("pressed", SELECTION), ("active", HOVER)],
+        bordercolor=[("focus", ACCENT)],
+    )
+    for field in ("TEntry", "TSpinbox", "TCombobox"):
+        style.configure(field, foreground=TEXT, padding=1)
+        # "disabled" comes first: a disabled read-only box must still look disabled.
+        style.map(
+            field,
+            fieldbackground=[("disabled", BACKGROUND), ("readonly", RAISED)],
+            foreground=[("disabled", DISABLED)],
+            bordercolor=[("disabled", BORDER), ("focus", ACCENT)],
+        )
+    style.map("TCombobox", background=[("active", HOVER)])
+    style.map("TSpinbox", background=[("active", HOVER)])
+    for toggle in ("TCheckbutton", "TRadiobutton"):
+        style.configure(toggle, indicatorbackground=SURFACE, indicatorforeground=ACCENT)
+        style.map(
+            toggle,
+            background=[("active", BACKGROUND)],
+            indicatorbackground=[("pressed", SELECTION), ("selected", SURFACE)],
+        )
+    style.configure("TScrollbar", background=RAISED, troughcolor=BACKGROUND)
+    style.map("TScrollbar", background=[("active", HOVER)])
+    style.configure("Horizontal.TScale", background=RAISED, troughcolor=SURFACE)
+    style.map("Horizontal.TScale", background=[("active", HOVER)])
+    style.configure("TSeparator", background=BORDER)
+    style.configure("TLabelframe", background=BACKGROUND, bordercolor=BORDER)
+    style.configure("TLabelframe.Label", background=BACKGROUND, foreground=MUTED)
+    style.configure(MUTED_LABEL, foreground=MUTED)
+    style.configure(STATUS_LABEL, foreground=GOLD)
+    style.configure(EXPECTED_LABEL, foreground=ACCENT)
+    style.configure(TITLE_LABEL, font=TITLE_FONT, foreground=TEXT)
+    return style
+
+
+def _set_tk_defaults(root: tk.Misc) -> None:
+    """Defaults for classic tk widgets (lists, text, canvases, menus)."""
+    options = {
+        "*Listbox.background": SURFACE,
+        "*Listbox.foreground": TEXT,
+        "*Listbox.selectBackground": SELECTION,
+        "*Listbox.selectForeground": TEXT,
+        "*Listbox.highlightBackground": BORDER,
+        "*Listbox.highlightColor": ACCENT,
+        "*Listbox.highlightThickness": 1,
+        "*Listbox.borderWidth": 0,
+        "*Listbox.activeStyle": "none",
+        "*Text.background": SURFACE,
+        "*Text.foreground": TEXT,
+        "*Text.insertBackground": TEXT,
+        "*Text.selectBackground": SELECTION,
+        "*Text.selectForeground": TEXT,
+        "*Text.highlightBackground": BORDER,
+        "*Text.highlightColor": ACCENT,
+        "*Text.highlightThickness": 1,
+        "*Text.borderWidth": 0,
+        "*Canvas.background": BACKGROUND,
+        "*Canvas.highlightBackground": BORDER,
+        "*Button.background": RAISED,
+        "*Button.foreground": TEXT,
+        "*Button.activeBackground": HOVER,
+        "*Button.activeForeground": TEXT,
+        "*Menu.background": SURFACE,
+        "*Menu.foreground": TEXT,
+        "*Menu.activeBackground": SELECTION,
+        "*Menu.activeForeground": TEXT,
+        "*TCombobox*Listbox.background": SURFACE,
+        "*TCombobox*Listbox.foreground": TEXT,
+        "*TCombobox*Listbox.selectBackground": SELECTION,
+        "*TCombobox*Listbox.selectForeground": TEXT,
+        "*Toplevel.background": BACKGROUND,
+    }
+    for pattern, value in options.items():
+        root.option_add(pattern, value)
+
+
+def readable_text(background: str) -> str:
+    """The theme's light or dark text, whichever reads better on ``background``."""
+    if contrast_ratio(TEXT, background) >= contrast_ratio(BACKGROUND, background):
+        return TEXT
+    return BACKGROUND
+
+
+def contrast_ratio(foreground: str, background: str) -> float:
+    """WCAG contrast ratio between two ``#rrggbb`` colours."""
+    lighter, darker = sorted(
+        (relative_luminance(foreground), relative_luminance(background)), reverse=True
+    )
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def relative_luminance(color: str) -> float:
+    channels = [int(color[index : index + 2], 16) / 255 for index in (1, 3, 5)]
+    linear = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in channels]
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]

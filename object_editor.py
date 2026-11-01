@@ -9,6 +9,7 @@ from tkinter import colorchooser, messagebox, ttk
 
 from PIL import Image, ImageDraw, ImageTk
 
+from engine import ui_theme
 from engine.pixel_object_repository import PixelObjectRepository
 from engine.placement_repository import PlacementRepository, normalize_tag
 from engine.room_repository import RoomRepository
@@ -123,6 +124,7 @@ class ObjectEditor:
         self.root.title("おばけの住処　オブジェクトエディター")
         self.root.geometry("1380x860")
         self.root.minsize(1160, 720)
+        ui_theme.apply(self.root)
 
         self.canvas_size = 32
         self.pixels: list[list[str | None]] = self.blank_pixels(self.canvas_size)
@@ -207,12 +209,10 @@ class ObjectEditor:
         return image
 
     def build_ui(self) -> None:
-        style = ttk.Style()
-        style.configure("Title.TLabel", font=("Yu Gothic UI", 13, "bold"))
         # Pack the status bar before the panels so it keeps its row when the
         # window is shorter than the panels (Issue #128).
         self.status_label = ttk.Label(
-            self.root, textvariable=self.status_var, foreground="#475e68", padding=(12, 4)
+            self.root, textvariable=self.status_var, style=ui_theme.STATUS_LABEL, padding=(12, 4)
         )
         self.status_label.pack(side="bottom", fill="x")
         # Wrap long messages (e.g. saved file names) instead of cutting them off.
@@ -229,7 +229,7 @@ class ObjectEditor:
 
         editor = ttk.Frame(outer)
         editor.grid(row=0, column=0, sticky="n")
-        ttk.Label(editor, text="1. オブジェクトを描く", style="Title.TLabel").pack(anchor="w")
+        ttk.Label(editor, text="1. オブジェクトを描く", style=ui_theme.TITLE_LABEL).pack(anchor="w")
         draw_holder = ttk.Frame(editor, width=EDITOR_PIXELS + 18, height=EDITOR_PIXELS + 18)
         draw_holder.pack_propagate(False)
         draw_holder.pack(pady=(8, 6))
@@ -238,7 +238,6 @@ class ObjectEditor:
             width=EDITOR_PIXELS,
             height=EDITOR_PIXELS,
             highlightthickness=1,
-            highlightbackground="#6f747c",
             cursor="crosshair",
         )
         draw_scroll_y = ttk.Scrollbar(
@@ -288,7 +287,7 @@ class ObjectEditor:
         )
         zoom_box.grid(row=4, column=0, sticky="ew", pady=(2, 4))
         zoom_box.bind("<<ComboboxSelected>>", self.zoom_changed)
-        ttk.Label(tools, text="%　Ctrl+ホイールでも変更", foreground="#666666").grid(
+        ttk.Label(tools, text="%　Ctrl+ホイールでも変更", style=ui_theme.MUTED_LABEL).grid(
             row=5, column=0, sticky="w", pady=(0, 10)
         )
         ttk.Checkbutton(
@@ -306,10 +305,9 @@ class ObjectEditor:
         self.color_button = tk.Button(
             tools,
             text="色を選ぶ",
-            bg=self.color,
-            activebackground=self.color,
             command=self.choose_color,
         )
+        self.show_color()
         self.color_button.grid(row=7, column=0, sticky="ew", pady=(0, 8))
         ttk.Radiobutton(tools, text="えんぴつ", variable=self.tool_var, value="pencil").grid(
             row=8, column=0, sticky="w"
@@ -353,27 +351,26 @@ class ObjectEditor:
         ttk.Label(
             tools,
             text="透明部分も含め、常に\n1024×1024で保存します。",
-            foreground="#666666",
+            style=ui_theme.MUTED_LABEL,
             justify="left",
         ).grid(row=22, column=0, sticky="w", pady=(7, 0))
 
         placement = ttk.Frame(outer)
         placement.grid(row=0, column=2, sticky="nsew")
         placement.columnconfigure(0, weight=1)
-        ttk.Label(placement, text="2. おばけの住処に置く", style="Title.TLabel").grid(
+        ttk.Label(placement, text="2. おばけの住処に置く", style=ui_theme.TITLE_LABEL).grid(
             row=0, column=0, sticky="w"
         )
         ttk.Label(
             placement,
             text="住処をクリックすると中心位置が決まります。",
-            foreground="#666666",
+            style=ui_theme.MUTED_LABEL,
         ).grid(row=1, column=0, sticky="w", pady=(2, 6))
         self.preview_canvas = tk.Canvas(
             placement,
             width=PREVIEW_SIZE[0],
             height=PREVIEW_SIZE[1],
             highlightthickness=1,
-            highlightbackground="#6f747c",
             cursor="crosshair",
         )
         self.preview_canvas.grid(row=2, column=0, sticky="w")
@@ -427,7 +424,7 @@ class ObjectEditor:
             settings,
             text="タグは配置ごとに一意。会話エディタから移動・取り出す・しまう対象にできます。\n"
             "縦横比は固定。保存画像の1024pxとは別の表示サイズです。",
-            foreground="#666666",
+            style=ui_theme.MUTED_LABEL,
         ).grid(row=4, column=0, columnspan=4, sticky="w", pady=(5, 0))
 
         buttons = ttk.Frame(placement)
@@ -497,12 +494,19 @@ class ObjectEditor:
         self.redraw_editor()
         return "break"
 
+    def show_color(self) -> None:
+        """Paint the colour button with the current colour and readable text."""
+        text = ui_theme.readable_text(self.color)
+        self.color_button.configure(
+            bg=self.color, fg=text, activebackground=self.color, activeforeground=text
+        )
+
     def choose_color(self) -> None:
         chosen = colorchooser.askcolor(self.color, title="描く色を選ぶ")[1]
         if chosen:
             self.color = chosen.lower()
             self.tool_var.set("pencil")
-            self.color_button.configure(bg=self.color, activebackground=self.color)
+            self.show_color()
 
     def clear_canvas(self) -> None:
         if any(value is not None for row in self.pixels for value in row):
@@ -612,7 +616,7 @@ class ObjectEditor:
             self.status_var.set("透明セルです。色は変更していません。")
             return
         self.color = picked
-        self.color_button.configure(bg=self.color, activebackground=self.color)
+        self.show_color()
         self.tool_var.set("pencil")
         self.status_var.set(f"色を拾いました: {self.color}")
 
@@ -682,7 +686,9 @@ class ObjectEditor:
         x0, y0 = round(x * cell), round(y * cell)
         x1, y1 = round((x + 1) * cell), round((y + 1) * cell)
         value = self.pixels[y][x]
-        fill = value if value else ("#c7c9cc" if (x + y) % 2 else "#eeeeee")
+        fill = (
+            value if value else (ui_theme.CHECKER_LIGHT if (x + y) % 2 else ui_theme.CHECKER_DARK)
+        )
         outline = "#50545a" if self.show_grid_var.get() and cell >= 6 else ""
         self.draw_canvas.create_rectangle(
             x0, y0, x1 + 1, y1 + 1, fill=fill, outline=outline, tags=tag

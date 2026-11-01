@@ -301,7 +301,12 @@ class CheckWindow:
         import tkinter as tk
         from tkinter import messagebox, ttk
 
-        self.tk, self.ttk, self.messagebox = tk, ttk, messagebox
+        if str(PROJECT_ROOT) not in sys.path:
+            sys.path.insert(0, str(PROJECT_ROOT))
+        from engine import ui_theme
+
+        self.tk, self.ttk, self.messagebox, self.theme = tk, ttk, messagebox, ui_theme
+        ui_theme.apply(root)
         self.root, self.repo = root, repo
         self.base = base or work_root()
         self.head: str | None = None
@@ -322,7 +327,7 @@ class CheckWindow:
         self.right = ttk.Frame(root, padding=8)
         self.right.pack(side="left", fill="both", expand=True)
         self.status = tk.StringVar(value=f"結果の保存先: {self.results_path}")
-        ttk.Label(root, textvariable=self.status, foreground="#475e68").pack(side="bottom")
+        ttk.Label(root, textvariable=self.status, style=ui_theme.STATUS_LABEL).pack(side="bottom")
         self.listbox.selection_set(0)
         self.show(SCENARIOS[0])
         root.protocol("WM_DELETE_WINDOW", self.close)
@@ -357,11 +362,9 @@ class CheckWindow:
             "　③ 下の手順を上から順に、そのエディターで操作する　④ 手順ごとに「できた」か「違った」を選ぶ"
             "　⑤ 最後に「結果を保存」を押す",
             wraplength=560,
-            foreground="#475e68",
+            style=self.theme.STATUS_LABEL,
         ).pack(anchor="w", pady=(0, 8))
-        ttk.Label(self.right, text=scenario.title, font=("Yu Gothic UI", 13, "bold")).pack(
-            anchor="w"
-        )
+        ttk.Label(self.right, text=scenario.title, style=self.theme.TITLE_LABEL).pack(anchor="w")
         ttk.Label(
             self.right,
             text="確認用のコピーだけを開きます。上から順に操作し、"
@@ -378,9 +381,9 @@ class CheckWindow:
             box = ttk.Frame(self.right, padding=(0, 6))
             box.pack(fill="x")
             ttk.Label(box, text=f"{number}. {step.action}", wraplength=560).pack(anchor="w")
-            ttk.Label(box, text=f"→ {step.expected}", foreground="#2f6b3a", wraplength=560).pack(
-                anchor="w"
-            )
+            ttk.Label(
+                box, text=f"→ {step.expected}", style=self.theme.EXPECTED_LABEL, wraplength=560
+            ).pack(anchor="w")
             choice, note = tk.StringVar(value=""), tk.StringVar()
             note.trace_add("write", lambda *_: self.mark_changed())
             row = ttk.Frame(box)
