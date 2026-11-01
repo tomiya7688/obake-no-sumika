@@ -58,6 +58,13 @@ class PaletteTests(unittest.TestCase):
         self.assertEqual(ui_theme.readable_text("#e8e4d4"), ui_theme.BACKGROUND)
         self.assertEqual(ui_theme.readable_text("#000000"), ui_theme.TEXT)
         self.assertEqual(ui_theme.readable_text("#1d5664"), ui_theme.TEXT)
+        # Mid greys, where neither theme colour reaches 4.5:1 (#777777: 3.8 / 4.3).
+        for level in range(256):
+            grey = f"#{level:02x}{level:02x}{level:02x}"
+            with self.subTest(grey):
+                self.assertGreaterEqual(
+                    ui_theme.contrast_ratio(ui_theme.readable_text(grey), grey), 4.5
+                )
 
 
 class WindowThemeTests(unittest.TestCase):
@@ -69,7 +76,9 @@ class WindowThemeTests(unittest.TestCase):
         self.root.withdraw()
         self.addCleanup(self.root.destroy)
 
-    def assert_dark(self, window_root: tk.Misc, skip: tuple[tk.Misc, ...] = ()) -> None:
+    def assert_dark(
+        self, window_root: tk.Misc, skip: tuple[tk.Misc, ...] = (), minimum: int = 11
+    ) -> None:
         window_root.update_idletasks()
         style = ttk.Style(window_root)
         self.assertEqual(style.theme_use(), "clam")
@@ -110,7 +119,7 @@ class WindowThemeTests(unittest.TestCase):
                 colour = resolve(widget, background)
                 self.assertLess(ui_theme.relative_luminance(colour), DARK_LUMINANCE, background)
                 checked += 1
-        self.assertGreater(checked, 10)
+        self.assertGreaterEqual(checked, minimum)
 
     def test_disabled_fields_look_disabled(self) -> None:
         style = ui_theme.apply(self.root)
@@ -127,6 +136,16 @@ class WindowThemeTests(unittest.TestCase):
                 self.assertEqual(
                     style.lookup(field, "fieldbackground", ["readonly"]), ui_theme.RAISED
                 )
+
+    def test_classic_widgets_used_by_simpledialog_are_dark(self) -> None:
+        # The new-project prompt (simpledialog.askstring) is built from these.
+        ui_theme.apply(self.root)
+        frame = tk.Frame(self.root)
+        tk.Label(frame, text="プロジェクト名").pack()
+        tk.Entry(frame).pack()
+        self.assert_dark(frame, minimum=3)
+        for widget in frame.winfo_children():
+            self.assertEqual(str(widget.cget("foreground")), ui_theme.TEXT)
 
     def test_selected_toggle_indicator_stands_out(self) -> None:
         style = ui_theme.apply(self.root)

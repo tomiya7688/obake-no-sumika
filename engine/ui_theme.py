@@ -137,20 +137,39 @@ def _set_tk_defaults(root: tk.Misc) -> None:
         "*TCombobox*Listbox.selectBackground": SELECTION,
         "*TCombobox*Listbox.selectForeground": TEXT,
         "*Toplevel.background": BACKGROUND,
+        # simpledialog (e.g. the new-project name prompt) builds classic widgets.
+        "*Frame.background": BACKGROUND,
+        "*Label.background": BACKGROUND,
+        "*Label.foreground": TEXT,
+        "*Entry.background": SURFACE,
+        "*Entry.foreground": TEXT,
+        "*Entry.insertBackground": TEXT,
+        "*Entry.selectBackground": SELECTION,
+        "*Entry.selectForeground": TEXT,
+        "*Entry.disabledBackground": BACKGROUND,
+        "*Entry.disabledForeground": DISABLED,
+        "*Entry.highlightBackground": BORDER,
+        "*Entry.highlightColor": ACCENT,
     }
     for pattern, value in options.items():
         root.option_add(pattern, value)
 
 
 def readable_text(background: str) -> str:
-    """The theme's light or dark text, whichever reads better on ``background``.
+    """Text colour that reads at 4.5:1 or better on ``background``.
 
-    For a mid-grey ``background`` neither may reach 4.5:1; this picks the
-    better one, which is all the colour button needs.
+    Prefers the theme's own white and black; for mid greys where neither
+    reaches 4.5:1, pure white or black does (one of them always does).
     """
-    if contrast_ratio(TEXT, background) >= contrast_ratio(BACKGROUND, background):
-        return TEXT
-    return BACKGROUND
+    candidates = sorted(
+        (TEXT, BACKGROUND), key=lambda colour: contrast_ratio(colour, background), reverse=True
+    )
+    candidates += sorted(
+        ("#ffffff", "#000000"),
+        key=lambda colour: contrast_ratio(colour, background),
+        reverse=True,
+    )
+    return next(c for c in candidates if contrast_ratio(c, background) >= 4.5)
 
 
 def contrast_ratio(foreground: str, background: str) -> float:
