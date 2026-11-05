@@ -16,6 +16,7 @@ class ContextPolicyTests(unittest.TestCase):
     # this repository (see docs/ワークフロー/共同作業ルール.md). Add new names here
     # deliberately; any other <!-- name:... --> block still counts as router text.
     DISTRIBUTED_BLOCKS = (
+        "no-copilot-review",
         "no-haiku-review",
         "review-procedure-required",
         "shared-review-operations",

@@ -1,3 +1,8 @@
+<!-- no-copilot-review:2026-11-02 -->
+## 最新指示: Copilotへのレビュー依頼を停止
+有料契約に伴いCopilotを作業・PRのレビュアーから外し、依頼・証跡・応答を要求しない。旧Copilot必須指示より本指示と E:/projects/REVIEW_OPERATIONS.md の最新版を優先する。PR時のCodeRabbitと残りの6者、無料条件、秘密除外、編集禁止は維持する。Haikuレビューは引き続き停止。既存のGitHub必須チェック・必須承認や判明済みの指摘は迂回しない。
+<!-- /no-copilot-review:2026-11-02 -->
+
 <!-- no-haiku-review:2026-11-01 -->
 ## 最新指示: Haikuレビュー依頼を停止
 Claudeの利用枠節約のため、作業・PRでHaikuへのレビューを依頼せず、Haiku欄や省略証跡も要求しない。必須の残りはCodex Luna low、Antigravity、Jules、Continue、Qwen Code、Grok。PR時のCopilot・CodeRabbit、追加無料レビュアー、秘密除外・編集禁止・期限と利用不可時の省略は維持する。旧7者・Haiku必須記述よりこの指示と E:/projects/REVIEW_OPERATIONS.md の最新版を優先する。Claudeを主担当とする作業は制限しない。ユーザーが個別にHaikuを明示依頼した場合はその指示に従う。
