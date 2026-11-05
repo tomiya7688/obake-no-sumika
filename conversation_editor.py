@@ -99,8 +99,10 @@ class ConversationEditor:
     def build_ui(self) -> None:
         outer = ttk.Frame(self.root, padding=12)
         outer.pack(fill="both", expand=True)
-        outer.columnconfigure(0, weight=2)
-        outer.columnconfigure(1, weight=3)
+        # The left columns hold button rows that must never be cut off (Issue #133);
+        # only the wide edit column shrinks when the window does.
+        outer.columnconfigure(0, weight=2, minsize=280)
+        outer.columnconfigure(1, weight=3, minsize=230)
         outer.columnconfigure(2, weight=4)
         outer.rowconfigure(0, weight=1)
 
