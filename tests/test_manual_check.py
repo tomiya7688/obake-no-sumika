@@ -39,7 +39,15 @@ LOOK_LABELS = {
         "選択中の位置・大きさを更新",
         "選択中を住処から外す",
     ),
-    "conversation-editor-look": ("会話追加", "手順追加", "削除", "↑", "↓", "会話デッキ"),
+    "conversation-editor-look": (
+        "会話追加",
+        "手順追加",
+        "削除",
+        "↑",
+        "↓",
+        "会話デッキ",
+        "この会話の順番",
+    ),
     "character-editor-look": ("ID（会話・イベント連携用）",),
 }
 PROBE = """
@@ -143,6 +151,16 @@ class ManualCheckTests(unittest.TestCase):
                 with self.subTest(scenario=scenario_id, label=label):
                     self.assertIn(label, source)
                     self.assertIn(label, text)
+
+    def test_the_character_the_look_check_asks_to_select_exists(self) -> None:
+        # The step says to press 「まる」 in the list; that name comes from the data.
+        folder = kit.prepare_check(self.scenario("character-editor-look"), ROOT, self.base)
+        characters = json.loads((folder / "characters.json").read_text(encoding="utf-8"))
+        names = [item["display_name"] for item in characters["characters"]]
+        self.assertIn("まる", names)
+        self.assertTrue(
+            any("「まる」" in s.action for s in self.scenario("character-editor-look").steps)
+        )
 
     def test_saving_in_the_copy_writes_the_copy_not_the_project(self) -> None:
         folder = kit.prepare_check(self.scenario("conversation-generic-ids"), ROOT, self.base)
