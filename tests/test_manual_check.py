@@ -25,6 +25,31 @@ EXPECTED = {
     "conversation-load-errors": {"conversation_problems": 2},
     "conversation-generic-ids": {"conversation_problems": 0, "labels": {"player": "プレイヤー"}},
     "object-load-errors": {"placement_problems": 2},
+    # Look checks open the editors on an unchanged copy: nothing may be broken.
+    "object-editor-look": {"placement_problems": 0},
+    "conversation-editor-look": {"conversation_problems": 0},
+    "character-editor-look": {},
+}
+# Button and field names the look checks tell Kadoka to find; they must exist in the editor.
+LOOK_LABELS = {
+    "object-editor-look": (
+        "選択した画像を住処に挿入",
+        "編集キャンバスへ読み込む",
+        "新しく住処に置く",
+        "選択中の位置・大きさを更新",
+        "選択中を住処から外す",
+        "色を選ぶ",
+    ),
+    "conversation-editor-look": (
+        "会話追加",
+        "手順追加",
+        "削除",
+        "↑",
+        "↓",
+        "会話デッキ",
+        "この会話の順番",
+    ),
+    "character-editor-look": ("ID（会話・イベント連携用）", "画像", "元画像が向いている方向"),
 }
 PROBE = """
 import json, sys
@@ -110,6 +135,40 @@ class ManualCheckTests(unittest.TestCase):
                 report = run_probe(folder, scenario.editor[:-3])
                 for key, value in EXPECTED[scenario.id].items():
                     self.assertEqual(report[key], value, key)
+
+    def test_look_checks_open_an_unchanged_copy(self) -> None:
+        for scenario_id in LOOK_LABELS:
+            with self.subTest(scenario=scenario_id):
+                folder = kit.prepare_check(self.scenario(scenario_id), ROOT, self.base)
+                for name in REAL_DATA:
+                    self.assertEqual((folder / name).read_bytes(), committed(name), name)
+
+    def test_look_check_steps_name_things_the_editor_really_has(self) -> None:
+        for scenario_id, labels in LOOK_LABELS.items():
+            scenario = self.scenario(scenario_id)
+            source = (ROOT / scenario.editor).read_text(encoding="utf-8")
+            text = " ".join(f"{step.action} {step.expected}" for step in scenario.steps)
+            for label in labels:
+                with self.subTest(scenario=scenario_id, label=label):
+                    self.assertIn(label, source)
+                    self.assertIn(label, text)
+
+    def test_object_look_check_scrolls_sideways_before_down(self) -> None:
+        # At the left edge the bottom-right buttons are cut off, so go right first.
+        actions = [s.action for s in self.scenario("object-editor-look").steps]
+        right = next(i for i, text in enumerate(actions) if "右の端" in text)
+        down = next(i for i, text in enumerate(actions) if "一番下" in text)
+        self.assertLess(right, down)
+
+    def test_the_character_the_look_check_asks_to_select_exists(self) -> None:
+        # The step says to press 「まる」 in the list; that name comes from the data.
+        folder = kit.prepare_check(self.scenario("character-editor-look"), ROOT, self.base)
+        characters = json.loads((folder / "characters.json").read_text(encoding="utf-8"))
+        names = [item["display_name"] for item in characters["characters"]]
+        self.assertIn("まる", names)
+        self.assertTrue(
+            any("「まる」" in s.action for s in self.scenario("character-editor-look").steps)
+        )
 
     def test_saving_in_the_copy_writes_the_copy_not_the_project(self) -> None:
         folder = kit.prepare_check(self.scenario("conversation-generic-ids"), ROOT, self.base)
