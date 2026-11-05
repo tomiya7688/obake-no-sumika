@@ -28,6 +28,8 @@ Windowsの起動用 `.bat` は ASCII・CRLF で書く（cmd.exe は LF だけの
 
 Tkの全ウィンドウ（メインウィンドウ・各エディター・確認キット）は、作成直後に `engine/ui_theme.py` の `apply()` を呼び、黒基調の共通テーマを使う。色は `room.json` の部屋（夜空の青黒・漂う粒の青灰・おばけの白・水の青緑・目印の金）から取っている。各ファイルに `foreground="#..."` などの色を直書きせず、`MUTED_LABEL`（補足）・`STATUS_LABEL`（状態表示）・`EXPECTED_LABEL`（期待結果）・`TITLE_LABEL`（見出し）のスタイルを使う。部品を大きくするとオブジェクトエディターが 860px に収まらなくなるので、余白を変えたら `tests/test_object_editor_status_bar.py` で確認する。`tests/test_ui_theme.py` が全ウィンドウの黒基調と文字のコントラスト（4.5:1以上。無効状態の文字は WCAG の対象外なので 3:1 以上）を確認する。確認キットの「使い方」は本人に必ず読んでほしい案内なので、目立つ `STATUS_LABEL`（金）にしている。
 
+オブジェクトエディターの画面は `engine/scroll_frame.py` の `ScrollFrame` に載せ、窓が内容より低いときだけ縦にスクロールできる（スクロールバーが出て、ホイールでも動く。一覧・テキスト・Ctrl+ホイールの拡大縮小は従来どおり）。下の操作部品へ届くことは `tests/test_object_editor_scroll.py` で確認する。
+
 Tkエディターを実際に生成するテストでは、モジュールの `messagebox` を `mock` で置き換える。本物のモーダルダイアログ（保存エラー・確認）が出るとheadless実行が終わらなくなるため、呼び出しを記録して検証する。
 
 品質依存は `python -m pip install --upgrade -r tools/quality/requirements.txt` で導入する。全体単体テストにもRuff実CLIテストがあるため必須。`tools/quality/script/check_ruff.py` は選択ルールの違反0を必須とし、baselineへの診断追加も拒否する。format/型/性能ゲートは未移植。互換性を保つCI名と空baselineの運用は [tools/quality/README.md](../../tools/quality/README.md)。
