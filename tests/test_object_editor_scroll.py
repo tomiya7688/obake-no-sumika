@@ -27,6 +27,13 @@ def find_button(widget: tk.Misc, text: str):
     return None
 
 
+def all_buttons(widget: tk.Misc):
+    if isinstance(widget, ttk.Button):
+        yield widget
+    for child in widget.winfo_children():
+        yield from all_buttons(child)
+
+
 class ObjectEditorScrollTests(unittest.TestCase):
     def setUp(self) -> None:
         try:
@@ -47,9 +54,50 @@ class ObjectEditorScrollTests(unittest.TestCase):
         canvas = self.area.canvas
         top = widget.winfo_rooty()
         bottom = top + widget.winfo_height()
+        left = widget.winfo_rootx()
+        right = left + widget.winfo_width()
         return (
-            canvas.winfo_rooty() <= top and bottom <= canvas.winfo_rooty() + canvas.winfo_height()
+            canvas.winfo_rooty() <= top
+            and bottom <= canvas.winfo_rooty() + canvas.winfo_height()
+            and canvas.winfo_rootx() <= left
+            and right <= canvas.winfo_rootx() + canvas.winfo_width()
         )
+
+    def reachable(self, widget: tk.Misc) -> bool:
+        """Can the widget be shown completely by scrolling to some corner?"""
+        for x in (0.0, 1.0):
+            for y in (0.0, 1.0):
+                self.area.canvas.xview_moveto(x)
+                self.area.canvas.yview_moveto(y)
+                self.root.update()
+                if self.visible_in_canvas(widget):
+                    return True
+        return False
+
+    def test_every_button_is_reachable_at_the_minimum_size(self) -> None:
+        min_width, min_height = self.root.minsize()
+        for width, height in ((1380, 860), (min_width, min_height), (min_width, 400)):
+            self.resize(width, height)
+            for button in all_buttons(self.root):
+                with self.subTest(size=f"{width}x{height}", button=str(button.cget("text"))):
+                    self.assertTrue(self.reachable(button))
+
+    def test_horizontal_scroll_bar_appears_only_when_the_window_is_too_narrow(self) -> None:
+        self.resize(1500, 900)
+        self.assertFalse(self.area.hscrollbar_visible)
+        self.resize(1100, 900)
+        self.assertTrue(self.area.hscrollbar_visible)
+        self.resize(1500, 900)
+        self.assertFalse(self.area.hscrollbar_visible)
+
+    def test_shift_wheel_scrolls_sideways(self) -> None:
+        self.resize(1100, 900)
+        canvas = self.area.canvas
+        event = SimpleNamespace(widget=self.area.body, delta=-120, state=0x1, num=0)
+        self.area._on_wheel(event)
+        self.root.update()
+        self.assertGreater(canvas.xview()[0], 0)
+        self.assertEqual(canvas.yview()[0], 0.0)
 
     def test_bottom_controls_are_reachable_at_the_minimum_size(self) -> None:
         min_width, min_height = self.root.minsize()
