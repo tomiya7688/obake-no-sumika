@@ -82,16 +82,24 @@ class ObjectEditorScrollTests(unittest.TestCase):
                 with self.subTest(size=f"{width}x{height}", button=str(button.cget("text"))):
                     self.assertTrue(self.reachable(button))
 
+    def roomy_size(self) -> tuple[int, int]:
+        """A window bigger than the content needs (it depends on the platform font)."""
+        self.root.update()
+        body = self.area.body
+        return body.winfo_reqwidth() + 80, body.winfo_reqheight() + 80
+
     def test_horizontal_scroll_bar_appears_only_when_the_window_is_too_narrow(self) -> None:
-        self.resize(1500, 900)
+        width, height = self.roomy_size()
+        self.resize(width, height)
         self.assertFalse(self.area.hscrollbar_visible)
-        self.resize(1100, 900)
+        self.resize(width - 300, height)
         self.assertTrue(self.area.hscrollbar_visible)
-        self.resize(1500, 900)
+        self.resize(width, height)
         self.assertFalse(self.area.hscrollbar_visible)
 
     def test_shift_wheel_scrolls_sideways(self) -> None:
-        self.resize(1100, 900)
+        width, height = self.roomy_size()
+        self.resize(width - 300, height)
         canvas = self.area.canvas
         event = SimpleNamespace(widget=self.area.body, delta=-120, state=0x1, num=0)
         self.area._on_wheel(event)
@@ -99,25 +107,20 @@ class ObjectEditorScrollTests(unittest.TestCase):
         self.assertGreater(canvas.xview()[0], 0)
         self.assertEqual(canvas.yview()[0], 0.0)
 
-    def test_bottom_controls_are_reachable_at_the_minimum_size(self) -> None:
-        min_width, min_height = self.root.minsize()
+    def test_the_library_button_is_found_and_reachable_in_a_short_window(self) -> None:
         button = find_button(self.root, LIBRARY_BUTTON)
         self.assertIsNotNone(button)
-        for width, height in ((1380, 860), (min_width, min_height), (min_width, 400)):
-            with self.subTest(size=f"{width}x{height}"):
-                self.resize(width, height)
-                self.area.canvas.yview_moveto(1.0)
-                self.root.update()
-                self.assertTrue(self.visible_in_canvas(button))
-                self.area.canvas.yview_moveto(0.0)
-                self.root.update()
+        width, _ = self.roomy_size()
+        self.resize(width, 400)
+        self.assertTrue(self.reachable(button))
 
     def test_scroll_bar_appears_only_when_the_window_is_too_short(self) -> None:
-        self.resize(1380, 1400)
+        width, height = self.roomy_size()
+        self.resize(width, height)
         self.assertFalse(self.area.scrollbar_visible)
-        self.resize(1160, 400)
+        self.resize(width, 400)
         self.assertTrue(self.area.scrollbar_visible)
-        self.resize(1380, 1400)
+        self.resize(width, height)
         self.assertFalse(self.area.scrollbar_visible)
 
     def test_wheel_scrolls_the_panels_but_not_lists_or_ctrl_zoom(self) -> None:
