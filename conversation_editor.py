@@ -99,10 +99,8 @@ class ConversationEditor:
     def build_ui(self) -> None:
         outer = ttk.Frame(self.root, padding=12)
         outer.pack(fill="both", expand=True)
-        # The left columns hold button rows that must never be cut off (Issue #133);
-        # only the wide edit column shrinks when the window does.
-        outer.columnconfigure(0, weight=2, minsize=280)
-        outer.columnconfigure(1, weight=3, minsize=230)
+        outer.columnconfigure(0, weight=2)
+        outer.columnconfigure(1, weight=3)
         outer.columnconfigure(2, weight=4)
         outer.rowconfigure(0, weight=1)
 
@@ -210,6 +208,20 @@ class ConversationEditor:
         )
         ttk.Button(footer, text="JSONへ保存", command=self.save).pack(side="right")
         self.update_field_states()
+        # Reserve what the button rows actually need, which depends on the
+        # platform font, so no button is ever cut off (Issue #133). Only the
+        # text area shrinks when the window does.
+        self.root.update_idletasks()
+        left = conversations.winfo_reqwidth() + 8
+        middle = steps.winfo_reqwidth() + 8
+        right = max(320, footer.winfo_reqwidth() + 40)
+        outer.columnconfigure(0, minsize=left)
+        outer.columnconfigure(1, minsize=middle)
+        outer.columnconfigure(2, minsize=right)
+        needed = 24 + left + middle + right
+        self.root.minsize(max(960, needed), 560)
+        if needed > 1180:
+            self.root.geometry(f"{needed}x680")
 
     def conversation_label(self, item: dict) -> str:
         parts = [self.step_label(step) for step in item["steps"][:2]]
