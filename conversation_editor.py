@@ -203,10 +203,12 @@ class ConversationEditor:
 
         footer = ttk.Frame(fields)
         footer.grid(row=11, column=0, sticky="ew")
+        # The save button is packed first so a long status message after saving
+        # can never squeeze it out of the footer.
+        ttk.Button(footer, text="JSONへ保存", command=self.save).pack(side="right")
         ttk.Label(footer, textvariable=self.status_var, style=ui_theme.STATUS_LABEL).pack(
             side="left"
         )
-        ttk.Button(footer, text="JSONへ保存", command=self.save).pack(side="right")
         self.update_field_states()
         # Reserve what the button rows actually need, which depends on the
         # platform font, so no button is ever cut off (Issue #133). Only the
