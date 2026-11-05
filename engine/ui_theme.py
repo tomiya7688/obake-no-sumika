@@ -62,7 +62,9 @@ def apply(root: tk.Misc) -> ttk.Style:
     )
     style.map(".", foreground=[("disabled", DISABLED)])
     # Paddings stay close to the platform theme so the editors' layouts still fit.
-    style.configure("TButton", background=RAISED, padding=(8, 1))
+    # width=0: clam asks for 11 characters at least, which pushed the editors'
+    # button rows (会話追加・削除・↑・↓) past their columns (Issue #133).
+    style.configure("TButton", background=RAISED, padding=(8, 1), width=0)
     style.map(
         "TButton",
         background=[("disabled", BACKGROUND), ("pressed", SELECTION), ("active", HOVER)],

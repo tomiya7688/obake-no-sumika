@@ -203,11 +203,27 @@ class ConversationEditor:
 
         footer = ttk.Frame(fields)
         footer.grid(row=11, column=0, sticky="ew")
+        # The save button is packed first so a long status message after saving
+        # can never squeeze it out of the footer.
+        ttk.Button(footer, text="JSONへ保存", command=self.save).pack(side="right")
         ttk.Label(footer, textvariable=self.status_var, style=ui_theme.STATUS_LABEL).pack(
             side="left"
         )
-        ttk.Button(footer, text="JSONへ保存", command=self.save).pack(side="right")
         self.update_field_states()
+        # Reserve what the button rows actually need, which depends on the
+        # platform font, so no button is ever cut off (Issue #133). Only the
+        # text area shrinks when the window does.
+        self.root.update_idletasks()
+        left = conversations.winfo_reqwidth() + 8
+        middle = steps.winfo_reqwidth() + 8
+        right = max(320, footer.winfo_reqwidth() + 40)
+        outer.columnconfigure(0, minsize=left)
+        outer.columnconfigure(1, minsize=middle)
+        outer.columnconfigure(2, minsize=right)
+        needed = 24 + left + middle + right
+        self.root.minsize(max(960, needed), 560)
+        if needed > 1180:
+            self.root.geometry(f"{needed}x680")
 
     def conversation_label(self, item: dict) -> str:
         parts = [self.step_label(step) for step in item["steps"][:2]]
