@@ -27,8 +27,12 @@ class ScrollFrame(ttk.Frame):
         self._window = self.canvas.create_window((0, 0), window=self.body, anchor="nw")
         self.body.bind("<Configure>", self._body_changed)
         self.canvas.bind("<Configure>", self._canvas_changed)
-        # One handler for the whole application; it ignores other windows.
-        self.canvas.bind_all("<MouseWheel>", self._on_wheel, add="+")
+        # Bind on this window only (not bind_all): every widget in it passes through
+        # its toplevel, other windows are untouched, and nothing outlives the window.
+        # X11 reports the wheel as buttons 4 and 5 instead of <MouseWheel>.
+        window = self.winfo_toplevel()
+        for sequence in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
+            window.bind(sequence, self._on_wheel, add="+")
 
     @property
     def scrollbar_visible(self) -> bool:
@@ -65,8 +69,15 @@ class ScrollFrame(ttk.Frame):
         widget = event.widget
         if not isinstance(widget, tk.Misc):
             return
-        if widget.winfo_class() in WHEEL_OWNERS or event.state & CONTROL_MASK:
-            return  # a list, text box or Ctrl+wheel zoom keeps its own wheel
-        if widget.winfo_toplevel() is not self.winfo_toplevel() or not self.scrollbar_visible:
+        try:
+            if not self.winfo_exists():
+                return  # the frame is gone but the window's binding is still there
+            if widget.winfo_class() in WHEEL_OWNERS or event.state & CONTROL_MASK:
+                return  # a list, text box or Ctrl+wheel zoom keeps its own wheel
+            if not self.scrollbar_visible:
+                return
+        except tk.TclError:
             return
-        self.canvas.yview_scroll(-1 if event.delta > 0 else 1, "units")
+        number = getattr(event, "num", 0)
+        up = number == 4 if number in (4, 5) else event.delta > 0
+        self.canvas.yview_scroll(-1 if up else 1, "units")

@@ -76,27 +76,50 @@ class ObjectEditorScrollTests(unittest.TestCase):
         self.resize(1160, 400)
         canvas = self.area.canvas
 
-        def wheel(widget, delta=-120, state=0):
-            self.area._on_wheel(SimpleNamespace(widget=widget, delta=delta, state=state))
+        def wheel(widget, delta=0, state=0, num=0):
+            self.area._on_wheel(SimpleNamespace(widget=widget, delta=delta, state=state, num=num))
             self.root.update()
 
-        wheel(self.editor.scroll_area.body)
+        body = self.editor.scroll_area.body
+        wheel(body, delta=-120)  # Windows / macOS: wheel down
         scrolled = canvas.yview()[0]
         self.assertGreater(scrolled, 0)
-        wheel(self.editor.placement_list)  # lists scroll themselves
-        wheel(self.editor.scroll_area.body, state=0x4)  # Ctrl+wheel is the zoom
+        wheel(self.editor.placement_list, delta=-120)  # lists scroll themselves
+        wheel(body, delta=-120, state=0x4)  # Ctrl+wheel is the zoom
         self.assertEqual(canvas.yview()[0], scrolled)
-        wheel(self.editor.scroll_area.body, delta=120)
+        wheel(body, delta=120)  # wheel up
         self.assertLess(canvas.yview()[0], scrolled)
+        canvas.yview_moveto(0.0)
+        wheel(body, num=5)  # X11: button 5 is wheel down
+        self.assertGreater(canvas.yview()[0], 0)
+        wheel(body, num=4)  # X11: button 4 is wheel up
+        self.assertEqual(canvas.yview()[0], 0.0)
+
+    def test_the_wheel_is_bound_to_its_own_window_only(self) -> None:
+        # Not bind_all: a second window must not have our handler, and a frame
+        # that has been destroyed must ignore wheel events that still arrive.
+        other = tk.Toplevel(self.root)
+        self.addCleanup(other.destroy)
+        self.assertEqual(other.bind("<MouseWheel>"), "")
+        self.assertNotEqual(self.root.bind("<MouseWheel>"), "")
+        self.resize(1160, 400)
+        gone = self.editor.scroll_area
+        event = SimpleNamespace(widget=gone.body, delta=-120, state=0, num=0)
+        gone.destroy()
+        gone._on_wheel(event)  # must not raise
 
     def test_body_fills_the_window_when_it_is_tall_enough(self) -> None:
-        frame = ScrollFrame(self.root)
+        window = tk.Toplevel(self.root)
+        self.addCleanup(window.destroy)
+        window.geometry("900x700")
+        frame = ScrollFrame(window)
         child = ttk.Frame(frame.body, height=50)
         child.pack(fill="both", expand=True)
         frame.pack(fill="both", expand=True)
-        self.resize(900, 700)
+        window.update()
         self.assertGreaterEqual(frame.body.winfo_width(), frame.canvas.winfo_width())
         self.assertGreaterEqual(frame.body.winfo_height(), frame.canvas.winfo_height())
+        self.assertFalse(frame.scrollbar_visible)
 
 
 if __name__ == "__main__":
