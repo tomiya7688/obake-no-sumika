@@ -13,6 +13,7 @@ from engine import ui_theme
 from engine.pixel_object_repository import PixelObjectRepository
 from engine.placement_repository import PlacementRepository, normalize_tag
 from engine.room_repository import RoomRepository
+from engine.scroll_frame import ScrollFrame
 
 PROJECT_DIR = Path(__file__).resolve().parent
 OBJECT_DIR = PROJECT_DIR / "objects"
@@ -220,7 +221,11 @@ class ObjectEditor:
             "<Configure>",
             lambda event: self.status_label.configure(wraplength=max(200, event.width - 24)),
         )
-        outer = ttk.Frame(self.root, padding=12)
+        # The panels scroll when the window is shorter than they are, so every
+        # control stays reachable at any window size (Issue #131).
+        self.scroll_area = ScrollFrame(self.root)
+        self.scroll_area.pack(fill="both", expand=True)
+        outer = ttk.Frame(self.scroll_area.body, padding=12)
         outer.pack(fill="both", expand=True)
         outer.columnconfigure(0, weight=0)
         outer.columnconfigure(1, weight=0)
