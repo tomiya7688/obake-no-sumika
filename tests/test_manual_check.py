@@ -38,6 +38,7 @@ LOOK_LABELS = {
         "新しく住処に置く",
         "選択中の位置・大きさを更新",
         "選択中を住処から外す",
+        "色を選ぶ",
     ),
     "conversation-editor-look": (
         "会話追加",
@@ -48,7 +49,7 @@ LOOK_LABELS = {
         "会話デッキ",
         "この会話の順番",
     ),
-    "character-editor-look": ("ID（会話・イベント連携用）",),
+    "character-editor-look": ("ID（会話・イベント連携用）", "画像", "元画像が向いている方向"),
 }
 PROBE = """
 import json, sys
@@ -151,6 +152,13 @@ class ManualCheckTests(unittest.TestCase):
                 with self.subTest(scenario=scenario_id, label=label):
                     self.assertIn(label, source)
                     self.assertIn(label, text)
+
+    def test_object_look_check_scrolls_sideways_before_down(self) -> None:
+        # At the left edge the bottom-right buttons are cut off, so go right first.
+        actions = [s.action for s in self.scenario("object-editor-look").steps]
+        right = next(i for i, text in enumerate(actions) if "右の端" in text)
+        down = next(i for i, text in enumerate(actions) if "一番下" in text)
+        self.assertLess(right, down)
 
     def test_the_character_the_look_check_asks_to_select_exists(self) -> None:
         # The step says to press 「まる」 in the list; that name comes from the data.
