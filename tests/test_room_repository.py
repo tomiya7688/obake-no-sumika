@@ -52,6 +52,51 @@ class RoomRepositoryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "inside"):
             self.load_temporary(raw)
 
+    # Every float field of room.json: (path in the document, index inside a range or None).
+    FLOAT_FIELDS = (
+        (("conversation_distance",), None),
+        (("motes", "x_range"), 0),
+        (("motes", "x_range"), 1),
+        (("motes", "y_range"), 0),
+        (("motes", "y_range"), 1),
+        (("motes", "reset_y_range"), 0),
+        (("motes", "reset_y_range"), 1),
+        (("motes", "speed_range"), 0),
+        (("motes", "speed_range"), 1),
+        (("motes", "top"), None),
+        (("motes", "drift_speed"), None),
+        (("motes", "drift_amount"), None),
+    )
+
+    def test_every_float_field_rejects_non_finite_numbers(self):
+        # NaN fails both `< minimum` and `> maximum`, so a range check alone lets it
+        # through; 1e999 is read by the JSON decoder as infinity (Issue #31).
+        for path, index in self.FLOAT_FIELDS:
+            for text in ("NaN", "Infinity", "-Infinity", "1e999", "-1e999"):
+                with self.subTest(field=".".join(path), index=index, value=text):
+                    raw = self.current_payload()
+                    holder = raw
+                    for key in path[:-1]:
+                        holder = holder[key]
+                    marker = "__NON_FINITE__"
+                    if index is None:
+                        holder[path[-1]] = marker
+                    else:
+                        holder[path[-1]][index] = marker
+                    with tempfile.TemporaryDirectory() as temp_dir:
+                        room_path = Path(temp_dir) / "room.json"
+                        room_path.write_text(
+                            json.dumps(raw).replace(f'"{marker}"', text), encoding="utf-8"
+                        )
+                        with self.assertRaisesRegex(ValueError, "finite"):
+                            RoomRepository(room_path).load()
+
+    def test_huge_integers_are_a_value_error_not_an_overflow(self):
+        raw = self.current_payload()
+        raw["conversation_distance"] = 10**400  # float() of this raises OverflowError
+        with self.assertRaisesRegex(ValueError, "finite"):
+            self.load_temporary(raw)
+
     @staticmethod
     def current_payload() -> dict[str, object]:
         return json.loads((PROJECT_DIR / "room.json").read_text(encoding="utf-8"))

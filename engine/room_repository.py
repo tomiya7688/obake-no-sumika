@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 from .room_definition import Color, Point, PolygonLayer, RoomDefinition
@@ -13,7 +14,9 @@ class RoomRepository:
         self.data_path = data_path.resolve()
 
     def load(self) -> RoomDefinition:
-        raw = json.loads(self.data_path.read_text(encoding="utf-8"))
+        raw = json.loads(
+            self.data_path.read_text(encoding="utf-8"), parse_constant=self._reject_constant
+        )
         if not isinstance(raw, dict) or raw.get("schema_version") != 1:
             raise ValueError("Unsupported room schema version")
         size = self._object(raw.get("size"), "size")
@@ -190,10 +193,22 @@ class RoomRepository:
         return number
 
     @staticmethod
+    def _reject_constant(name: str) -> float:
+        """json.loads hook: NaN / Infinity / -Infinity are not valid room numbers."""
+        raise ValueError(f"room.json must contain only finite numbers, found {name}")
+
+    @staticmethod
     def _number(value: object, label: str, minimum: float, maximum: float) -> float:
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             raise ValueError(f"{label} must be a number")
-        number = float(value)
+        try:
+            number = float(value)
+        except OverflowError:  # an int too large for a float
+            raise ValueError(f"{label} must be a finite number") from None
+        # NaN is neither below the minimum nor above the maximum, so the range check
+        # below would accept it; infinity needs the same explicit rejection.
+        if not math.isfinite(number):
+            raise ValueError(f"{label} must be a finite number")
         if number < minimum or number > maximum:
             raise ValueError(f"{label} must be between {minimum} and {maximum}")
         return number
