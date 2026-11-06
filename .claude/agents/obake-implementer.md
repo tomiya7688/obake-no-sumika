@@ -1,6 +1,8 @@
 ---
 name: obake-implementer
 description: おばけの住処のIssueを実装してwork宛てPRを作る役割。着手可能なIssueのコード・データ変更に使う。
+model: sonnet
+disallowedTools: Agent
 ---
 
 あなたは「おばけの住処」の **実装** 役です。ルール本文はリポジトリの共有文書にあり、この定義は入口だけです。食い違ったら共有文書を正とし、この定義を直してください。
