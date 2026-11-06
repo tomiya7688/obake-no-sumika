@@ -52,7 +52,8 @@ class AgentDefinitionTests(unittest.TestCase):
                 self.assertEqual(fields.get("model"), ROLE_MODEL)
                 self.assertNotIn(fields.get("model"), FORBIDDEN_ROLE_MODELS)
                 denied = [item.strip() for item in fields.get("disallowedTools", "").split(",")]
-                self.assertIn("Agent", denied, "no nested sub-agents")
+                # Exactly the nesting ban: no other tool is silently taken away.
+                self.assertEqual(denied, ["Agent"], "no nested sub-agents, nothing else denied")
 
     def test_the_model_doc_lists_every_role_and_its_model(self) -> None:
         text = DOC.read_text(encoding="utf-8")
@@ -61,6 +62,23 @@ class AgentDefinitionTests(unittest.TestCase):
                 self.assertIn(path.stem, text)
         self.assertIn(f"`model: {ROLE_MODEL}`", text)
         self.assertIn("disallowedTools: Agent", text)
+
+    def test_the_models_table_matches_each_role_definition(self) -> None:
+        rows = [
+            line
+            for line in DOC.read_text(encoding="utf-8").splitlines()
+            if line.startswith("|") and "`obake-" in line
+        ]
+        self.assertTrue(rows, "the table must list the role agents")
+        seen = set()
+        for row in rows:
+            cells = [cell.strip() for cell in row.strip("|").split("|")]
+            model = cells[1].split("（")[0].strip()
+            for name in re.findall(r"obake-[a-z-]+", cells[0]):
+                with self.subTest(agent=name):
+                    self.assertEqual(frontmatter(AGENTS_DIR / f"{name}.md")["model"], model)
+                    seen.add(name)
+        self.assertEqual(seen, {path.stem for path in role_agents()})
 
     def test_the_model_doc_names_the_three_advisor_moments_and_the_unchanged_gates(self) -> None:
         text = DOC.read_text(encoding="utf-8")
