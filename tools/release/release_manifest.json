@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "archives": {
+    "game": {
+      "description": "ゲーム本体（run_game.bat で起動する）",
+      "include": [
+        "game.py",
+        "run_game.bat",
+        "requirements.txt",
+        "engine",
+        "characters.json",
+        "conversations.json",
+        "events.json",
+        "game_content.json",
+        "placed_objects.json",
+        "room.json",
+        "assets",
+        "objects",
+        "README.md",
+        "LICENSE.md",
+        "LICENSES",
+        "VERSION"
+      ]
+    },
+    "editors": {
+      "description": "エディター類（単体で動くよう engine と編集対象データを含む）",
+      "include": [
+        "engine_app.py",
+        "engine_project.json",
+        "character_editor.py",
+        "conversation_editor.py",
+        "object_editor.py",
+        "run_engine.bat",
+        "run_editor.bat",
+        "run_object_editor.bat",
+        "requirements.txt",
+        "engine",
+        "projects",
+        "characters.json",
+        "conversations.json",
+        "events.json",
+        "game_content.json",
+        "placed_objects.json",
+        "room.json",
+        "assets",
+        "objects",
+        "README.md",
+        "LICENSE.md",
+        "LICENSES",
+        "VERSION"
+      ]
+    }
+  },
+  "exclude_dir_names": ["__pycache__"],
+  "exclude_suffixes": [".pyc", ".pyo", ".zip", ".log"]
+}

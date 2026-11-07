@@ -1,0 +1,74 @@
+name: Release artifacts
+
+# 配布 zip を作り、SHA-256 と Artifact Attestation（OIDC keyless）を付ける。
+# GitHub Release への添付・公開はしない。成果物は Actions の Artifact にだけ置く。
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build, attest and verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Check tag matches VERSION
+        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        run: test "${GITHUB_REF_NAME}" = "v$(tr -d '[:space:]' < VERSION)"
+
+      - name: Run release build tests
+        run: python -m unittest tests.test_release_build -v
+
+      - name: Build archives
+        run: python tools/release/build_release.py --output-dir dist
+
+      - name: Rebuild and compare (reproducibility)
+        run: |
+          python tools/release/build_release.py --output-dir dist-again
+          diff -r dist dist-again
+
+      - name: Verify SHA256SUMS
+        working-directory: dist
+        run: sha256sum --check SHA256SUMS
+
+      - name: Attest archives and SHA256SUMS
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: |
+            dist/*.zip
+            dist/SHA256SUMS
+
+      - name: Verify attestations in the same job
+        run: |
+          for file in dist/*.zip dist/SHA256SUMS; do
+            gh attestation verify "$file" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/release-artifacts.yml"
+          done
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: dist/
+          if-no-files-found: error
