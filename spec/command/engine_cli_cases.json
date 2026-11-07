@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "files": {"play.entry": "", "edit.entry": "", "data/characters.json": {}},
+  "directories": ["assets"],
+  "cases": [
+    {
+      "id": "minimal",
+      "manifest": {"schema_version": 1, "name": "最小", "entrypoint": "play.entry"},
+      "expected": {"status": "accepted", "describe": {"name": "最小", "project_type": "standard", "entrypoint": "play.entry", "editors": [], "content": {}}, "validate": "OK: 最小 / editors=0 / content=0"}
+    },
+    {
+      "id": "editors_and_content",
+      "manifest": {
+        "schema_version": 1, "name": "demo", "project_type": "custom", "entrypoint": "play.entry",
+        "editors": [{"id": "b", "label": "二番", "script": "edit.entry"}, {"id": "a", "label": "一番", "script": "play.entry"}],
+        "content": {"characters": "data/characters.json", "assets": "assets"}
+      },
+      "expected": {"status": "accepted", "describe": {"name": "demo", "project_type": "custom", "entrypoint": "play.entry", "editors": [{"id": "b", "label": "二番", "script": "edit.entry"}, {"id": "a", "label": "一番", "script": "play.entry"}], "content": {"characters": "data/characters.json", "assets": "assets"}}, "validate": "OK: demo / editors=2 / content=2"}
+    },
+    {
+      "id": "missing_entrypoint_file",
+      "manifest": {"schema_version": 1, "name": "bad", "entrypoint": "nope.entry"},
+      "expected": {"status": "rejected"}
+    },
+    {
+      "id": "escaping_content_path",
+      "manifest": {"schema_version": 1, "name": "bad", "entrypoint": "play.entry", "content": {"x": "../outside"}},
+      "expected": {"status": "rejected"}
+    }
+  ]
+}
