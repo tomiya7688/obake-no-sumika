@@ -72,13 +72,25 @@
       "strict_ok": false
     },
     {
-      "id": "legacy_format",
-      "input": [{"maru": "ねえ", "kadoka": " うん ", "event": "rain", "weight": 2}, {"maru": "", "event": "snow"}],
+      "id": "legacy_format_accepted_in_both_modes",
+      "input": [{"maru": "ねえ", "kadoka": " うん ", "event": "rain", "weight": 2}],
       "loaded": [{"weight": 2, "steps": [
         {"type": "say", "speaker": "maru", "text": "ねえ"},
         {"type": "say", "speaker": "kadoka", "text": "うん"},
         {"type": "event", "event": "rain"}
       ]}],
+      "strict_ok": true
+    },
+    {
+      "id": "legacy_invalid_event_ignored_but_valid_speech_kept",
+      "input": [{"maru": "ねえ", "event": "snow"}],
+      "loaded": [{"weight": 1, "steps": [{"type": "say", "speaker": "maru", "text": "ねえ"}]}],
+      "strict_ok": true
+    },
+    {
+      "id": "legacy_without_speech_dropped",
+      "input": [{"maru": "", "event": "snow"}, {"steps": [{"text": "keep"}]}],
+      "loaded": [{"weight": 1, "steps": [{"type": "say", "speaker": "maru", "text": "keep"}]}],
       "strict_ok": false
     },
     {
