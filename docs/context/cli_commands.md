@@ -11,6 +11,8 @@ PowerShellでリポジトリのルートから実行する。Pythonはこのプ�
 .\.venv\Scripts\python.exe engine_app.py --project projects/obakeno_sumika_special/engine_project.json --validate
 ```
 
+出力形式・書き換えなし・スクリプト非実行の契約は言語共通の [spec/command/engine_cli.md](../../spec/command/engine_cli.md) が正本（`--validate` は1行 `OK: <name> / editors=<n> / content=<n>`）。
+
 `--describe` は名前、project_type、ゲーム入口、利用可能なエディターIDとスクリプト、コンテンツ名とパスをJSONで返す。パスは指定したプロジェクトのルートからの相対パス。`--validate` はマニフェストと参照パスの検証であり、全コンテンツの意味検証ではない。`--project` には対象の `engine_project.json` を渡す。
 
 ## 必要なキャラクター設定だけ取得する

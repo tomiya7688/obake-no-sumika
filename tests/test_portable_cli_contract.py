@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import subprocess
@@ -26,6 +27,15 @@ def run_cli(project: Path, flag: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+def snapshot(root: Path) -> dict[str, str]:
+    # プロジェクト配下の全ファイルの内容ハッシュ（書き換え・新規作成の検出用）
+    return {
+        path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in sorted(root.rglob("*"))
+        if path.is_file()
+    }
+
+
 class PortableCliContractTests(unittest.TestCase):
     def test_shared_cases_against_python_cli(self) -> None:
         suite = json.loads(CASES_PATH.read_text(encoding="utf-8"))
@@ -45,7 +55,7 @@ class PortableCliContractTests(unittest.TestCase):
                     manifest.write_text(
                         json.dumps(case["manifest"], ensure_ascii=False), encoding="utf-8"
                     )
-                    before = manifest.read_bytes()
+                    before = snapshot(root)
                     described = run_cli(manifest, "--describe")
                     validated = run_cli(manifest, "--validate")
                     expected = case["expected"]
@@ -58,8 +68,10 @@ class PortableCliContractTests(unittest.TestCase):
                         self.assertEqual(described.returncode, 0, described.stderr)
                         self.assertEqual(json.loads(described.stdout), expected["describe"])
                         self.assertEqual(validated.returncode, 0, validated.stderr)
-                        self.assertEqual(validated.stdout.strip(), expected["validate"])
-                    self.assertEqual(manifest.read_bytes(), before)
+                        self.assertEqual(validated.stdout.splitlines(), [expected["validate"]])
+                        want = expected["validate"]
+                        self.assertIn(validated.stdout, (want + chr(10), want + chr(13) + chr(10)))
+                    self.assertEqual(snapshot(root), before)
 
 
 if __name__ == "__main__":
