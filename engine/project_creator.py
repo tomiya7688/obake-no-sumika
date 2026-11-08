@@ -31,9 +31,9 @@ def bounce(x: float, vx: float, dt: float, width: float) -> tuple[float, float]:
     dt = min(max(dt, 0.0), MAX_DT)
     x += vx * dt
     low, high = MARGIN, width - MARGIN
-    if x < low:
+    if x <= low:
         x, vx = low, abs(vx)
-    elif x > high:
+    elif x >= high:
         x, vx = high, -abs(vx)
     return x, vx
 

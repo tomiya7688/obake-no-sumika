@@ -47,6 +47,11 @@ class StarterBounceTests(unittest.TestCase):
         self.assertLess(bounce(915.0, 80.0, 0.1, 960)[1], 0)
         self.assertGreater(bounce(45.0, -80.0, 0.1, 960)[1], 0)
 
+    def test_exactly_reaching_a_wall_also_turns_inward(self):
+        bounce = load_starter_namespace()["bounce"]
+        self.assertEqual(bounce(912.0, 80.0, 0.1, 960), (920.0, -80.0))
+        self.assertEqual(bounce(48.0, -80.0, 0.1, 960), (40.0, 80.0))
+
 
 class ProjectCreatorTests(unittest.TestCase):
     def test_created_project_validates_and_contains_starter_data(self):
