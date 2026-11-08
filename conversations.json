@@ -381,5 +381,135 @@
         "text": "おきたのだ！"
       }
     ]
+  },
+  {
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "あけられないのだ…"
+      },
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "かして"
+      },
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "はい、あいたよ"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "ありがとうなのだ！"
+      }
+    ]
+  },
+  {
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "ばあ！したのに…"
+      },
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "こわくなかった、ね"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "しょんぼりなのだ…"
+      },
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "また、やろう"
+      }
+    ]
+  },
+  {
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "ここにはね..."
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "りんご！りんごなのだ！"
+      },
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "うん、りんごね"
+      }
+    ]
+  },
+  {
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "柿、むずかしい"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "かどか、ぽろぽろなのだ！"
+      },
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "手、みじかいから"
+      }
+    ]
+  },
+  {
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "きょうね、ころんだのだ！"
+      },
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "うん、きいてるよ"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "ころん！なのだ"
+      }
+    ]
+  },
+  {
+    "weight": 1,
+    "steps": [
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "にんげんって、なにしてるのかな"
+      },
+      {
+        "type": "say",
+        "speaker": "maru",
+        "text": "わかんないのだ！"
+      },
+      {
+        "type": "say",
+        "speaker": "kadoka",
+        "text": "ふしぎだね"
+      }
+    ]
   }
 ]
