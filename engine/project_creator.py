@@ -22,6 +22,22 @@ def load_room() -> dict:
     return json.loads((ROOT / "room.json").read_text(encoding="utf-8"))
 
 
+MARGIN = 40
+MAX_DT = 0.1
+
+
+def bounce(x: float, vx: float, dt: float, width: float) -> tuple[float, float]:
+    """Move along x and reflect at the walls; the position always ends inside them."""
+    dt = min(max(dt, 0.0), MAX_DT)
+    x += vx * dt
+    low, high = MARGIN, width - MARGIN
+    if x < low:
+        x, vx = low, abs(vx)
+    elif x > high:
+        x, vx = high, -abs(vx)
+    return x, vx
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Starter engine project")
     parser.add_argument("--test-frames", type=int, default=0)
@@ -47,9 +63,8 @@ def main() -> int:
                 running = False
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 running = False
-        pos += velocity * dt
-        if pos.x < 40 or pos.x > width - 40:
-            velocity.x *= -1
+        pos.y += velocity.y * min(max(dt, 0.0), MAX_DT)
+        pos.x, velocity.x = bounce(pos.x, velocity.x, dt, width)
         top = tuple(room["background"]["gradient"]["top"])
         bottom = tuple(room["background"]["gradient"]["bottom"])
         screen.fill(top)

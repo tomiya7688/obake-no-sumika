@@ -1,6 +1,7 @@
 import py_compile
 import sys
 import tempfile
+import types
 import unittest
 from pathlib import Path
 
@@ -12,8 +13,39 @@ from engine.conversation_repository import ConversationRepository
 from engine.event_repository import EventRepository
 from engine.manifest_loader import load_project_manifest
 from engine.placement_repository import PlacementRepository
-from engine.project_creator import ProjectCreator
+from engine.project_creator import STARTER_GAME, ProjectCreator
 from engine.room_repository import RoomRepository
+
+
+def load_starter_namespace() -> dict:
+    stub = types.ModuleType("pygame")
+    previous = sys.modules.get("pygame")
+    sys.modules["pygame"] = stub
+    try:
+        namespace = {"__name__": "starter_test", "__file__": str(PROJECT_DIR / "game.py")}
+        exec(compile(STARTER_GAME, "starter_game.py", "exec"), namespace)
+    finally:
+        if previous is None:
+            del sys.modules["pygame"]
+        else:
+            sys.modules["pygame"] = previous
+    return namespace
+
+
+class StarterBounceTests(unittest.TestCase):
+    def test_large_dt_never_leaves_the_walls(self):
+        bounce = load_starter_namespace()["bounce"]
+        for dt in (0.016, 0.5, 5.0, 100.0):
+            for x, vx in ((880.0, 80.0), (920.0, 80.0), (40.0, -80.0), (500.0, 80.0)):
+                nx, nv = bounce(x, vx, dt, 960)
+                self.assertTrue(40 <= nx <= 920, (dt, x, vx, nx))
+                nx2, _ = bounce(nx, nv, 0.016, 960)
+                self.assertTrue(40 <= nx2 <= 920)
+
+    def test_direction_points_inward_after_hitting_a_wall(self):
+        bounce = load_starter_namespace()["bounce"]
+        self.assertLess(bounce(915.0, 80.0, 0.1, 960)[1], 0)
+        self.assertGreater(bounce(45.0, -80.0, 0.1, 960)[1], 0)
 
 
 class ProjectCreatorTests(unittest.TestCase):
@@ -56,7 +88,7 @@ class ProjectCreatorTests(unittest.TestCase):
 
     def test_project_name_is_sanitized_for_folder_name(self):
         with tempfile.TemporaryDirectory() as temp_dir:
-            manifest_path = ProjectCreator().create_project(Path(temp_dir), 'a:b?c')
+            manifest_path = ProjectCreator().create_project(Path(temp_dir), "a:b?c")
 
             self.assertEqual(manifest_path.parent.name, "a_b_c")
             manifest = load_project_manifest(manifest_path)
