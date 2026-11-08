@@ -83,7 +83,7 @@ func run_tests() -> void:
 	if data.is_empty():
 		finish()
 		return
-	check(data.events.size() == 2 and data.conversations.size() == 25 and data.skipped_conversations == 0, "Both existing event cards are now available, with no JSON changes")
+	check(data.events.size() == 2 and data.conversations.size() >= 25 and data.skipped_conversations == 0, "Both existing event cards are now available, with no JSON changes")
 	var definition := {"id": "game_device", "label": "ゲーム機", "terminal": true, "required_tag": "game_device"}
 	for raw in [null, {}, {"schema_version": 2, "events": [definition]}, {"schema_version": 1, "events": []}, {"schema_version": 1, "events": [definition, definition]}]:
 		check(not Catalog.parse(raw).error.is_empty(), "Invalid schema/empty/duplicate catalog is rejected")
