@@ -28,6 +28,10 @@ class CharacterVoiceTests(unittest.TestCase):
                 self.assertLessEqual(len(text), MAX_LENGTH["kadoka"], text)
                 self.assertNotIn("なのだ", text, text)
 
+    def test_kadoka_listens_to_maru(self):
+        lines = load_lines()
+        self.assertTrue(any(sp == "kadoka" and "きいてるよ" in t for sp, t in lines))
+
     def test_maru_uses_own_first_person_and_stays_short(self):
         for speaker, text in load_lines():
             if speaker == "maru":
