@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "speaker_ids": ["maru", "kadoka"],
+  "actor_ids": ["maru", "kadoka"],
+  "event_ids": ["rain"],
+  "cases": [
+    {
+      "id": "say_defaults_and_whitespace",
+      "input": [{"steps": [{"text": "  こんにちは   世界  "}]}],
+      "loaded": [{"weight": 1, "steps": [{"type": "say", "speaker": "maru", "text": "こんにちは 世界"}]}],
+      "strict_ok": true
+    },
+    {
+      "id": "all_step_types",
+      "input": [{"weight": 3, "steps": [
+        {"type": "say", "speaker": "kadoka", "text": "やあ"},
+        {"type": "move", "actor": "maru", "tag": " sofa "},
+        {"type": "take", "actor": "kadoka", "tag": "cup"},
+        {"type": "put", "tag": "table"},
+        {"type": "event", "event": "rain"}
+      ]}],
+      "loaded": [{"weight": 3, "steps": [
+        {"type": "say", "speaker": "kadoka", "text": "やあ"},
+        {"type": "move", "actor": "maru", "tag": "sofa"},
+        {"type": "take", "actor": "kadoka", "tag": "cup"},
+        {"type": "put", "actor": "maru", "tag": "table"},
+        {"type": "event", "event": "rain"}
+      ]}],
+      "strict_ok": true
+    },
+    {
+      "id": "weight_clamped",
+      "input": [
+        {"weight": 0, "steps": [{"text": "a"}]},
+        {"weight": 5000.5, "steps": [{"text": "b"}]},
+        {"weight": 2.5, "steps": [{"text": "c"}]}
+      ],
+      "loaded": [
+        {"weight": 1, "steps": [{"type": "say", "speaker": "maru", "text": "a"}]},
+        {"weight": 999, "steps": [{"type": "say", "speaker": "maru", "text": "b"}]},
+        {"weight": 2.5, "steps": [{"type": "say", "speaker": "maru", "text": "c"}]}
+      ],
+      "strict_ok": true
+    },
+    {
+      "id": "invalid_weight_tolerated_but_strict_rejected",
+      "input": [{"weight": "heavy", "steps": [{"text": "a"}]}, {"weight": true, "steps": [{"text": "b"}]}],
+      "loaded": [
+        {"weight": 1, "steps": [{"type": "say", "speaker": "maru", "text": "a"}]},
+        {"weight": 1, "steps": [{"type": "say", "speaker": "maru", "text": "b"}]}
+      ],
+      "strict_ok": false
+    },
+    {
+      "id": "invalid_steps_dropped",
+      "input": [{"steps": [
+        {"type": "say", "speaker": "ghost", "text": "x"},
+        {"type": "say", "speaker": "maru", "text": "   "},
+        {"type": "move", "actor": "maru", "tag": " "},
+        {"type": "event", "event": "snow"},
+        {"type": "dance"},
+        "text",
+        {"type": "say", "speaker": "maru", "text": "ok"}
+      ]}],
+      "loaded": [{"weight": 1, "steps": [{"type": "say", "speaker": "maru", "text": "ok"}]}],
+      "strict_ok": false
+    },
+    {
+      "id": "conversation_without_valid_steps_dropped",
+      "input": [{"steps": [{"type": "dance"}]}, {"steps": []}, 7, {"steps": [{"text": "keep"}]}],
+      "loaded": [{"weight": 1, "steps": [{"type": "say", "speaker": "maru", "text": "keep"}]}],
+      "strict_ok": false
+    },
+    {
+      "id": "legacy_format_accepted_in_both_modes",
+      "input": [{"maru": "ねえ", "kadoka": " うん ", "event": "rain", "weight": 2}],
+      "loaded": [{"weight": 2, "steps": [
+        {"type": "say", "speaker": "maru", "text": "ねえ"},
+        {"type": "say", "speaker": "kadoka", "text": "うん"},
+        {"type": "event", "event": "rain"}
+      ]}],
+      "strict_ok": true
+    },
+    {
+      "id": "legacy_invalid_event_ignored_but_valid_speech_kept",
+      "input": [{"maru": "ねえ", "event": "snow"}],
+      "loaded": [{"weight": 1, "steps": [{"type": "say", "speaker": "maru", "text": "ねえ"}]}],
+      "strict_ok": true
+    },
+    {
+      "id": "legacy_without_speech_dropped",
+      "input": [{"maru": "", "event": "snow"}, {"steps": [{"text": "keep"}]}],
+      "loaded": [{"weight": 1, "steps": [{"type": "say", "speaker": "maru", "text": "keep"}]}],
+      "strict_ok": false
+    },
+    {
+      "id": "top_level_not_array",
+      "input": {"steps": [{"text": "a"}]},
+      "loaded": [],
+      "strict_ok": false
+    },
+    {
+      "id": "empty_array",
+      "input": [],
+      "loaded": [],
+      "strict_ok": false
+    }
+  ]
+}

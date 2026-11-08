@@ -10,6 +10,8 @@ Python版が現在の参照実装。Godot/GDScript版は `godot/` で移行第�
 | プロジェクト入口と共通設定 | `engine_project.json` | `engine/manifest_loader.py`, `tests/test_engine_manifest.py` |
 | 言語共通のプロジェクト読込契約 | `spec/engine/project_manifest.md`, `spec/engine/project_manifest_cases.json` | `tests/test_portable_project_contract.py`（PythonとGodot）、`godot/scripts/project_manifest.gd` |
 | キャラクターの基本読込契約 | `spec/character/characters.md`, `spec/character/characters_cases.json` | `tests/test_portable_character_contract.py`（PythonとGodot）、`godot/scripts/character_schema.gd` |
+| エンジンCLI（`--describe` / `--validate`）の出力 | `spec/command/engine_cli.md`, `spec/command/engine_cli_cases.json` | `tests/test_portable_cli_contract.py`（Pythonのみ）、`engine_app.py` |
+| 会話デッキの正規化・厳密検証 | `spec/conversation/conversations.md`, `spec/conversation/conversations_cases.json` | `tests/test_portable_conversation_contract.py`（Pythonのみ）、`engine/conversation_repository.py` |
 | ゲーム固有のファイル対応 | `game_content.json` | `engine/manifest_loader.py` |
 | キャラクター、部屋、会話、イベント、配置物 | 各JSONと `engine/*_repository.py` | `tests/test_*repository.py`, `tests/test_content_repositories.py` |
 | 通常版とspecial版の分離 | 各 `engine_project.json` の `project_type` | `tests/test_special_project_isolation.py` |
